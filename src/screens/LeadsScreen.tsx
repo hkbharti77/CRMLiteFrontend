@@ -1,0 +1,275 @@
+import React, { useEffect, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, FlatList, Dimensions } from 'react-native';
+import { Text, useTheme, Card, Avatar, Chip, IconButton, Menu, Searchbar } from 'react-native-paper';
+import { useLeadStore, Lead, LeadStatus } from '../store/useLeadStore';
+import { crmApi } from '../services/api';
+
+const { width } = Dimensions.get('window');
+const COLUMN_WIDTH = width * 0.8;
+
+const STAGES: { filterIds: LeadStatus[]; label: string; color: string }[] = [
+  { filterIds: ['NEW'],                       label: 'New',       color: '#2196F3' },
+  { filterIds: ['INTERESTED'],                label: 'Interested',color: '#FFC107' },
+  { filterIds: ['FOLLOW_UP'],                 label: 'Follow Up', color: '#FF9800' },
+  { filterIds: ['BOOKED'],                    label: '📅 Booked', color: '#9C27B0' },
+  { filterIds: ['CLOSED_WON', 'CLOSED_LOST'], label: 'Closed',    color: '#4CAF50' },
+];
+
+const shortId = (id: string) => id?.replace(/-/g, '').slice(0, 6).toUpperCase() ?? '------';
+
+export default function LeadsScreen({ navigation }: any) {
+  const theme = useTheme();
+  const { leads, setLeads, updateLeadStatus: updateStoreStatus } = useLeadStore();
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [visibleMenu, setVisibleMenu] = React.useState<string | null>(null);
+  // Search & filter state
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [filterMultiOnly, setFilterMultiOnly] = React.useState(false);
+
+  const fetchLeads = async () => {
+    try {
+      const response = await crmApi.getLeads();
+      const mappedLeads: Lead[] = response.data.map((item: any) => ({
+        id: item.id,
+        contactId: item.contact?.id,
+        name: item.contact?.name || 'Unknown',
+        lastMessage: item.dealLabel ||
+          (item.enquiries?.length > 0
+            ? item.enquiries[item.enquiries.length - 1].message
+            : 'New lead via WhatsApp'),
+        time: item.lastActivity
+          ? new Date(item.lastActivity).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : 'Just now',
+        status: item.status as LeadStatus,
+        enquiries: item.enquiries || [],
+        dealLabel: item.dealLabel,
+        dealValue: item.dealValue,
+        paymentStatus: item.paymentStatus,
+        currency: item.currency,
+      }));
+      setLeads(mappedLeads);
+    } catch (error) {
+      console.error('Error fetching leads:', error);
+    }
+  };
+
+  useEffect(() => { fetchLeads(); }, []);
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchLeads();
+    setRefreshing(false);
+  }, []);
+
+  // Build a set of contactIds that have multiple leads
+  const multiLeadContactIds = useMemo(() => {
+    const counts: Record<string, number> = {};
+    leads.forEach(l => { counts[l.contactId] = (counts[l.contactId] ?? 0) + 1; });
+    return new Set(Object.entries(counts).filter(([, c]) => c > 1).map(([id]) => id));
+  }, [leads]);
+
+  // Apply search + filter
+  const filteredLeads = useMemo(() => {
+    let result = leads;
+    if (filterMultiOnly) {
+      result = result.filter(l => multiLeadContactIds.has(l.contactId));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(l =>
+        l.name.toLowerCase().includes(q) ||
+        l.id.toLowerCase().includes(q) ||
+        shortId(l.id).toLowerCase().includes(q) ||
+        (l.dealLabel ?? '').toLowerCase().includes(q) ||
+        (l.lastMessage ?? '').toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [leads, searchQuery, filterMultiOnly, multiLeadContactIds]);
+
+  const handleStatusMove = async (leadId: string, newStatus: LeadStatus) => {
+    try {
+      await crmApi.updateLeadStatus(leadId, newStatus);
+      updateStoreStatus(leadId, newStatus);
+      setVisibleMenu(null);
+    } catch (error) {
+      console.error('Error moving lead:', error);
+    }
+  };
+
+  const renderLeadCard = (lead: Lead) => {
+    const enquiryCount = lead.enquiries?.length ?? 0;
+    const lastEnquiry = enquiryCount > 0 ? lead.enquiries![enquiryCount - 1] : null;
+    const subtitle = lead.dealLabel
+      ? `💼 ${lead.dealLabel}`
+      : lastEnquiry
+        ? `💬 ${lastEnquiry.message}`
+        : 'No enquiries yet';
+
+    const siblingCount = leads.filter(l => l.contactId === lead.contactId).length;
+
+    return (
+      <Card
+        style={[styles.leadCard, lead.status === 'CLOSED_LOST' ? { opacity: 0.7 } : {}]}
+        elevation={1}
+        onPress={() => navigation.navigate('ContactProfile', { contactId: lead.contactId })}
+      >
+        <Card.Content style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Avatar.Text
+              size={36}
+              label={lead.name.split(' ').map(n => n[0]).join('')}
+              style={{ backgroundColor: theme.colors.primaryContainer }}
+              labelStyle={{ color: theme.colors.primary, fontSize: 14 }}
+            />
+            <View style={styles.headerInfo}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text variant="titleSmall" style={styles.leadName}>{lead.name}</Text>
+                {siblingCount > 1 && (
+                  <Chip compact style={styles.multiLeadBadge} textStyle={{ fontSize: 9, color: '#7B1FA2' }}>
+                    {siblingCount} leads
+                  </Chip>
+                )}
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text variant="labelSmall" style={styles.leadIdText}>#{shortId(lead.id)}</Text>
+                <Text variant="labelSmall" style={styles.timeText}> · {lead.time}</Text>
+                {lead.status === 'CLOSED_WON' && (
+                  <Chip compact style={[styles.statusBadge, { backgroundColor: '#E8F5E9' }]} textStyle={{ color: '#4CAF50', fontSize: 10 }}>WON</Chip>
+                )}
+                {lead.status === 'CLOSED_LOST' && (
+                  <Chip compact style={[styles.statusBadge, { backgroundColor: '#FFEBEE' }]} textStyle={{ color: '#F44336', fontSize: 10 }}>LOST</Chip>
+                )}
+              </View>
+            </View>
+
+            <Menu
+              visible={visibleMenu === lead.id}
+              onDismiss={() => setVisibleMenu(null)}
+              anchor={<IconButton icon="dots-vertical" size={20} onPress={() => setVisibleMenu(lead.id)} />}
+            >
+              <Menu.Item onPress={() => handleStatusMove(lead.id, 'NEW')}         title="Move to New"         disabled={lead.status === 'NEW'} />
+              <Menu.Item onPress={() => handleStatusMove(lead.id, 'INTERESTED')}  title="Move to Interested"  disabled={lead.status === 'INTERESTED'} />
+              <Menu.Item onPress={() => handleStatusMove(lead.id, 'FOLLOW_UP')}   title="Move to Follow Up"   disabled={lead.status === 'FOLLOW_UP'} />
+              <Menu.Item onPress={() => handleStatusMove(lead.id, 'CLOSED_WON')}  title="Move to Closed Won"  disabled={lead.status === 'CLOSED_WON'} />
+              <Menu.Item onPress={() => handleStatusMove(lead.id, 'CLOSED_LOST')} title="Move to Closed Lost" disabled={lead.status === 'CLOSED_LOST'} />
+            </Menu>
+          </View>
+
+          <Text variant="bodySmall" numberOfLines={1} style={styles.lastMessage}>{subtitle}</Text>
+
+          <View style={styles.cardFooter}>
+            {enquiryCount > 0 && (
+              <Chip compact style={styles.enquiryChip} textStyle={{ fontSize: 10, color: '#1565C0' }}>
+                {enquiryCount} enquir{enquiryCount === 1 ? 'y' : 'ies'}
+              </Chip>
+            )}
+            {lead.dealValue ? (
+              <Chip compact style={[styles.enquiryChip, { backgroundColor: '#E8F5E9' }]} textStyle={{ fontSize: 10, color: '#2E7D32' }}>
+                ₹{Number(lead.dealValue).toLocaleString('en-IN')}
+              </Chip>
+            ) : null}
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  };
+
+  const renderColumn = (stage: typeof STAGES[0]) => {
+    const stageLeads = filteredLeads.filter(l => stage.filterIds.includes(l.status));
+
+    return (
+      <View style={styles.columnContainer} key={stage.label}>
+        <View style={styles.columnHeader}>
+          <View style={[styles.statusIndicator, { backgroundColor: stage.color }]} />
+          <Text variant="titleMedium" style={styles.stageLabel}>{stage.label}</Text>
+          <Chip compact style={styles.countChip}>{stageLeads.length}</Chip>
+        </View>
+
+        <FlatList
+          data={stageLeads}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => renderLeadCard(item)}
+          contentContainerStyle={styles.columnList}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    );
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Search bar */}
+      <View style={styles.searchRow}>
+        <Searchbar
+          placeholder="Search by name, lead ID, deal…"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={styles.searchBar}
+          inputStyle={{ fontSize: 13 }}
+        />
+      </View>
+
+      {/* Filter chips */}
+      <View style={styles.filterRow}>
+        <Chip
+          selected={filterMultiOnly}
+          onPress={() => setFilterMultiOnly(v => !v)}
+          style={[styles.filterChip, filterMultiOnly && { backgroundColor: '#EDE7F6' }]}
+          textStyle={{ fontSize: 12, color: filterMultiOnly ? '#6A1B9A' : '#555' }}
+          icon="account-multiple"
+        >
+          Multiple leads only
+        </Chip>
+        {(searchQuery || filterMultiOnly) && (
+          <Chip
+            onPress={() => { setSearchQuery(''); setFilterMultiOnly(false); }}
+            style={styles.filterChip}
+            textStyle={{ fontSize: 12, color: '#B71C1C' }}
+            icon="close"
+          >
+            Clear
+          </Chip>
+        )}
+      </View>
+
+      <ScrollView
+        horizontal
+        pagingEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={COLUMN_WIDTH + 20}
+        decelerationRate="fast"
+        contentContainerStyle={styles.scrollContent}
+      >
+        {STAGES.map(renderColumn)}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container:       { flex: 1 },
+  searchRow:       { paddingHorizontal: 12, paddingTop: 10 },
+  searchBar:       { borderRadius: 12, height: 42, elevation: 1 },
+  filterRow:       { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 6, gap: 8 },
+  filterChip:      { height: 30, backgroundColor: '#F5F5F5' },
+  scrollContent:   { paddingHorizontal: 10, paddingVertical: 8 },
+  columnContainer: { width: COLUMN_WIDTH, marginHorizontal: 10, backgroundColor: 'rgba(0,0,0,0.03)', borderRadius: 20, padding: 12 },
+  columnHeader:    { flexDirection: 'row', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
+  statusIndicator: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
+  stageLabel:      { fontWeight: 'bold', flex: 1 },
+  countChip:       { backgroundColor: 'rgba(255,255,255,0.8)', height: 24 },
+  columnList:      { paddingBottom: 20 },
+  leadCard:        { backgroundColor: '#fff', marginBottom: 12, borderRadius: 12 },
+  cardContent:     { padding: 12 },
+  cardHeader:      { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  headerInfo:      { flex: 1, marginLeft: 12 },
+  leadName:        { fontWeight: '600' },
+  leadIdText:      { color: '#9C27B0', fontFamily: 'monospace', fontSize: 10 },
+  timeText:        { color: '#999' },
+  lastMessage:     { color: '#666', fontStyle: 'italic' },
+  cardFooter:      { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
+  enquiryChip:     { backgroundColor: '#E3F2FD', height: 22 },
+  statusBadge:     { marginLeft: 6, height: 20 },
+  multiLeadBadge:  { backgroundColor: '#F3E5F5', height: 18 },
+});

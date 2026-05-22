@@ -2,8 +2,6 @@ import { create } from 'zustand';
 
 export interface Booking {
   id: string;
-  leadId: string;
-  leadStatus: string;
   contactName: string;
   contactWaId: string;
   contactId: string;

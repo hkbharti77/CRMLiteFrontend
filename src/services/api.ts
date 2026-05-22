@@ -2,9 +2,9 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-export const SERVER_HOST = 'http://localhost:8080'; // Change to match your environment (e.g. your IP)
+export const SERVER_HOST = process.env.EXPO_PUBLIC_API_URL;
 export const API_BASE_URL = `${SERVER_HOST}/api/v1`;
-export const WS_URL = `${SERVER_HOST}/ws`;
+export const WS_URL = `${SERVER_HOST?.replace('http', 'ws')}/ws`;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -13,16 +13,52 @@ const api = axios.create({
   },
 });
 
-// Interceptor to add JWT token to requests
+// Helper for Trace ID
+const generateTraceId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 15);
+};
+
+// Interceptor to add JWT token and observability headers to requests
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('userToken');
+    const tenantId = (await AsyncStorage.getItem('tenantId')) || (await AsyncStorage.getItem('userId'));
+    
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    if (tenantId) {
+      config.headers['X-Tenant-ID'] = tenantId;
+    }
+    
+    // Always inject a Trace ID for distributed tracing
+    config.headers['X-Trace-ID'] = generateTraceId();
+    
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor: auto-logout when the server rejects the token (401/403)
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const status = error?.response?.status;
+    // 401 = token invalid/expired; 403 on a protected route with a token = same root cause
+    if (status === 401 || status === 403) {
+      // Only clear session if we actually sent a token (avoid clearing on public routes)
+      const sentToken = error?.config?.headers?.Authorization;
+      if (sentToken) {
+        console.warn('🔒 Token rejected by server — clearing session and redirecting to login.');
+        await AsyncStorage.multiRemove(['userToken', 'userId', 'tenantId', 'email', 'businessName', 'onboardingCompleted']);
+        // Force a full reload — AppNavigator will redirect to Login because userToken is gone
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        }
+      }
+    }
     return Promise.reject(error);
   }
 );
@@ -69,6 +105,7 @@ export const whatsappApi = {
     wabaId: string; 
     accessToken: string; 
     verifyToken: string; 
+    appSecret?: string;
     interactiveMenuJson?: string;
     welcomeMessage?: string;
     returningMessage?: string;
@@ -116,7 +153,7 @@ export const onboardingApi = {
 
 export const appointmentApi = {
   book: (data: {
-    leadId: string;
+    contactId: string;
     appointmentDateTime: string;
     title: string;
     meetingLink?: string;
@@ -124,21 +161,43 @@ export const appointmentApi = {
   getAll: () => api.get('/appointments'),
   getToday: () => api.get('/appointments/today'),
   getTodayCount: () => api.get('/appointments/today/count'),
-  getForLead: (leadId: string) => api.get(`/appointments/lead/${leadId}`),
+  getForContact: (contactId: string) => api.get(`/appointments/contact/${contactId}`),
   complete: (id: string) => api.patch(`/appointments/${id}/complete`),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
   noShow: (id: string) => api.patch(`/appointments/${id}/noshow`),
 };
 
 export const bookingApi = {
-  create: (data: { leadId: string; service: string; preferredSlot?: string }) =>
+  create: (data: { contactId: string; service: string; preferredSlot?: string }) =>
     api.post('/bookings', data),
   getAll: () => api.get('/bookings'),
-  getForLead: (leadId: string) => api.get(`/bookings/lead/${leadId}`),
+  getForContact: (contactId: string) => api.get(`/bookings/contact/${contactId}`),
   getByStatus: (status: string) => api.get(`/bookings/status/${status}`),
   complete: (id: string) => api.patch(`/bookings/${id}/complete`),
   cancel: (id: string) => api.patch(`/bookings/${id}/cancel`),
   noShow: (id: string) => api.patch(`/bookings/${id}/noshow`),
+};
+
+/**
+ * Unified CRM Activity Log API
+ * Fetches the full customer interaction timeline — cross-module (Lead, Booking, Appointment)
+ * without coupling the frontend to any specific domain's endpoint.
+ */
+export const activityApi = {
+  /** Full timeline for a single contact (newest first) */
+  getContactTimeline: (contactId: string) =>
+    api.get(`/activity-logs/contact/${contactId}`),
+
+  /** Quick-glance: most recent N activities for a contact */
+  getRecentContactActivity: (contactId: string, limit = 10) =>
+    api.get(`/activity-logs/contact/${contactId}/recent?limit=${limit}`),
+
+  /** History for a specific entity (e.g. one booking's full log) */
+  getEntityHistory: (entityType: 'LEAD' | 'BOOKING' | 'APPOINTMENT', entityId: string) =>
+    api.get(`/activity-logs/entity/${entityType}/${entityId}`),
+
+  /** Global CRM feed for the owner's dashboard */
+  getOwnerFeed: () => api.get('/activity-logs/feed'),
 };
 
 export const userApi = {
@@ -298,19 +357,74 @@ export const ragApi = {
   trainText: (content: string) => api.post('/knowledge-base/train', { content }),
 };
 
-export {
-  authApi,
-  crmApi,
-  whatsappApi,
-  messageApi,
-  onboardingApi,
-  appointmentApi,
-  bookingApi,
-  userApi,
-  categoryApi,
-  businessServiceApi,
-  flowConfigApi,
-  ragApi
+
+export const ticketApi = {
+  // Tickets
+  getAll: (page = 0, size = 20) => api.get(`/tickets?page=${page}&size=${size}`),
+  getById: (id: string) => api.get(`/tickets/${id}`),
+  search: (q: string, page = 0) => api.get(`/tickets/search?q=${encodeURIComponent(q)}&page=${page}`),
+  create: (data: {
+    subject: string;
+    description: string;
+    submitterName?: string;
+    submitterEmail?: string;
+    submitterPhone?: string;
+    priority?: string;
+    category?: string;
+    contactId?: string;
+    assignedToId?: string;
+  }) => api.post('/tickets', data),
+  updateStatus: (id: string, status: string) =>
+    api.patch(`/tickets/${id}/status?status=${status}`),
+  updatePriority: (id: string, priority: string) =>
+    api.patch(`/tickets/${id}/priority?priority=${priority}`),
+  assign: (id: string, agentId: string) =>
+    api.patch(`/tickets/${id}/assign?agentId=${agentId}`),
+  addComment: (id: string, message: string, internal = false) =>
+    api.post(`/tickets/${id}/comments`, { message, internal }),
+  delete: (id: string) => api.delete(`/tickets/${id}`),
+};
+
+export const customEmailApi = {
+  send: (data: {
+    subject: string;
+    body: string;
+    ctaLabel?: string;
+    ctaUrl?: string;
+    recipientMode: 'ALL' | 'TAGGED' | 'MANUAL';
+    tagsFilter?: string;
+    manualRecipients?: string;
+  }) => api.post('/custom-emails/send', data),
+  saveDraft: (data: any) => api.post('/custom-emails/draft', data),
+  getHistory: (page = 0, size = 20) => api.get(`/custom-emails?page=${page}&size=${size}`),
+  getById: (id: string) => api.get(`/custom-emails/${id}`),
+  resend: (id: string) => api.post(`/custom-emails/${id}/resend`),
+};
+
+export const supportFormConfigApi = {
+  getConfig: () => api.get('/support-form-config'),
+  updateConfig: (data: {
+    formTitle?: string;
+    formDescription?: string;
+    successMessage?: string;
+    phoneRequired?: boolean;
+    categoryRequired?: boolean;
+    categories?: string[];
+    primaryColor?: string;
+    logoUrl?: string;
+    rateLimitEnabled?: boolean;
+    duplicateDetectionEnabled?: boolean;
+    defaultPriority?: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+    enabled?: boolean;
+  }) => api.put('/support-form-config', data),
+  getCategoryTemplates: () => api.get('/support-form-config/category-templates'),
+  resetConfig: () => api.post('/support-form-config/reset'),
+};
+
+export const monitoringApi = {
+  getHealth: () => api.get('/actuator/health'),
+  getMetrics: () => api.get('/actuator/metrics'),
+  getMetricDetails: (name: string) => api.get(`/actuator/metrics/${name}`),
 };
 
 export default api;

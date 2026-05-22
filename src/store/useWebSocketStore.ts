@@ -24,6 +24,7 @@ const WS_URL = `${SERVER_HOST}/ws`;
 interface WebSocketState {
   client: Client | null;
   isConnected: boolean;
+  retryCount: number;
   connect: (token: string, tenantId: string) => void;
   disconnect: () => void;
 }
@@ -31,6 +32,7 @@ interface WebSocketState {
 export const useWebSocketStore = create<WebSocketState>((set, get) => ({
   client: null,
   isConnected: false,
+  retryCount: 0,
 
   connect: (token: string, tenantId: string) => {
     // Don't reconnect if already connected
@@ -45,12 +47,17 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
         Authorization: `Bearer ${token}`,
       },
 
-      // Reconnect if connection drops
-      reconnectDelay: 5000,
+      // Initial reconnect delay
+      reconnectDelay: 2000,
 
       onConnect: () => {
         console.log('✅ WebSocket connected for tenant:', tenantId);
-        set({ isConnected: true });
+        set({ isConnected: true, retryCount: 0 }); // Reset retry count on success
+        
+        // Reset reconnectDelay on success
+        if (stompClient) {
+          stompClient.reconnectDelay = 2000;
+        }
 
         // ── Subscribe to tenant-specific topic ──────────────────────
         // ONLY messages for this tenant's WhatsApp number come here.
@@ -97,8 +104,35 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
         set({ isConnected: false });
       },
 
+      onWebSocketClose: () => {
+        const currentRetry = get().retryCount;
+        if (currentRetry >= 10) {
+          console.error('❌ WebSocket max retries reached. Stopping reconnection.');
+          stompClient.deactivate();
+          return;
+        }
+
+        const nextDelay = Math.min(stompClient.reconnectDelay * 1.5, 30000);
+        stompClient.reconnectDelay = nextDelay;
+        
+        console.warn(`⚠️ WebSocket closed. Retry ${currentRetry + 1}/10 in ${nextDelay}ms`);
+        set({ retryCount: currentRetry + 1 });
+      },
+
       onStompError: (frame) => {
-        console.error('WebSocket STOMP Error:', frame.headers['message']);
+        const errMsg = frame.headers['message'] || '';
+        console.error('WebSocket STOMP Error:', errMsg);
+
+        // Stop reconnecting if server rejected us (auth/subscription error)
+        if (
+          errMsg.toLowerCase().includes('unauthenticated') ||
+          errMsg.toLowerCase().includes('access denied') ||
+          errMsg.toLowerCase().includes('unauthorized')
+        ) {
+          console.warn('🔴 Auth-related STOMP error — stopping reconnection to avoid log spam.');
+          stompClient.deactivate();
+          set({ isConnected: false, retryCount: 0 });
+        }
       },
     });
 
@@ -110,7 +144,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
     const { client } = get();
     if (client) {
       client.deactivate();
-      set({ client: null, isConnected: false });
+      set({ client: null, isConnected: false, retryCount: 0 });
     }
   },
 }));

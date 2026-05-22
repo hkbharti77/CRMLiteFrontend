@@ -2,8 +2,9 @@ import React, { useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Linking, Modal } from 'react-native';
 import { Text, Avatar, Surface, useTheme, Button, IconButton, List, Divider, Card, Chip } from 'react-native-paper';
 import { useLeadStore } from '../store/useLeadStore';
-import { crmApi, appointmentApi, bookingApi } from '../services/api';
+import { crmApi, appointmentApi, bookingApi, activityApi } from '../services/api';
 import { ActivityIndicator, Portal, Dialog, TextInput, Snackbar, Menu } from 'react-native-paper';
+import { useActivityLogStore, getActivityConfig, ActivityLogEntry } from '../store/useActivityLogStore';
 
 export default function ContactProfileScreen({ route, navigation }: any) {
   const { contactId } = route.params;
@@ -42,8 +43,52 @@ export default function ContactProfileScreen({ route, navigation }: any) {
   // 9.5 — Lead assignment (owner label per lead)
   const [showAssignMenu, setShowAssignMenu] = React.useState<string | null>(null);
 
+  // ── Activity Timeline tab state ───────────────────────────────────────
+  const [activeProfileTab, setActiveProfileTab] = React.useState<'overview' | 'timeline'>('overview');
+  const { timelineByContact, isLoadingTimeline, setTimeline, setLoadingTimeline } = useActivityLogStore();
+  const contactTimeline: ActivityLogEntry[] = timelineByContact[contactId] ?? [];
+
   useEffect(() => {
     fetchContact();
+    fetchTimeline();
+  }, [contactId]);
+
+  const fetchTimeline = async () => {
+    setLoadingTimeline(true);
+    try {
+      const res = await activityApi.getContactTimeline(contactId);
+      setTimeline(contactId, res.data ?? []);
+    } catch (e) {
+      // Timeline is non-critical — silently ignore if endpoint not yet running
+    } finally {
+      setLoadingTimeline(false);
+    }
+  };
+
+  // ── Appointments & Bookings fetch — now directly by contactId ─────────
+  // After V10013 migration: Bookings/Appointments reference Contact directly.
+  // No need to iterate leads — one clean fetch per contactId.
+  useEffect(() => {
+    const fetchContactData = async () => {
+      setLoadingAppointments(true);
+      try {
+        const [apptRes, bookRes] = await Promise.all([
+          appointmentApi.getForContact(contactId).catch(() => ({ data: [] })),
+          bookingApi.getForContact(contactId).catch(() => ({ data: [] })),
+        ]);
+        const appts: any[] = apptRes.data ?? [];
+        const books: any[] = bookRes.data ?? [];
+        appts.sort((a, b) => new Date(b.appointmentDateTime).getTime() - new Date(a.appointmentDateTime).getTime());
+        books.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setLeadAppointments(appts);
+        setLeadBookings(books);
+      } catch (e) {
+        console.log('Error fetching appointments/bookings for contact');
+      } finally {
+        setLoadingAppointments(false);
+      }
+    };
+    fetchContactData();
   }, [contactId]);
 
   const fetchContact = async () => {
@@ -66,12 +111,16 @@ export default function ContactProfileScreen({ route, navigation }: any) {
       setEditedTags((data.tags || []).join(', '));
 
       // 2. Fetch Associated Leads (multiple per contact now)
+      let latestLead: any = null;
+      let allLeadsLocal: any[] = [];
       try {
         const leadRes = await crmApi.getLeadsByContactId(contactId);
         const leads = leadRes.data;
         if (leads && leads.length > 0) {
           // Show latest lead by default
-          setAssociatedLead(leads[leads.length - 1]);
+          latestLead = leads[leads.length - 1];
+          allLeadsLocal = leads;
+          setAssociatedLead(latestLead);
           setAllLeads(leads);
         }
       } catch (e) {
@@ -83,29 +132,15 @@ export default function ContactProfileScreen({ route, navigation }: any) {
         const remindersRes = await crmApi.getPendingReminders();
         // Filter reminders for this contact/lead
         const filtered = remindersRes.data.filter((r: any) => 
-          r.leadId === contactId || (associatedLead && r.leadId === associatedLead.id)
+          r.leadId === contactId || (latestLead && r.leadId === latestLead.id)
         );
         setReminders(filtered);
       } catch (e) {
         console.log('Error fetching reminders');
       }
 
-      // 4. Fetch Appointments + Bookings for this lead
-      if (associatedLead) {
-        try {
-          setLoadingAppointments(true);
-          const [apptRes, bookRes] = await Promise.all([
-            appointmentApi.getForLead(associatedLead.id),
-            bookingApi.getForLead(associatedLead.id),
-          ]);
-          setLeadAppointments(apptRes.data);
-          setLeadBookings(bookRes.data);
-        } catch (e) {
-          console.log('Error fetching appointments/bookings');
-        } finally {
-          setLoadingAppointments(false);
-        }
-      }
+      // 4. Bookings & Appointments are fetched by the separate useEffect above
+      //    which watches contactId — no lead iteration needed.
 
     } catch (error) {
       console.error('Error fetching contact profile:', error);
@@ -152,6 +187,12 @@ export default function ContactProfileScreen({ route, navigation }: any) {
     // Notes removed — use enquiries instead
   };
 
+  // Helper: update both associatedLead and the matching entry in allLeads
+  const syncLeadUpdate = (updatedLead: any) => {
+    setAssociatedLead(updatedLead);
+    setAllLeads(prev => prev.map(l => l.id === updatedLead.id ? updatedLead : l));
+  };
+
   const handleAddEnquiry = async () => {
     if (!associatedLead || !enquiryMsg.trim()) return;
     setSaving(true);
@@ -162,7 +203,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
         source: 'Manual Entry',
         status: 'OPEN',
       });
-      setAssociatedLead(res.data);
+      syncLeadUpdate(res.data);
       setEnquiryMsg('');
       setShowEnquiryDialog(false);
     } catch (e) {
@@ -176,7 +217,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
     if (!associatedLead) return;
     try {
       const res = await crmApi.updateEnquiry(associatedLead.id, enquiryId, { status });
-      setAssociatedLead(res.data);
+      syncLeadUpdate(res.data);
     } catch (e) {
       console.error('Error updating enquiry:', e);
     }
@@ -186,7 +227,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
     if (!associatedLead) return;
     try {
       const res = await crmApi.deleteEnquiry(associatedLead.id, enquiryId);
-      setAssociatedLead(res.data);
+      syncLeadUpdate(res.data);
     } catch (e) {
       console.error('Error deleting enquiry:', e);
     }
@@ -202,7 +243,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
         paymentStatus: dealStatus,
         currency: 'INR',
       });
-      setAssociatedLead({ ...associatedLead, ...res.data });
+      syncLeadUpdate({ ...associatedLead, ...res.data });
       setShowDealDialog(false);
     } catch (e) {
       console.error('Error updating deal:', e);
@@ -691,42 +732,172 @@ export default function ContactProfileScreen({ route, navigation }: any) {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text variant="titleMedium" style={styles.sectionTitle}>🎉 Bookings</Text>
+          {leadBookings.length > 0 && (
+            <Chip compact style={{ backgroundColor: '#E3F2FD' }} textStyle={{ fontSize: 10, color: '#1565C0' }}>
+              {leadBookings.length} total
+            </Chip>
+          )}
         </View>
         {loadingAppointments ? (
           <ActivityIndicator size="small" />
         ) : leadBookings.length > 0 ? (
-          leadBookings.slice(0, 3).map((b: any) => (
-            <Surface key={b.id} style={styles.reminderItem} elevation={1}>
-              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <Text variant="bodyMedium" style={{ fontWeight: '700', flex: 1 }}>{b.service}</Text>
-                  <Chip compact style={{ backgroundColor:
-                    b.status === 'CONFIRMED' ? '#E3F2FD' :
-                    b.status === 'COMPLETED' ? '#E8F5E9' : '#FFEBEE'
-                  }} textStyle={{ fontSize: 9, color:
-                    b.status === 'CONFIRMED' ? '#1565C0' :
-                    b.status === 'COMPLETED' ? '#2E7D32' : '#B71C1C'
-                  }}>
+          <Surface style={{ borderRadius: 10, overflow: 'hidden' }} elevation={1}>
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Service</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 2 }]}>Slot</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 1.2, textAlign: 'center' }]}>Status</Text>
+              <Text style={[styles.tableHeaderCell, { flex: 1.5, textAlign: 'right' }]}>Date</Text>
+            </View>
+            {/* Table Rows */}
+            {leadBookings.map((b: any, idx: number) => (
+              <View
+                key={b.id}
+                style={[
+                  styles.tableRow,
+                  idx % 2 === 1 && { backgroundColor: '#F8F9FA' },
+                  idx === leadBookings.length - 1 && { borderBottomWidth: 0 },
+                ]}
+              >
+                <Text style={[styles.tableCell, { flex: 2, fontWeight: '600', color: '#1a1a1a' }]} numberOfLines={1}>
+                  {b.service}
+                </Text>
+                <Text style={[styles.tableCell, { flex: 2, color: '#555' }]} numberOfLines={1}>
+                  {b.preferredSlot || '—'}
+                </Text>
+                <View style={{ flex: 1.2, alignItems: 'center' }}>
+                  <Chip
+                    compact
+                    style={{
+                      backgroundColor:
+                        b.status === 'CONFIRMED' ? '#E3F2FD' :
+                        b.status === 'COMPLETED' ? '#E8F5E9' :
+                        b.status === 'CANCELLED' ? '#FFEBEE' : '#FFF3E0',
+                    }}
+                    textStyle={{
+                      fontSize: 8,
+                      color:
+                        b.status === 'CONFIRMED' ? '#1565C0' :
+                        b.status === 'COMPLETED' ? '#2E7D32' :
+                        b.status === 'CANCELLED' ? '#B71C1C' : '#E65100',
+                    }}
+                  >
                     {b.status}
                   </Chip>
                 </View>
-                {b.preferredSlot && (
-                  <Text variant="labelSmall" style={{ color: '#888' }}>🕐 {b.preferredSlot}</Text>
-                )}
-                {b.collectedData && Object.keys(b.collectedData).length > 0 && (
-                  <Text variant="labelSmall" style={{ color: '#aaa', marginTop: 2 }}>
-                    {Object.entries(b.collectedData).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                  </Text>
-                )}
+                <Text style={[styles.tableCell, { flex: 1.5, color: '#888', textAlign: 'right', fontSize: 11 }]}>
+                  {new Date(b.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
+                </Text>
               </View>
-            </Surface>
-          ))
+            ))}
+          </Surface>
         ) : (
           <Text variant="bodySmall" style={{ color: '#999', textAlign: 'center', marginTop: 8 }}>
             No bookings yet
           </Text>
         )}
       </View>
+
+      {/* ── Profile Tab Switcher ──────────────────────────────────────── */}
+      <View style={{ flexDirection: 'row', marginHorizontal: 20, marginTop: 8, gap: 8 }}>
+        <Button
+          mode={activeProfileTab === 'overview' ? 'contained' : 'outlined'}
+          compact
+          onPress={() => setActiveProfileTab('overview')}
+          style={{ flex: 1, borderRadius: 20 }}
+          labelStyle={{ fontSize: 12 }}
+        >
+          📋 Overview
+        </Button>
+        <Button
+          mode={activeProfileTab === 'timeline' ? 'contained' : 'outlined'}
+          compact
+          onPress={() => {
+            setActiveProfileTab('timeline');
+            fetchTimeline();
+          }}
+          style={{ flex: 1, borderRadius: 20 }}
+          labelStyle={{ fontSize: 12 }}
+        >
+          🕐 Timeline
+        </Button>
+      </View>
+
+      {/* ── Activity Timeline Tab ─────────────────────────────────────── */}
+      {activeProfileTab === 'timeline' && (
+        <View style={[styles.section, { paddingBottom: 32 }]}>
+          <Text variant="titleMedium" style={[styles.sectionTitle, { marginBottom: 12 }]}>
+            CRM Activity Timeline
+          </Text>
+          {isLoadingTimeline ? (
+            <ActivityIndicator size="small" />
+          ) : contactTimeline.length === 0 ? (
+            <Surface style={{ borderRadius: 14, padding: 24, alignItems: 'center' }} elevation={0}>
+              <Text style={{ color: '#aaa', textAlign: 'center' }}>
+                No activity recorded yet.{`\n`}Activities appear here as Leads, Bookings and Appointments are created.
+              </Text>
+              <Button
+                mode="outlined"
+                compact
+                icon="refresh"
+                onPress={fetchTimeline}
+                style={{ marginTop: 12, borderRadius: 20 }}
+              >
+                Refresh
+              </Button>
+            </Surface>
+          ) : (
+            contactTimeline.map((entry, idx) => {
+              const cfg = getActivityConfig(entry.activityType);
+              return (
+                <View key={entry.id} style={styles.timelineItem}>
+                  {/* Connector line */}
+                  {idx < contactTimeline.length - 1 && (
+                    <View style={styles.timelineConnector} />
+                  )}
+                  {/* Dot */}
+                  <View style={[styles.timelineDot, { backgroundColor: cfg.color }]}>
+                    <IconButton
+                      icon={cfg.icon}
+                      size={12}
+                      iconColor="#fff"
+                      style={{ margin: 0 }}
+                    />
+                  </View>
+                  {/* Content */}
+                  <Surface style={[styles.timelineCard, { borderLeftColor: cfg.color }]} elevation={1}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Chip
+                        compact
+                        style={{ backgroundColor: cfg.bg, height: 22 }}
+                        textStyle={{ fontSize: 9, color: cfg.color, fontWeight: '700' }}
+                      >
+                        {entry.entityType}
+                      </Chip>
+                      <Chip
+                        compact
+                        style={{ backgroundColor: '#F5F5F5', height: 22 }}
+                        textStyle={{ fontSize: 9, color: '#777' }}
+                      >
+                        {entry.source}
+                      </Chip>
+                    </View>
+                    <Text variant="bodySmall" style={{ marginTop: 6, color: '#222', fontWeight: '600' }}>
+                      {entry.summary}
+                    </Text>
+                    <Text variant="labelSmall" style={{ color: '#aaa', marginTop: 4 }}>
+                      {new Date(entry.createdAt).toLocaleString('en-IN', {
+                        day: '2-digit', month: 'short', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit', hour12: true,
+                      })}
+                    </Text>
+                  </Surface>
+                </View>
+              );
+            })
+          )}
+        </View>
+      )}
 
       <Portal>
         {/* ── Add Enquiry Dialog ───────────────────────────────────── */}
@@ -1040,4 +1211,67 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  tableHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1565C0',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  tableHeaderCell: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#fff',
+    flex: 1,
+  },
+  tableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+    backgroundColor: '#fff',
+  },
+  tableCell: {
+    fontSize: 12,
+    color: '#333',
+    flex: 1,
+  },
+
+  // ── Activity Timeline ───────────────────────────────────────────────────
+  timelineItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    position: 'relative',
+  },
+  timelineConnector: {
+    position: 'absolute',
+    left: 15,
+    top: 34,
+    width: 2,
+    bottom: -12,
+    backgroundColor: '#E0E0E0',
+    zIndex: 0,
+  },
+  timelineDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    marginTop: 2,
+    zIndex: 1,
+    flexShrink: 0,
+  },
+  timelineCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderLeftWidth: 3,
+  },
 });
+

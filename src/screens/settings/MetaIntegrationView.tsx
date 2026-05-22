@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Card, Title, Text, TextInput, Button } from 'react-native-paper';
+import { SERVER_HOST } from '../../services/api';
 
 interface MetaIntegrationViewProps {
   phoneNumberId: string;
@@ -11,6 +12,8 @@ interface MetaIntegrationViewProps {
   setAccessToken: (val: string) => void;
   verifyToken: string;
   setVerifyToken: (val: string) => void;
+  appSecret: string;
+  setAppSecret: (val: string) => void;
   handleSaveMeta: () => void;
   loading: boolean;
   onBack: () => void;
@@ -25,6 +28,8 @@ const MetaIntegrationView: React.FC<MetaIntegrationViewProps> = ({
   setAccessToken,
   verifyToken,
   setVerifyToken,
+  appSecret,
+  setAppSecret,
   handleSaveMeta,
   loading,
   onBack,
@@ -83,6 +88,17 @@ const MetaIntegrationView: React.FC<MetaIntegrationViewProps> = ({
             editable={isEditing}
           />
 
+          <TextInput
+            label="App Secret"
+            value={appSecret}
+            onChangeText={setAppSecret}
+            mode="outlined"
+            style={styles.input}
+            placeholder="Your Meta App Secret for webhook signature verification"
+            secureTextEntry={!isEditing}
+            editable={isEditing}
+          />
+
           {isEditing ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Button
@@ -128,7 +144,7 @@ const MetaIntegrationView: React.FC<MetaIntegrationViewProps> = ({
             Use the following URL in your Meta App Webhook settings:
           </Text>
           <Text style={styles.urlText}>
-            https://your-domain.ngrok-free.app/api/v1/webhook/whatsapp
+            {SERVER_HOST}/api/v1/webhook/whatsapp
           </Text>
         </Card.Content>
       </Card>

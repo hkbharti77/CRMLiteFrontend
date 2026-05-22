@@ -119,7 +119,7 @@ export default function BusinessServicesScreen() {
   const renderItem = ({ item }: { item: any }) => (
     <Card style={styles.card}>
       {item.imageUrl && (
-        <Card.Cover source={{ uri: item.imageUrl.replace('http://localhost:8080', SERVER_HOST) }} />
+        <Card.Cover source={{ uri: item.imageUrl }} />
       )}
       <Card.Content style={styles.cardContent}>
         <Title>{item.name}</Title>

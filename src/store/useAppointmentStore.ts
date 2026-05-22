@@ -2,8 +2,6 @@ import { create } from 'zustand';
 
 export interface Appointment {
   id: string;
-  leadId: string;
-  leadStatus: string;
   contactName: string;
   contactWaId: string;
   contactId: string;

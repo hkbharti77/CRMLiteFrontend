@@ -17,6 +17,10 @@ import ContactProfileScreen from '../screens/ContactProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import BookingScreen from '../screens/BookingScreen';
+import TicketScreen from '../screens/TicketScreen';
+import CustomEmailScreen from '../screens/CustomEmailScreen';
+
+import LeadDetailScreen from '../screens/LeadDetailScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -24,6 +28,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   ChatRoom: { chatId: string; name: string };
   ContactProfile: { contactId: string };
+  LeadDetail: { leadId: string; leadName: string };
 };
 
 export type AuthStackParamList = {
@@ -35,6 +40,8 @@ export type MainTabParamList = {
   Inbox: undefined;
   Pipeline: undefined;
   Booking: undefined;
+  Tickets: undefined;
+  Emails: undefined;
   Settings: undefined;
 };
 
@@ -66,6 +73,10 @@ function MainNavigator() {
             iconName = focused ? 'list' : 'list-outline';
           } else if (route.name === 'Booking') {
             iconName = focused ? 'calendar' : 'calendar-outline';
+          } else if (route.name === 'Tickets') {
+            iconName = focused ? 'ticket' : 'ticket-outline';
+          } else if (route.name === 'Emails') {
+            iconName = focused ? 'mail' : 'mail-outline';
           } else if (route.name === 'Settings') {
             iconName = focused ? 'settings' : 'settings-outline';
           }
@@ -81,13 +92,23 @@ function MainNavigator() {
       <Tab.Screen name="Inbox" component={ChatListScreen} />
       <Tab.Screen name="Pipeline" component={PipelineScreen} />
       <Tab.Screen name="Booking" component={BookingScreen} />
+      <Tab.Screen
+        name="Tickets"
+        component={TicketScreen}
+        options={{ title: 'Support Tickets' }}
+      />
+      <Tab.Screen
+        name="Emails"
+        component={CustomEmailScreen}
+        options={{ title: 'Email Campaigns' }}
+      />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function AppNavigator() {
-  const { userToken, userId, onboardingCompleted, isLoading, restoreToken } = useAuthStore();
+  const { userToken, userId, tenantId, onboardingCompleted, isLoading, restoreToken } = useAuthStore();
   const { connect, isConnected } = useWebSocketStore();
 
   useEffect(() => {
@@ -96,11 +117,12 @@ export default function AppNavigator() {
 
   // ── Auto-connect WebSocket when logged in ──────────────────────
   useEffect(() => {
-    if (userToken && userId && !isConnected) {
+    const activeTenantId = tenantId || userId;
+    if (userToken && activeTenantId && !isConnected) {
       console.log('🔄 Attempting WebSocket connection from AppNavigator...');
-      connect(userToken, userId);
+      connect(userToken, activeTenantId);
     }
-  }, [userToken, userId, isConnected]);
+  }, [userToken, userId, tenantId, isConnected]);
 
   if (isLoading) {
     return (
@@ -138,6 +160,16 @@ export default function AppNavigator() {
               headerStyle: { backgroundColor: '#075E54' },
               headerTintColor: '#fff'
             }} 
+          />
+          <Stack.Screen
+            name="LeadDetail"
+            component={LeadDetailScreen}
+            options={({ route }) => ({
+              headerShown: true,
+              title: `Lead #${route.params.leadId.replace(/-/g,'').slice(0,6).toUpperCase()}`,
+              headerStyle: { backgroundColor: '#075E54' },
+              headerTintColor: '#fff',
+            })}
           />
         </>
       )}

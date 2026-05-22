@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Card, Title, Text, TextInput, Button } from 'react-native-paper';
-import { categoryApi } from '../../services/api';
+import { View, StyleSheet, TouchableOpacity, Clipboard, Alert } from 'react-native';
+import { Card, Title, Text, TextInput, Button, Snackbar } from 'react-native-paper';
+import { categoryApi, SERVER_HOST } from '../../services/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface AccountProfileViewProps {
   accountProfile: any;
@@ -24,6 +25,16 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [mapsUrl, setMapsUrl] = useState('');
+  const [copySnackbar, setCopySnackbar] = useState(false);
+
+  const { userId } = useAuthStore();
+
+  // Backend base URL — same as chat-widget.js API_BASE
+  const API_BASE = SERVER_HOST;
+
+  const embedCode = userId
+    ? `<link rel="stylesheet" href="${API_BASE}/styles.css">\n<script src="${API_BASE}/chat-widget.js"\n  data-business-id="${userId}">\n</script>`
+    : '';
 
   const parseMapsUrl = () => {
     if (!mapsUrl) return;
@@ -301,6 +312,82 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           )}
         </Card.Content>
       </Card>
+
+      {/* ── Web Bot Embed Section ─────────────────────────────────────── */}
+      <Card style={styles.embedCard}>
+        <Card.Content>
+          <Title style={styles.embedTitle}>🤖 Web Bot Embed</Title>
+          <Text style={styles.embedSubtitle}>
+            Copy this code and paste it inside the {'<body>'} tag of any website to embed your AI chat bot.
+          </Text>
+
+          {/* Business UUID display */}
+          <View style={styles.uuidRow}>
+            <Text style={styles.uuidLabel}>Your Business ID</Text>
+            <TouchableOpacity
+              style={styles.uuidBox}
+              onPress={() => {
+                if (userId) {
+                  Clipboard.setString(userId);
+                  setCopySnackbar(true);
+                }
+              }}
+            >
+              <Text style={styles.uuidText} numberOfLines={1} ellipsizeMode="middle">
+                {userId || 'Not available'}
+              </Text>
+              <Text style={styles.copyHint}>📋 Tap to copy</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Embed code block */}
+          <View style={styles.codeBlock}>
+            <Text style={styles.codeLabel}># Paste inside {'<body>'} tag</Text>
+            <Text style={styles.codeText} selectable>
+              {embedCode}
+            </Text>
+          </View>
+
+          <Button
+            mode="contained"
+            icon="content-copy"
+            buttonColor="#0f172a"
+            style={styles.copyBtn}
+            onPress={() => {
+              if (embedCode) {
+                Clipboard.setString(embedCode);
+                setCopySnackbar(true);
+              }
+            }}
+          >
+            Copy Embed Code
+          </Button>
+
+          <Button
+            mode="outlined"
+            icon="open-in-new"
+            style={[styles.copyBtn, { marginTop: 8 }]}
+            onPress={() => {
+              Alert.alert(
+                'Test Your Bot',
+                `Open this URL in your browser to test the widget:\n\n${API_BASE}/test.html?businessId=${userId}`,
+                [{ text: 'OK' }]
+              );
+            }}
+          >
+            View Test Page URL
+          </Button>
+        </Card.Content>
+      </Card>
+
+      <Snackbar
+        visible={copySnackbar}
+        onDismiss={() => setCopySnackbar(false)}
+        duration={2000}
+        style={{ backgroundColor: '#075E54' }}
+      >
+        ✅ Copied to clipboard!
+      </Snackbar>
     </View>
   );
 };
@@ -396,6 +483,77 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 16,
     lineHeight: 18,
+  },
+  // ── Embed section styles ───────────────────────────────────────────────
+  embedCard: {
+    marginBottom: 16,
+    elevation: 4,
+    borderLeftWidth: 4,
+    borderLeftColor: '#3b82f6',
+  },
+  embedTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  embedSubtitle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  uuidRow: {
+    marginBottom: 16,
+  },
+  uuidLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  uuidBox: {
+    backgroundColor: '#f1f5f9',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  uuidText: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    color: '#0f172a',
+    flex: 1,
+  },
+  copyHint: {
+    fontSize: 11,
+    color: '#3b82f6',
+    marginLeft: 8,
+  },
+  codeBlock: {
+    backgroundColor: '#0f172a',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 14,
+  },
+  codeLabel: {
+    color: '#3b82f6',
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  codeText: {
+    color: '#94a3b8',
+    fontFamily: 'monospace',
+    fontSize: 11,
+    lineHeight: 18,
+  },
+  copyBtn: {
+    borderRadius: 8,
   },
 });
 

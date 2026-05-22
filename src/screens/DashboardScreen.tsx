@@ -3,12 +3,14 @@ import { View, StyleSheet, ScrollView, RefreshControl, ActivityIndicator } from 
 import { Text, Surface, useTheme, Avatar, IconButton, FAB, List, Card, Divider } from 'react-native-paper';
 import { useAuthStore } from '../store/useAuthStore';
 import { useLeadStore } from '../store/useLeadStore';
+import { useTicketStore } from '../store/useTicketStore';
 import { crmApi, messageApi, appointmentApi } from '../services/api';
 
 export default function DashboardScreen({ navigation }: any) {
   const theme = useTheme();
   const { businessName, userToken } = useAuthStore();
   const { leads, setLeads, isLoading: leadsLoading } = useLeadStore();
+  const { stats: ticketStats, fetchTickets } = useTicketStore();
   const [recentActivity, setRecentActivity] = React.useState<any[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
   const [remindersCount, setRemindersCount] = React.useState(0);
@@ -54,6 +56,13 @@ export default function DashboardScreen({ navigation }: any) {
       } catch (e) {
         console.log('Error fetching revenue report');
       }
+
+      // Fetch ticket stats
+      try {
+        await fetchTickets();
+      } catch (e) {
+        console.log('Error fetching tickets');
+      }
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     }
@@ -77,10 +86,10 @@ export default function DashboardScreen({ navigation }: any) {
       color: '#2196F3' 
     },
     { 
-      label: 'Pending', 
-      value: remindersCount.toString(), 
-      icon: 'clock-outline', 
-      color: '#FF9800' 
+      label: 'Open Tickets', 
+      value: (ticketStats?.openTickets || 0).toString(), 
+      icon: 'ticket-outline', 
+      color: '#FF5722' 
     },
     { 
       label: 'Today Meets', 
@@ -235,6 +244,43 @@ export default function DashboardScreen({ navigation }: any) {
             )}
           </Card>
         </View>
+
+        {/* ── Support Tickets Widget ─────────────────────────────────── */}
+        {ticketStats && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>🎫 Support Tickets</Text>
+              <IconButton icon="arrow-right" onPress={() => navigation.navigate('Tickets')} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Surface style={{ flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: '#FF5722' }} elevation={1}>
+                <Text variant="labelSmall" style={{ color: '#888' }}>Open</Text>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: '#D84315', marginTop: 4 }}>
+                  {ticketStats.openTickets}
+                </Text>
+              </Surface>
+              <Surface style={{ flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: '#FF9800' }} elevation={1}>
+                <Text variant="labelSmall" style={{ color: '#888' }}>In Progress</Text>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: '#E65100', marginTop: 4 }}>
+                  {ticketStats.inProgressTickets}
+                </Text>
+              </Surface>
+              <Surface style={{ flex: 1, backgroundColor: '#fff', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: '#4CAF50' }} elevation={1}>
+                <Text variant="labelSmall" style={{ color: '#888' }}>Resolved</Text>
+                <Text variant="titleSmall" style={{ fontWeight: 'bold', color: '#2E7D32', marginTop: 4 }}>
+                  {ticketStats.resolvedTickets}
+                </Text>
+              </Surface>
+            </View>
+            {ticketStats.slaBreachedTickets > 0 && (
+              <Surface style={{ backgroundColor: '#FFEBEE', borderRadius: 12, padding: 12, marginTop: 8, borderLeftWidth: 4, borderLeftColor: '#F44336' }} elevation={0}>
+                <Text variant="labelSmall" style={{ color: '#C62828', fontWeight: 'bold' }}>
+                  ⚠️ {ticketStats.slaBreachedTickets} ticket{ticketStats.slaBreachedTickets > 1 ? 's' : ''} breached SLA
+                </Text>
+              </Surface>
+            )}
+          </View>
+        )}
       </ScrollView>
 
       <FAB

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type LeadStatus = 'NEW' | 'INTERESTED' | 'FOLLOW_UP' | 'BOOKED' | 'CLOSED_WON' | 'CLOSED_LOST';
+export type LeadStatus = 'INTERESTED' | 'FOLLOW_UP' | 'BOOKED' | 'CLOSED_WON' | 'CLOSED_LOST';
 
 export interface Enquiry {
   id: string;
@@ -24,6 +24,9 @@ export interface Lead {
   paymentStatus?: 'NONE' | 'PENDING' | 'PARTIAL' | 'PAID';
   currency?: string;
   dealLabel?: string;
+  // Freshness fields
+  isNew?: boolean;
+  createdAtHuman?: string;
 }
 
 interface LeadState {

@@ -91,8 +91,8 @@ export default function BookingScreen({ navigation }: any) {
 
   // Booking dialog
   const [showBookingDialog, setShowBookingDialog] = useState(false);
-  const [leads, setLeads] = useState<any[]>([]);
-  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
@@ -121,23 +121,19 @@ export default function BookingScreen({ navigation }: any) {
     }
   }, []);
 
-  const fetchLeads = useCallback(async () => {
+  const fetchContacts = useCallback(async () => {
     try {
-      const res = await crmApi.getLeads();
-      // Only show active leads (not closed)
-      const active = res.data.filter(
-        (l: any) => l.status !== 'CLOSED_WON' && l.status !== 'CLOSED_LOST'
-      );
-      setLeads(active);
+      const res = await crmApi.getContacts();
+      setContacts(res.data);
     } catch (e) {
-      console.error('Error fetching leads:', e);
+      console.error('Error fetching contacts:', e);
     }
   }, []);
 
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      await Promise.all([fetchAppointments(), fetchLeads()]);
+      await Promise.all([fetchAppointments(), fetchContacts()]);
       setLoading(false);
     };
     init();
@@ -164,17 +160,17 @@ export default function BookingScreen({ navigation }: any) {
   // ── Book appointment ───────────────────────────────────────────────────────
 
   const handleBook = async () => {
-    if (!selectedLeadId || !title.trim()) return;
+    if (!selectedContactId || !title.trim()) return;
     setBooking(true);
     try {
       const res = await appointmentApi.book({
-        leadId: selectedLeadId,
+        contactId: selectedContactId,
         appointmentDateTime: pickedDate.toISOString(),
         title: title.trim(),
         meetingLink: meetingLink.trim() || undefined,
       });
       addAppointment(res.data);
-      setSnackMsg('✅ Appointment booked! Lead moved to BOOKED stage.');
+      setSnackMsg('✅ Appointment booked successfully.');
       resetBookingForm();
       setShowBookingDialog(false);
     } catch (e) {
@@ -186,7 +182,7 @@ export default function BookingScreen({ navigation }: any) {
   };
 
   const resetBookingForm = () => {
-    setSelectedLeadId(null);
+    setSelectedContactId(null);
     setTitle('');
     setMeetingLink('');
     setPickedDate(new Date());
@@ -349,7 +345,7 @@ export default function BookingScreen({ navigation }: any) {
 
   // ── Lead selector ─────────────────────────────────────────────────────────
 
-  const selectedLead = leads.find((l) => l.id === selectedLeadId);
+  const selectedContact = contacts.find((c) => c.id === selectedContactId);
 
   // ── Main render ───────────────────────────────────────────────────────────
 
@@ -519,25 +515,25 @@ export default function BookingScreen({ navigation }: any) {
           <Dialog.Title>📅 New Appointment</Dialog.Title>
           <Dialog.ScrollArea style={{ maxHeight: 480 }}>
             <ScrollView>
-              {/* Lead selector */}
-              <Text variant="labelMedium" style={styles.fieldLabel}>Select Lead *</Text>
+              {/* Contact selector */}
+              <Text variant="labelMedium" style={styles.fieldLabel}>Select Contact *</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 style={{ marginBottom: 12 }}
               >
-                {leads.map((l) => (
+                {contacts.map((c) => (
                   <Chip
-                    key={l.id}
-                    selected={selectedLeadId === l.id}
-                    onPress={() => setSelectedLeadId(l.id)}
+                    key={c.id}
+                    selected={selectedContactId === c.id}
+                    onPress={() => setSelectedContactId(c.id)}
                     style={[
                       styles.leadChip,
-                      selectedLeadId === l.id && { backgroundColor: theme.colors.primaryContainer },
+                      selectedContactId === c.id && { backgroundColor: theme.colors.primaryContainer },
                     ]}
-                    textStyle={selectedLeadId === l.id ? { color: theme.colors.primary } : undefined}
+                    textStyle={selectedContactId === c.id ? { color: theme.colors.primary } : undefined}
                   >
-                    {l.contact?.name || 'Unknown'}
+                    {c.name || c.waId || 'Unknown'}
                   </Chip>
                 ))}
               </ScrollView>
@@ -626,7 +622,7 @@ export default function BookingScreen({ navigation }: any) {
               mode="contained"
               onPress={handleBook}
               loading={booking}
-              disabled={!selectedLeadId || !title.trim() || booking}
+              disabled={!selectedContactId || !title.trim() || booking}
             >
               Book ✓
             </Button>

@@ -11,6 +11,8 @@ import AiKnowledgeBaseView from './settings/AiKnowledgeBaseView';
 import BusinessServicesScreen from './BusinessServicesScreen';
 import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
+import SupportCategoriesView from './settings/SupportCategoriesView';
+import SystemHealthView from './settings/SystemHealthView';
 
 const SettingsScreen = () => {
   const theme = useTheme();
@@ -18,6 +20,7 @@ const SettingsScreen = () => {
   const [wabaId, setWabaId] = useState('');
   const [accessToken, setAccessToken] = useState('');
   const [verifyToken, setVerifyToken] = useState('chatcrm_secret_token');
+  const [appSecret, setAppSecret] = useState('');
   const [interactiveMenuJson, setInteractiveMenuJson] = useState('');
   const [menuType, setMenuType] = useState('list');
   const [menuItems, setMenuItems] = useState(
@@ -114,6 +117,7 @@ const SettingsScreen = () => {
         setWabaId(response.data.wabaId || '');
         setAccessToken(response.data.accessToken || '');
         setVerifyToken(response.data.verifyToken || 'chatcrm_secret_token');
+        setAppSecret(response.data.appSecret || '');
         
         const existingJson = response.data.interactiveMenuJson || '';
         setInteractiveMenuJson(existingJson);
@@ -182,6 +186,7 @@ const SettingsScreen = () => {
         wabaId,
         accessToken,
         verifyToken,
+        appSecret,
         interactiveMenuJson,
         welcomeMessage,
         returningMessage,
@@ -217,6 +222,7 @@ const SettingsScreen = () => {
         wabaId,
         accessToken,
         verifyToken,
+        appSecret,
         interactiveMenuJson: newJson,
         welcomeMessage,
         returningMessage,
@@ -251,6 +257,7 @@ const SettingsScreen = () => {
         wabaId,
         accessToken,
         verifyToken,
+        appSecret,
         interactiveMenuJson,
         welcomeMessage,
         returningMessage,
@@ -464,7 +471,7 @@ const SettingsScreen = () => {
             try {
               setLoading(true);
               await whatsappApi.saveConfig({
-                phoneNumberId, wabaId, accessToken, verifyToken,
+                phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
                 interactiveMenuJson, welcomeMessage, returningMessage,
                 showAboutContact, reviewUrl, offerText, sosNote,
                 thirdButtonType, showTrustButton, showOfferButton, showSosButton,
@@ -492,6 +499,8 @@ const SettingsScreen = () => {
           setAccessToken={setAccessToken}
           verifyToken={verifyToken}
           setVerifyToken={setVerifyToken}
+          appSecret={appSecret}
+          setAppSecret={setAppSecret}
           handleSaveMeta={handleSaveMeta}
           loading={loading}
           onBack={() => setActiveView(null)}
@@ -531,8 +540,21 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'support_categories') {
+      return (
+        <SupportCategoriesView
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
 
-
+    if (activeView === 'system_health') {
+      return (
+        <SystemHealthView
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
     return (
       <View style={{ flex: 1, paddingBottom: 40 }}>
         <List.Section style={{ backgroundColor: '#fff', borderRadius: 8, overflow: 'hidden', elevation: 2 }}>
@@ -600,6 +622,22 @@ const SettingsScreen = () => {
             left={props => <List.Icon {...props} icon="brain" />}
             right={props => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => setActiveView('knowledge_base')}
+            style={styles.listItem}
+          />
+          <List.Item
+            title="Support Categories"
+            description="Customize WhatsApp support request categories"
+            left={props => <List.Icon {...props} icon="help-circle-outline" />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setActiveView('support_categories')}
+            style={styles.listItem}
+          />
+          <List.Item
+            title="System Health & Diagnostics"
+            description="View real-time backend telemetry"
+            left={props => <List.Icon {...props} icon="monitor-dashboard" />}
+            right={props => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => setActiveView('system_health')}
             style={styles.listItem}
           />
 

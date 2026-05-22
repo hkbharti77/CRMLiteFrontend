@@ -45,10 +45,10 @@ export default function LoginScreen() {
     try {
       const response = await authApi.verifyOtp(email, otp);
       console.log('Verification successful:', response.data);
-      const { token, userId, businessName, onboardingCompleted } = response.data;
-      await setToken(token, userId, email, businessName || 'My Business', onboardingCompleted);
-      // Connect WebSocket immediately after login
-      if (userId && token) connect(token, userId);
+      const { token, userId, tenantId, businessName, onboardingCompleted } = response.data;
+      await setToken(token, userId, tenantId, email, businessName || 'My Business', onboardingCompleted);
+      // Connect WebSocket immediately after login using the correct tenantId topic prefix
+      if (tenantId && token) connect(token, tenantId);
     } catch (error: any) {
       console.error('Verification failed:', error);
       const message = error.response?.data || error.message || 'Invalid OTP';

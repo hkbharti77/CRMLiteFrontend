@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Platform, SafeAreaView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { TextInput, Button, Title, Card, Text, Snackbar, ActivityIndicator, useTheme, Portal, Dialog, List } from 'react-native-paper';
 import { whatsappApi, userApi } from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
@@ -13,9 +13,33 @@ import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
 import SupportCategoriesView from './settings/SupportCategoriesView';
 import SystemHealthView from './settings/SystemHealthView';
+import { 
+  Settings, 
+  Search, 
+  ChevronRight, 
+  LogOut, 
+  User, 
+  Shield, 
+  MessageSquare, 
+  Moon, 
+  Bell, 
+  HelpCircle,
+  Zap,
+  Code,
+  ShoppingBag,
+  FileText,
+  Brain,
+  Menu,
+  Smartphone,
+  Lock,
+  Globe
+} from 'lucide-react-native';
 
 const SettingsScreen = () => {
   const theme = useTheme();
+  const { clearToken, businessName } = useAuthStore();
+  
+  // ===== SETTINGS DATA =====
   const [phoneNumberId, setPhoneNumberId] = useState('');
   const [wabaId, setWabaId] = useState('');
   const [accessToken, setAccessToken] = useState('');
@@ -30,7 +54,7 @@ const SettingsScreen = () => {
   const [welcomeMessage, setWelcomeMessage] = useState('');
   const [returningMessage, setReturningMessage] = useState('');
   
-  // New Dynamic Menu States
+  // ===== DYNAMIC MENU STATES =====
   const [reviewUrl, setReviewUrl] = useState('');
   const [offerText, setOfferText] = useState('');
   const [sosNote, setSosNote] = useState('');
@@ -41,6 +65,7 @@ const SettingsScreen = () => {
   const [customSubMenusJson, setCustomSubMenusJson] = useState('[]');
   const [customMessagesJson, setCustomMessagesJson] = useState('[]');
   
+  // ===== UI STATE =====
   const [accountProfile, setAccountProfile] = useState({
     displayName: '',
     email: '',
@@ -54,15 +79,16 @@ const SettingsScreen = () => {
     longitude: null as number | null,
     logoUrl: ''
   });
-
   const [activeView, setActiveView] = useState<string | null>(null);
-
+  const [searchQuery, setSearchQuery] = useState('');
+  const [darkMode, setDarkMode] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
-  const { clearToken } = useAuthStore();
   
   const [triggerLabels, setTriggerLabels] = useState({ button: '📅 Book Now', list: '📅 Book / Enquire Now', services: '📋 View Services' });
 
@@ -415,9 +441,7 @@ const SettingsScreen = () => {
     
     if (activeView === 'security') {
       return (
-        <SecurityDashboard
-          onBack={() => setActiveView(null)}
-        />
+        <SecurityDashboard onBack={() => setActiveView(null)} />
       );
     }
     
@@ -510,9 +534,7 @@ const SettingsScreen = () => {
 
     if (activeView === 'knowledge_base') {
       return (
-        <AiKnowledgeBaseView
-          onBack={() => setActiveView(null)}
-        />
+        <AiKnowledgeBaseView onBack={() => setActiveView(null)} />
       );
     }
 
@@ -542,116 +564,156 @@ const SettingsScreen = () => {
 
     if (activeView === 'support_categories') {
       return (
-        <SupportCategoriesView
-          onBack={() => setActiveView(null)}
-        />
+        <SupportCategoriesView onBack={() => setActiveView(null)} />
       );
     }
 
     if (activeView === 'system_health') {
       return (
-        <SystemHealthView
-          onBack={() => setActiveView(null)}
-        />
+        <SystemHealthView onBack={() => setActiveView(null)} />
       );
     }
+
+    // ===== MAIN SETTINGS HOME =====
     return (
-      <View style={{ flex: 1, paddingBottom: 40 }}>
-        <List.Section style={{ backgroundColor: '#fff', borderRadius: 8, overflow: 'hidden', elevation: 2 }}>
-          <List.Subheader style={{ fontSize: 18, fontWeight: 'bold', color: '#075E54' }}>App Settings</List.Subheader>
-          
-          <List.Item
-            title="Account"
-            description="Manage your account profile"
-            left={props => <List.Icon {...props} icon="account" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+      <View style={styles.mainContainer}>
+        {/* ===== USER PROFILE CARD ===== */}
+        <ProfileCard accountProfile={accountProfile} onPress={() => setActiveView('account')} />
+
+        {/* ===== SEARCH BAR ===== */}
+        <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+
+        {/* ===== ACCOUNT SECTION ===== */}
+        <SettingsSection title="Account">
+          <SettingsItem
+            icon={<User size={20} color="#075E54" />}
+            title="Account Profile"
+            description="Manage your account details"
             onPress={() => setActiveView('account')}
-            style={styles.listItem}
           />
-          <List.Item
-            title="Sign in & security"
-            description="Password and authentication methods"
-            left={props => <List.Icon {...props} icon="shield-account" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+          <SettingsItem
+            icon={<Shield size={20} color="#075E54" />}
+            title="Security & Privacy"
+            description="Password and authentication"
             onPress={() => setActiveView('security')}
-            style={styles.listItem}
+            divider
           />
-          <List.Item
-            title="Meta Configuration"
-            description="WhatsApp integration API credentials"
-            left={props => <List.Icon {...props} icon="whatsapp" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+        </SettingsSection>
+
+        {/* ===== APPEARANCE SECTION ===== */}
+        <SettingsSection title="Appearance">
+          <ToggleItem
+            icon={<Moon size={20} color="#075E54" />}
+            title="Dark Mode"
+            description="Coming soon"
+            enabled={darkMode}
+            onToggle={setDarkMode}
+            disabled
+          />
+        </SettingsSection>
+
+        {/* ===== NOTIFICATIONS SECTION ===== */}
+        <SettingsSection title="Notifications">
+          <ToggleItem
+            icon={<Bell size={20} color="#075E54" />}
+            title="Enable Notifications"
+            description="Stay updated with messages"
+            enabled={notificationsEnabled}
+            onToggle={setNotificationsEnabled}
+          />
+        </SettingsSection>
+
+        {/* ===== CONFIGURATION SECTION ===== */}
+        <SettingsSection title="Configuration">
+          <SettingsItem
+            icon={<Globe size={20} color="#075E54" />}
+            title="Meta Integration"
+            description="WhatsApp API credentials"
             onPress={() => setActiveView('meta')}
-            style={styles.listItem}
+            divider
           />
-          <List.Item
-            title="Button Changes"
-            description="Manage and customize UI buttons"
-            left={props => <List.Icon {...props} icon="gesture-tap-button" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+          <SettingsItem
+            icon={<Menu size={20} color="#075E54" />}
+            title="Menu & Buttons"
+            description="Customize UI buttons"
             onPress={() => setActiveView('buttons')}
-            style={styles.listItem}
+            divider
           />
-          <List.Item
+          <SettingsItem
+            icon={<ShoppingBag size={20} color="#075E54" />}
             title="Products & Services"
-            description="Manage your business catalog"
-            left={props => <List.Icon {...props} icon="store" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+            description="Manage your catalog"
             onPress={() => setActiveView('services')}
-            style={styles.listItem}
+            divider
           />
-          <List.Item
+          <SettingsItem
+            icon={<Menu size={20} color="#075E54" />}
             title="Custom Sub-Menus"
-            description="Create custom lists for your bot"
-            left={props => <List.Icon {...props} icon="format-list-bulleted-type" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+            description="Create custom lists"
             onPress={() => setActiveView('custom_menus')}
-            style={styles.listItem}
+            divider
           />
-          <List.Item
-            title="Custom Quick Responses"
-            description="Define direct text + image replies"
-            left={props => <List.Icon {...props} icon="message-text-clock-outline" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+          <SettingsItem
+            icon={<MessageSquare size={20} color="#075E54" />}
+            title="Quick Responses"
+            description="Direct text & image replies"
             onPress={() => setActiveView('messages')}
-            style={styles.listItem}
           />
-          <List.Item
-            title="AI Knowledge Base"
-            description="Upload documents to train your RAG bot"
-            left={props => <List.Icon {...props} icon="brain" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+        </SettingsSection>
+
+        {/* ===== AI & KNOWLEDGE SECTION ===== */}
+        <SettingsSection title="AI & Knowledge">
+          <SettingsItem
+            icon={<Brain size={20} color="#075E54" />}
+            title="Knowledge Base"
+            description="Train your RAG bot"
             onPress={() => setActiveView('knowledge_base')}
-            style={styles.listItem}
+            divider
           />
-          <List.Item
+          <SettingsItem
+            icon={<HelpCircle size={20} color="#075E54" />}
             title="Support Categories"
-            description="Customize WhatsApp support request categories"
-            left={props => <List.Icon {...props} icon="help-circle-outline" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+            description="WhatsApp support requests"
             onPress={() => setActiveView('support_categories')}
-            style={styles.listItem}
           />
-          <List.Item
-            title="System Health & Diagnostics"
-            description="View real-time backend telemetry"
-            left={props => <List.Icon {...props} icon="monitor-dashboard" />}
-            right={props => <List.Icon {...props} icon="chevron-right" />}
+        </SettingsSection>
+
+        {/* ===== SYSTEM SECTION ===== */}
+        <SettingsSection title="System">
+          <SettingsItem
+            icon={<Zap size={20} color="#075E54" />}
+            title="System Health"
+            description="Backend telemetry & status"
             onPress={() => setActiveView('system_health')}
-            style={styles.listItem}
           />
+        </SettingsSection>
 
-        </List.Section>
+        {/* ===== SUPPORT SECTION ===== */}
+        <SettingsSection title="Support & Help">
+          <TouchableOpacity style={styles.supportCard}>
+            <View style={styles.supportContent}>
+              <Text style={styles.supportTitle}>Need Help?</Text>
+              <Text style={styles.supportDescription}>Contact our support team for assistance</Text>
+            </View>
+            <ChevronRight size={20} color="#999" />
+          </TouchableOpacity>
+        </SettingsSection>
 
-        <Button
-          mode="text"
+        {/* ===== LOGOUT BUTTON ===== */}
+        <TouchableOpacity 
+          style={styles.logoutButton} 
           onPress={handleLogout}
-          style={styles.logoutButton}
-          textColor={theme.colors.error}
-          icon="logout"
+          activeOpacity={0.7}
         >
-          Sign Out
-        </Button>
+          <LogOut size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
+
+        {/* ===== FOOTER =====  */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>ChatCRM Lite v1.0.0</Text>
+          <Text style={styles.footerSubtext}>© 2025 All rights reserved</Text>
+        </View>
       </View>
     );
   };
@@ -665,56 +727,449 @@ const SettingsScreen = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {renderContent()}
-
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-        style={{ backgroundColor: '#075E54' }}
+    <SafeAreaView style={[styles.safeContainer, { backgroundColor: '#F8FAFC' }]}>
+      <ScrollView 
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        {snackbarMsg}
-      </Snackbar>
+        {renderContent()}
 
-      <Portal>
-        <Dialog 
-          visible={logoutDialogVisible} 
-          onDismiss={() => setLogoutDialogVisible(false)}
-          style={styles.dialog}
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={3000}
+          style={{ backgroundColor: '#075E54' }}
         >
-          <Dialog.Icon icon="logout" color={theme.colors.error} />
-          <Dialog.Title style={styles.dialogTitle}>Sign Out</Dialog.Title>
-          <Dialog.Content>
-            <Text variant="bodyMedium">Are you sure you want to sign out of your account?</Text>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setLogoutDialogVisible(false)}>Cancel</Button>
-            <Button 
-              onPress={confirmLogout} 
-              textColor={theme.colors.error}
-              mode="text"
-            >
-              Sign Out
-            </Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
-    </ScrollView>
+          {snackbarMsg}
+        </Snackbar>
+
+        <Portal>
+          <Dialog 
+            visible={logoutDialogVisible} 
+            onDismiss={() => setLogoutDialogVisible(false)}
+            style={styles.dialog}
+          >
+            <Dialog.Icon icon="logout" color="#EF4444" />
+            <Dialog.Title style={styles.dialogTitle}>Sign Out</Dialog.Title>
+            <Dialog.Content>
+              <Text style={styles.dialogContent}>Are you sure you want to sign out of your account?</Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setLogoutDialogVisible(false)}>Cancel</Button>
+              <Button 
+                onPress={confirmLogout} 
+                textColor="#EF4444"
+                mode="text"
+              >
+                Sign Out
+              </Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+interface ProfileCardProps {
+  accountProfile: any;
+  onPress: () => void;
+}
+
+function ProfileCard({ accountProfile, onPress }: ProfileCardProps) {
+  return (
+    <TouchableOpacity style={styles.profileCard} onPress={onPress} activeOpacity={0.7}>
+      <View style={styles.profileContent}>
+        <View style={styles.profileAvatar}>
+          <User size={32} color="#fff" />
+        </View>
+        <View style={styles.profileInfo}>
+          <Text style={styles.profileName}>{accountProfile.displayName || 'User'}</Text>
+          <Text style={styles.profileEmail}>{accountProfile.email || 'Email not set'}</Text>
+          <Text style={styles.profileBusiness}>{accountProfile.businessName || 'Business'}</Text>
+        </View>
+      </View>
+      <ChevronRight size={20} color="#999" />
+    </TouchableOpacity>
+  );
+}
+
+interface SearchBarProps {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+}
+
+function SearchBar({ searchQuery, setSearchQuery }: SearchBarProps) {
+  return (
+    <View style={styles.searchContainer}>
+      <Search size={18} color="#999" style={styles.searchIcon} />
+      <RNTextInput
+        style={styles.searchInput}
+        placeholder="Search settings..."
+        placeholderTextColor="#999"
+        value={searchQuery}
+        onChangeText={setSearchQuery}
+      />
+    </View>
+  );
+}
+
+interface SettingsSectionProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+function SettingsSection({ title, children }: SettingsSectionProps) {
+  return (
+    <View style={styles.sectionContainer}>
+      <Text style={styles.sectionTitle}>{title}</Text>
+      <View style={styles.sectionContent}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+interface SettingsItemProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onPress?: () => void;
+  divider?: boolean;
+}
+
+function SettingsItem({ icon, title, description, onPress, divider }: SettingsItemProps) {
+  return (
+    <>
+      <TouchableOpacity 
+        style={styles.settingItem} 
+        onPress={onPress}
+        activeOpacity={0.6}
+      >
+        <View style={styles.itemIconContainer}>{icon}</View>
+        <View style={styles.itemContent}>
+          <Text style={styles.itemTitle}>{title}</Text>
+          <Text style={styles.itemDescription}>{description}</Text>
+        </View>
+        <ChevronRight size={18} color="#999" />
+      </TouchableOpacity>
+      {divider && <View style={styles.divider} />}
+    </>
+  );
+}
+
+interface ToggleItemProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  enabled: boolean;
+  onToggle: (enabled: boolean) => void;
+  disabled?: boolean;
+}
+
+function ToggleItem({ icon, title, description, enabled, onToggle, disabled }: ToggleItemProps) {
+  return (
+    <View style={styles.toggleItem}>
+      <View style={styles.itemIconContainer}>{icon}</View>
+      <View style={styles.itemContent}>
+        <Text style={styles.itemTitle}>{title}</Text>
+        <Text style={styles.itemDescription}>{description}</Text>
+      </View>
+      <TouchableOpacity 
+        style={[styles.toggleSwitch, enabled && styles.toggleSwitchEnabled]}
+        onPress={() => !disabled && onToggle(!enabled)}
+        disabled={disabled}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.toggleThumb, enabled && styles.toggleThumbEnabled]} />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
 const styles = StyleSheet.create({
+  // ===== CONTAINERS =====
+  safeContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 32,
+  },
+  mainContainer: {
+    flex: 1,
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
+  // ===== PROFILE CARD =====
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  profileContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  profileAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#075E54',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  profileInfo: {
+    flex: 1,
+  },
+  profileName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  profileBusiness: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+
+  // ===== SEARCH BAR =====
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    marginBottom: 24,
+    height: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+    padding: 0,
+  },
+
+  // ===== SECTION =====
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  sectionContent: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  // ===== SETTINGS ITEM =====
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  itemIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F0F9FC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  itemContent: {
+    flex: 1,
+  },
+  itemTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  itemDescription: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 16,
+  },
+
+  // ===== TOGGLE ITEM =====
+  toggleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+  },
+  toggleSwitch: {
+    width: 50,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#E2E8F0',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingHorizontal: 2,
+  },
+  toggleSwitchEnabled: {
+    backgroundColor: '#075E54',
+    alignItems: 'flex-end',
+  },
+  toggleThumb: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleThumbEnabled: {
+    backgroundColor: '#fff',
+  },
+
+  // ===== SUPPORT CARD =====
+  supportCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#F0F9FC',
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E0F2FE',
+  },
+  supportContent: {
+    flex: 1,
+  },
+  supportTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#075E54',
+    marginBottom: 2,
+  },
+  supportDescription: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+
+  // ===== LOGOUT BUTTON =====
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FEE2E2',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#EF4444',
+    marginLeft: 8,
+  },
+
+  // ===== FOOTER =====
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  footerText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  footerSubtext: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+
+  // ===== DIALOG =====
+  dialog: {
+    borderRadius: 24,
+    backgroundColor: '#fff',
+  },
+  dialogTitle: {
+    textAlign: 'center',
+    fontWeight: '700',
+    fontSize: 18,
+    color: '#0F172A',
+  },
+  dialogContent: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+
+  // ===== LEGACY STYLES (for compatibility) =====
   card: {
     marginBottom: 16,
     elevation: 4,
@@ -743,10 +1198,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
     paddingVertical: 4,
   },
-  logoutButton: {
-    marginTop: 24,
-    marginBottom: 24,
-  },
   listItem: {
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
@@ -768,14 +1219,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1b5e20',
     marginTop: 4,
-  },
-  dialog: {
-    borderRadius: 24,
-    backgroundColor: '#fff',
-  },
-  dialogTitle: {
-    textAlign: 'center',
-    fontWeight: 'bold',
   },
 });
 

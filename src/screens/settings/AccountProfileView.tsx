@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Clipboard, Alert } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Clipboard, Alert, ScrollView, SafeAreaView, Platform, TextInput as RNTextInput } from 'react-native';
 import { Card, Title, Text, TextInput, Button, Snackbar } from 'react-native-paper';
 import { categoryApi, SERVER_HOST } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
+import { ChevronLeft, Copy, MapPin, Eye, EyeOff, AlertCircle, Check } from 'lucide-react-native';
 
 interface AccountProfileViewProps {
   accountProfile: any;
@@ -26,48 +27,55 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [mapsUrl, setMapsUrl] = useState('');
   const [copySnackbar, setCopySnackbar] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [descriptionLength, setDescriptionLength] = useState(accountProfile.aboutUs?.length || 0);
+  const [changes, setChanges] = useState(false);
 
   const { userId } = useAuthStore();
 
-  // Backend base URL — same as chat-widget.js API_BASE
   const API_BASE = SERVER_HOST;
 
   const embedCode = userId
     ? `<link rel="stylesheet" href="${API_BASE}/styles.css">\n<script src="${API_BASE}/chat-widget.js"\n  data-business-id="${userId}">\n</script>`
     : '';
 
+  const handleFieldChange = (field: string, value: any) => {
+    setAccountProfile({ ...accountProfile, [field]: value });
+    setChanges(true);
+    if (field === 'aboutUs') {
+      setDescriptionLength(value.length);
+    }
+  };
+
   const parseMapsUrl = () => {
     if (!mapsUrl) return;
     
-    // Pattern 1: @lat,lng
-    // e.g. https://www.google.com/maps/place/Data/@12.9716,77.5946,15z/...
     const coordPattern = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
     const match = mapsUrl.match(coordPattern);
     
     if (match) {
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
-      setAccountProfile({
-        ...accountProfile,
-        latitude: lat,
-        longitude: lng
-      });
+      handleFieldChange('latitude', parseFloat(match[1]));
+      handleFieldChange('longitude', parseFloat(match[2]));
+      Alert.alert('Success', 'Coordinates extracted from link!');
       return;
     }
 
-    // Pattern 2: query parameter ll=lat,lng or q=lat,lng
     const queryPattern = /[?&](ll|q)=(-?\d+\.\d+),(-?\d+\.\d+)/;
     const qMatch = mapsUrl.match(queryPattern);
     if (qMatch) {
-      setAccountProfile({
-        ...accountProfile,
-        latitude: parseFloat(qMatch[2]),
-        longitude: parseFloat(qMatch[3])
-      });
+      handleFieldChange('latitude', parseFloat(qMatch[2]));
+      handleFieldChange('longitude', parseFloat(qMatch[3]));
+      Alert.alert('Success', 'Coordinates extracted from link!');
       return;
     }
 
-    alert("Could not extract coordinates. Please ensure the URL contains @latitude,longitude (e.g. from your browser address bar).");
+    Alert.alert("Error", "Could not extract coordinates. Please ensure the URL contains @latitude,longitude");
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    Clipboard.setString(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
   };
 
   useEffect(() => {
@@ -77,484 +85,1021 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
       .finally(() => setCategoriesLoading(false));
   }, []);
 
-  return (
-    <View style={{ flex: 1, paddingBottom: 40 }}>
-      <Button icon="arrow-left" mode="text" onPress={onBack} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
-        Back to Settings
-      </Button>
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Account Profile</Title>
-          <Text style={styles.subtitle}>Update your tenant details and business profile here.</Text>
+  const handleSave = async () => {
+    await handleSaveProfile();
+    setIsEditing(false);
+    setChanges(false);
+    setShowCategoryDropdown(false);
+    setShowSubTypeDropdown(false);
+  };
 
-          <TextInput
-            label="Email (Read Only)"
-            value={accountProfile.email}
-            disabled
-            mode="outlined"
-            style={styles.input}
-          />
-          <TextInput
+  return (
+    <SafeAreaView style={styles.container}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ===== HEADER ===== */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onBack} style={styles.backButton}>
+            <ChevronLeft size={24} color="#075E54" />
+          </TouchableOpacity>
+          <View style={styles.headerContent}>
+            <Text style={styles.pageTitle}>Account Profile</Text>
+            <Text style={styles.pageSubtitle}>Manage your account and business details</Text>
+          </View>
+        </View>
+
+        {/* ===== PROFILE CARD ===== */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {accountProfile.displayName?.charAt(0).toUpperCase() || 'H'}
+              </Text>
+            </View>
+            <TouchableOpacity style={styles.changePhotoButton}>
+              <Text style={styles.changePhotoText}>Change Photo</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{accountProfile.displayName || 'Admin Account'}</Text>
+            <Text style={styles.profileEmail}>{accountProfile.email || 'Email not set'}</Text>
+            <View style={styles.badgeContainer}>
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>Admin</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ===== CONTACT INFORMATION SECTION ===== */}
+        <SectionCard title="Contact Information">
+          <FormField
             label="Display Name"
             value={accountProfile.displayName}
-            onChangeText={(v) => setAccountProfile({ ...accountProfile, displayName: v })}
-            mode="outlined"
-            style={styles.input}
+            onChangeText={(v) => handleFieldChange('displayName', v)}
             editable={isEditing}
+            placeholder="Your full name"
           />
-          <TextInput
-            label="Phone"
+          <FormField
+            label="Phone Number"
             value={accountProfile.phone}
-            onChangeText={(v) => setAccountProfile({ ...accountProfile, phone: v })}
-            mode="outlined"
-            style={styles.input}
+            onChangeText={(v) => handleFieldChange('phone', v)}
             editable={isEditing}
+            placeholder="+1 (555) 000-0000"
+            keyboardType="phone-pad"
           />
-          <TextInput
+        </SectionCard>
+
+        {/* ===== BUSINESS INFORMATION SECTION ===== */}
+        <SectionCard title="Business Information">
+          <FormField
             label="Business Name"
             value={accountProfile.businessName}
-            onChangeText={(v) => setAccountProfile({ ...accountProfile, businessName: v })}
-            mode="outlined"
-            style={styles.input}
+            onChangeText={(v) => handleFieldChange('businessName', v)}
             editable={isEditing}
+            placeholder="Your business name"
           />
-          <Text style={styles.label}>Business Category</Text>
-          <TouchableOpacity
-            style={[styles.dropdown, !isEditing && { backgroundColor: '#f9f9f9', borderColor: '#e0e0e0' }]}
-            onPress={() => {
-              if (!isEditing) {
-                setIsEditing(true);
-              }
-              setShowCategoryDropdown(!showCategoryDropdown);
-            }}
-          >
-            <Text style={accountProfile.businessType ? styles.dropdownSelected : styles.dropdownPlaceholder}>
-              {categoriesLoading ? 'Fetching categories...' : (accountProfile.businessType || 'Select Category')}
-            </Text>
-            <Text style={styles.dropdownArrow}>{showCategoryDropdown ? '▲' : '▼'}</Text>
-          </TouchableOpacity>
 
-          {showCategoryDropdown && (
-            <View style={styles.dropdownList}>
-              {categoriesLoading ? (
-                <View style={styles.dropdownItem}>
-                  <Text style={styles.dropdownItemText}>Loading industries...</Text>
-                </View>
-              ) : Object.keys(categories).length > 0 ? (
-                Object.keys(categories).map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[
-                      styles.dropdownItem,
-                      accountProfile.businessType === cat && { backgroundColor: '#e8f5e9' }
-                    ]}
-                    onPress={() => {
-                      setAccountProfile({ ...accountProfile, businessType: cat, businessSubType: '' });
-                      setShowCategoryDropdown(false);
-                      setShowSubTypeDropdown(true); // Auto-open sub-type for better flow
-                    }}
-                  >
-                    <Text style={[
-                      styles.dropdownItemText,
-                      accountProfile.businessType === cat && { fontWeight: 'bold', color: '#075E54' }
-                    ]}>{cat}</Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={styles.dropdownItem}>
-                  <Text style={styles.dropdownItemText}>No categories found</Text>
-                </View>
-              )}
+          <View style={styles.dropdownContainer}>
+            <Text style={styles.fieldLabel}>Business Category</Text>
+            <DropdownField
+              value={accountProfile.businessType}
+              placeholder="Select category"
+              isOpen={showCategoryDropdown}
+              onPress={() => isEditing && setShowCategoryDropdown(!showCategoryDropdown)}
+              onClose={() => setShowCategoryDropdown(false)}
+              options={Object.keys(categories)}
+              onSelect={(cat) => {
+                handleFieldChange('businessType', cat);
+                handleFieldChange('businessSubType', '');
+                setShowCategoryDropdown(false);
+                setShowSubTypeDropdown(true);
+              }}
+              loading={categoriesLoading}
+              disabled={!isEditing}
+            />
+          </View>
+
+          {accountProfile.businessType && (
+            <View style={styles.dropdownContainer}>
+              <Text style={styles.fieldLabel}>Sub Category</Text>
+              <DropdownField
+                value={accountProfile.businessSubType}
+                placeholder="Select sub category"
+                isOpen={showSubTypeDropdown}
+                onPress={() => isEditing && setShowSubTypeDropdown(!showSubTypeDropdown)}
+                onClose={() => setShowSubTypeDropdown(false)}
+                options={categories[accountProfile.businessType] || []}
+                onSelect={(subType) => {
+                  handleFieldChange('businessSubType', subType);
+                  setShowSubTypeDropdown(false);
+                }}
+                disabled={!isEditing}
+              />
             </View>
           )}
+        </SectionCard>
 
-          {accountProfile.businessType ? (
-            <>
-              <Text style={styles.label}>Sub Category</Text>
-              <TouchableOpacity
-                style={[styles.dropdown, !isEditing && { backgroundColor: '#f5f5f5' }]}
-                onPress={() => isEditing && setShowSubTypeDropdown(!showSubTypeDropdown)}
-                disabled={!isEditing}
-              >
-                <Text style={accountProfile.businessSubType ? styles.dropdownSelected : styles.dropdownPlaceholder}>
-                  {categoriesLoading ? 'Loading...' : (accountProfile.businessSubType || 'Select Sub Category')}
-                </Text>
-                <Text style={styles.dropdownArrow}>{showSubTypeDropdown ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
-              {showSubTypeDropdown && !categoriesLoading && (
-                <View style={styles.dropdownList}>
-                  {(categories[accountProfile.businessType] || []).map((subType) => (
-                    <TouchableOpacity
-                      key={subType}
-                      style={styles.dropdownItem}
-                      onPress={() => {
-                        setAccountProfile({ ...accountProfile, businessSubType: subType });
-                        setShowSubTypeDropdown(false);
-                      }}
-                    >
-                      <Text style={styles.dropdownItemText}>{subType}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </>
-          ) : null}
-          <TextInput
-            label="Address"
-            value={accountProfile.address}
-            onChangeText={(v) => setAccountProfile({ ...accountProfile, address: v })}
-            mode="outlined"
-            style={styles.input}
-            multiline
-            editable={isEditing}
-          />
-
-          <TextInput
-            label="About Us / Business Description"
-            value={accountProfile.aboutUs}
-            onChangeText={(v) => setAccountProfile({ ...accountProfile, aboutUs: v })}
-            mode="outlined"
-            style={[styles.input, { height: 100 }]}
-            multiline
-            numberOfLines={4}
-            editable={isEditing}
-            placeholder="Tell your customers about your business, values, and services..."
-          />
-
-          <View style={styles.separator} />
-          <Text style={styles.sectionTitle}>📍 Business Location (Map)</Text>
-          <Text style={styles.sectionSubtitle}>These coordinates will be used to send your shop's location map to customers on WhatsApp.</Text>
-
-          <TextInput
+        {/* ===== BUSINESS LOCATION SECTION ===== */}
+        <SectionCard title="Business Location">
+          <Text style={styles.fieldHelper}>📍 These coordinates will be used to share your shop location on WhatsApp</Text>
+          
+          <FormField
             label="Google Maps Link"
             value={mapsUrl}
             onChangeText={setMapsUrl}
-            mode="outlined"
-            style={styles.input}
-            placeholder="https://www.google.com/maps/..."
             editable={isEditing}
-            right={<TextInput.Icon icon="map-marker-outline" />}
+            placeholder="https://www.google.com/maps/..."
+            icon={<MapPin size={18} color="#075E54" />}
           />
 
-          <Button 
-            mode="outlined" 
-            onPress={parseMapsUrl}
-            style={{ marginBottom: 16 }}
-            disabled={!isEditing || !mapsUrl}
-            icon="auto-fix"
-          >
-            Fetch Coordinates from Link
-          </Button>
+          {isEditing && (
+            <TouchableOpacity 
+              style={[styles.extractButton, !mapsUrl && styles.extractButtonDisabled]}
+              onPress={parseMapsUrl}
+              disabled={!mapsUrl}
+            >
+              <Text style={styles.extractButtonText}>Extract Coordinates</Text>
+            </TouchableOpacity>
+          )}
 
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TextInput
+          <View style={styles.coordinatesRow}>
+            <FormField
               label="Latitude"
               value={accountProfile.latitude?.toString() || ''}
               onChangeText={(v) => {
                 const num = parseFloat(v);
-                setAccountProfile({ ...accountProfile, latitude: isNaN(num) ? null : num });
+                handleFieldChange('latitude', isNaN(num) ? null : num);
               }}
-              mode="outlined"
-              style={[styles.input, { flex: 1 }]}
-              keyboardType="numeric"
               editable={isEditing}
+              placeholder="0.0000"
+              keyboardType="decimal-pad"
+              containerStyle={{ flex: 1, marginRight: 8 }}
             />
-            <TextInput
+            <FormField
               label="Longitude"
               value={accountProfile.longitude?.toString() || ''}
               onChangeText={(v) => {
                 const num = parseFloat(v);
-                setAccountProfile({ ...accountProfile, longitude: isNaN(num) ? null : num });
+                handleFieldChange('longitude', isNaN(num) ? null : num);
               }}
-              mode="outlined"
-              style={[styles.input, { flex: 1 }]}
-              keyboardType="numeric"
               editable={isEditing}
+              placeholder="0.0000"
+              keyboardType="decimal-pad"
+              containerStyle={{ flex: 1, marginLeft: 8 }}
             />
           </View>
+        </SectionCard>
 
-          {isEditing ? (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <Button
-                mode="outlined"
-                onPress={() => setIsEditing(false)}
-                style={[styles.button, { flex: 1 }]}
-                disabled={loading}
-              >
-                Cancel
-              </Button>
-              <Button
-                mode="contained"
-                onPress={async () => {
-                  await handleSaveProfile();
-                  setIsEditing(false);
-                  setShowCategoryDropdown(false);
-                  setShowSubTypeDropdown(false);
-                }}
-                loading={loading}
-                disabled={loading}
-                style={[styles.button, { flex: 1 }]}
-                buttonColor="#075E54"
-              >
-                Save Profile
-              </Button>
-            </View>
-          ) : (
-            <Button
-              mode="contained"
-              onPress={() => setIsEditing(true)}
-              style={styles.button}
-              buttonColor="#075E54"
-              icon="pencil"
-            >
-              Edit Profile
-            </Button>
-          )}
-        </Card.Content>
-      </Card>
-
-      {/* ── Web Bot Embed Section ─────────────────────────────────────── */}
-      <Card style={styles.embedCard}>
-        <Card.Content>
-          <Title style={styles.embedTitle}>🤖 Web Bot Embed</Title>
-          <Text style={styles.embedSubtitle}>
-            Copy this code and paste it inside the {'<body>'} tag of any website to embed your AI chat bot.
-          </Text>
-
-          {/* Business UUID display */}
-          <View style={styles.uuidRow}>
-            <Text style={styles.uuidLabel}>Your Business ID</Text>
-            <TouchableOpacity
-              style={styles.uuidBox}
-              onPress={() => {
-                if (userId) {
-                  Clipboard.setString(userId);
-                  setCopySnackbar(true);
-                }
-              }}
-            >
-              <Text style={styles.uuidText} numberOfLines={1} ellipsizeMode="middle">
-                {userId || 'Not available'}
+        {/* ===== ABOUT BUSINESS SECTION ===== */}
+        <SectionCard title="About Business">
+          <View style={styles.aboutContainer}>
+            <View style={styles.characterCounter}>
+              <Text style={styles.counterLabel}>Business Description</Text>
+              <Text style={[styles.counterText, descriptionLength > 500 && styles.counterWarning]}>
+                {descriptionLength}/500
               </Text>
-              <Text style={styles.copyHint}>📋 Tap to copy</Text>
+            </View>
+            <TextInput
+              label=""
+              value={accountProfile.aboutUs}
+              onChangeText={(v) => handleFieldChange('aboutUs', v.slice(0, 500))}
+              editable={isEditing}
+              placeholder="Tell your customers about your business, values, and services..."
+              mode="outlined"
+              multiline
+              numberOfLines={5}
+              style={[styles.aboutInput, !isEditing && styles.inputDisabled]}
+              contentStyle={styles.aboutContent}
+            />
+          </View>
+        </SectionCard>
+
+        {/* ===== WEB BOT EMBED SECTION ===== */}
+        <SectionCard title="Website Chat Widget" icon="🤖">
+          <Text style={styles.embedHelper}>Connect your website with AI-powered chat</Text>
+
+          <View style={styles.businessIdCard}>
+            <View style={styles.businessIdLeft}>
+              <Text style={styles.businessIdLabel}>Business ID</Text>
+              <Text style={styles.businessIdValue}>{userId || 'Loading...'}</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.copyIconButton}
+              onPress={() => userId && copyToClipboard(userId, 'businessId')}
+            >
+              <Copy size={18} color={copiedField === 'businessId' ? '#10B981' : '#075E54'} />
+              <Text style={[styles.copyLabel, copiedField === 'businessId' && { color: '#10B981' }]}>
+                {copiedField === 'businessId' ? 'Copied' : 'Copy'}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          {/* Embed code block */}
-          <View style={styles.codeBlock}>
-            <Text style={styles.codeLabel}># Paste inside {'<body>'} tag</Text>
-            <Text style={styles.codeText} selectable>
-              {embedCode}
-            </Text>
+          <View style={styles.installationSteps}>
+            <InstallationStep number={1} title="Copy Code" />
+            <InstallationStep number={2} title="Paste before closing body tag" />
           </View>
 
-          <Button
-            mode="contained"
-            icon="content-copy"
-            buttonColor="#0f172a"
-            style={styles.copyBtn}
-            onPress={() => {
-              if (embedCode) {
-                Clipboard.setString(embedCode);
-                setCopySnackbar(true);
-              }
-            }}
-          >
-            Copy Embed Code
-          </Button>
+          <View style={styles.codeBlockContainer}>
+            <View style={styles.codeBlockHeader}>
+              <Text style={styles.codeBlockLabel}>Code Snippet</Text>
+              <TouchableOpacity 
+                onPress={() => copyToClipboard(embedCode, 'embedCode')}
+                style={styles.copyCodeButton}
+              >
+                <Copy size={16} color="#fff" />
+                <Text style={styles.copyCodeText}>
+                  {copiedField === 'embedCode' ? 'Copied' : 'Copy'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <Text style={styles.codeBlockText} selectable>
+                {embedCode}
+              </Text>
+            </ScrollView>
+          </View>
 
-          <Button
-            mode="outlined"
-            icon="open-in-new"
-            style={[styles.copyBtn, { marginTop: 8 }]}
-            onPress={() => {
-              Alert.alert(
-                'Test Your Bot',
-                `Open this URL in your browser to test the widget:\n\n${API_BASE}/test.html?businessId=${userId}`,
-                [{ text: 'OK' }]
-              );
-            }}
+          <View style={styles.embedActionsContainer}>
+            <TouchableOpacity style={[styles.embedActionButton, styles.previewButton]}>
+              <Eye size={18} color="#075E54" />
+              <Text style={styles.embedActionText}>Preview Widget</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.embedActionButton, styles.docsButton]}
+              onPress={() => Alert.alert('Documentation', 'Visit our documentation for more details')}
+            >
+              <Text style={styles.docsButtonText}>📖 Documentation</Text>
+            </TouchableOpacity>
+          </View>
+        </SectionCard>
+
+        {/* ===== BOTTOM SPACER ===== */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
+
+      {/* ===== STICKY ACTION BAR ===== */}
+      <View style={styles.stickyActionBar}>
+        {isEditing ? (
+          <View style={styles.actionBarContent}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.cancelButton]}
+              onPress={() => {
+                setIsEditing(false);
+                setChanges(false);
+              }}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.saveButton, loading && styles.saveButtonLoading]}
+              onPress={handleSave}
+              disabled={loading || !changes}
+            >
+              <Check size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Changes'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.editButton]}
+            onPress={() => setIsEditing(true)}
           >
-            View Test Page URL
-          </Button>
-        </Card.Content>
-      </Card>
+            <Text style={styles.editButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <Snackbar
         visible={copySnackbar}
         onDismiss={() => setCopySnackbar(false)}
         duration={2000}
-        style={{ backgroundColor: '#075E54' }}
+        style={{ backgroundColor: '#10B981' }}
       >
         ✅ Copied to clipboard!
       </Snackbar>
-    </View>
+    </SafeAreaView>
   );
 };
 
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+interface SectionCardProps {
+  title: string;
+  icon?: string;
+  children: React.ReactNode;
+}
+
+function SectionCard({ title, icon, children }: SectionCardProps) {
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        {icon && <Text style={styles.sectionIcon}>{icon}</Text>}
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <View style={styles.sectionContent}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+interface FormFieldProps {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  editable?: boolean;
+  placeholder?: string;
+  keyboardType?: 'default' | 'numeric' | 'decimal-pad' | 'phone-pad' | 'email-address';
+  icon?: React.ReactNode;
+  containerStyle?: any;
+  multiline?: boolean;
+  numberOfLines?: number;
+}
+
+function FormField({
+  label,
+  value,
+  onChangeText,
+  editable = true,
+  placeholder,
+  keyboardType = 'default',
+  icon,
+  containerStyle,
+  multiline = false,
+  numberOfLines
+}: FormFieldProps) {
+  return (
+    <View style={[styles.formField, containerStyle]}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <View style={[styles.fieldInputContainer, !editable && styles.fieldDisabled]}>
+        {icon && <View style={styles.fieldIcon}>{icon}</View>}
+        <TextInput
+          mode="outlined"
+          value={value}
+          onChangeText={onChangeText}
+          editable={editable}
+          placeholder={placeholder}
+          keyboardType={keyboardType}
+          style={[styles.fieldInput, !editable && styles.inputDisabled]}
+          contentStyle={styles.fieldInputContent}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+        />
+      </View>
+    </View>
+  );
+}
+
+interface DropdownFieldProps {
+  value: string;
+  placeholder: string;
+  isOpen: boolean;
+  onPress: () => void;
+  onClose: () => void;
+  options: string[];
+  onSelect: (option: string) => void;
+  loading?: boolean;
+  disabled?: boolean;
+}
+
+function DropdownField({
+  value,
+  placeholder,
+  isOpen,
+  onPress,
+  onClose,
+  options,
+  onSelect,
+  loading = false,
+  disabled = false
+}: DropdownFieldProps) {
+  return (
+    <View style={styles.dropdownWrapper}>
+      <TouchableOpacity
+        style={[styles.dropdownTrigger, disabled && styles.dropdownDisabled]}
+        onPress={onPress}
+        disabled={disabled}
+      >
+        <Text style={[styles.dropdownValue, !value && styles.dropdownPlaceholder]}>
+          {loading ? 'Loading...' : (value || placeholder)}
+        </Text>
+        <Text style={[styles.dropdownArrow, isOpen && styles.dropdownArrowOpen]}>▼</Text>
+      </TouchableOpacity>
+
+      {isOpen && !disabled && (
+        <View style={styles.dropdownMenu}>
+          {loading ? (
+            <View style={styles.dropdownItem}>
+              <Text style={styles.dropdownItemText}>Loading...</Text>
+            </View>
+          ) : options.length > 0 ? (
+            options.map((option) => (
+              <TouchableOpacity
+                key={option}
+                style={[
+                  styles.dropdownItem,
+                  value === option && styles.dropdownItemSelected
+                ]}
+                onPress={() => onSelect(option)}
+              >
+                <Text style={[
+                  styles.dropdownItemText,
+                  value === option && styles.dropdownItemTextSelected
+                ]}>
+                  {option}
+                </Text>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.dropdownItem}>
+              <Text style={styles.dropdownItemText}>No options</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+interface InstallationStepProps {
+  number: number;
+  title: string;
+}
+
+function InstallationStep({ number, title }: InstallationStepProps) {
+  return (
+    <View style={styles.stepContainer}>
+      <View style={styles.stepNumber}>
+        <Text style={styles.stepNumberText}>{number}</Text>
+      </View>
+      <Text style={styles.stepTitle}>{title}</Text>
+    </View>
+  );
+}
+
+// ============================================================================
+// STYLES
+// ============================================================================
+
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 16,
-    elevation: 4,
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#075E54',
+  scrollView: {
+    flex: 1,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  input: {
-    marginBottom: 16,
+
+  // ===== HEADER =====
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    gap: 12,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
     backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  button: {
-    marginTop: 8,
+  headerContent: {
+    flex: 1,
+    paddingTop: 4,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  pageSubtitle: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+
+  // ===== PROFILE CARD =====
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 24,
+    flexDirection: 'row',
+    gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#075E54',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  avatarText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  changePhotoButton: {
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  label: {
-    fontSize: 13,
+  changePhotoText: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#444',
-    marginBottom: 5,
-    marginTop: 10,
-    paddingHorizontal: 4,
+    color: '#075E54',
   },
-  dropdown: {
-    borderWidth: 1,
-    borderColor: '#79747e', // Material 3 outline color approx
-    borderRadius: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: '#fff',
+  profileInfo: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  profileName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  profileEmail: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  badgeContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    gap: 8,
   },
-  dropdownPlaceholder: {
-    color: '#aaa',
-    fontSize: 16,
-  },
-  dropdownSelected: {
-    color: '#1d1b20',
-    fontSize: 16,
-  },
-  dropdownArrow: {
-    color: '#888',
-    fontSize: 11,
-  },
-  dropdownList: {
+  badge: {
+    backgroundColor: '#F0F9FC',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 8,
-    marginTop: -10,
-    marginBottom: 16,
+    borderColor: '#E0F2FE',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#075E54',
+  },
+
+  // ===== SECTION CARD =====
+  sectionCard: {
     backgroundColor: '#fff',
-    overflow: 'hidden',
-    zIndex: 10,
+    borderRadius: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  dropdownItem: {
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
-  dropdownItemText: {
-    fontSize: 14,
-    color: '#222',
-  },
-  separator: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 20,
+  sectionIcon: {
+    fontSize: 20,
   },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#075E54',
-    marginBottom: 4,
+    color: '#0F172A',
   },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: '#666',
+  sectionContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+
+  // ===== FORM FIELD =====
+  formField: {
     marginBottom: 16,
-    lineHeight: 18,
   },
-  // ── Embed section styles ───────────────────────────────────────────────
-  embedCard: {
-    marginBottom: 16,
-    elevation: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
-  },
-  embedTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e293b',
-  },
-  embedSubtitle: {
+  fieldLabel: {
     fontSize: 13,
-    color: '#64748b',
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  uuidRow: {
-    marginBottom: 16,
-  },
-  uuidLabel: {
-    fontSize: 12,
     fontWeight: '600',
-    color: '#475569',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#0F172A',
+    marginBottom: 8,
   },
-  uuidBox: {
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    padding: 12,
+  fieldInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+  },
+  fieldDisabled: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+  },
+  fieldIcon: {
+    marginRight: 8,
+  },
+  fieldInput: {
+    flex: 1,
+    height: 44,
+    padding: 0,
+    borderWidth: 0,
+    fontSize: 14,
+    backgroundColor: 'transparent',
+  },
+  fieldInputContent: {
+    paddingVertical: 10,
+  },
+  inputDisabled: {
+    opacity: 0.6,
+  },
+
+  // ===== DROPDOWN =====
+  dropdownContainer: {
+    marginBottom: 16,
+  },
+  dropdownWrapper: {
+    position: 'relative',
+    zIndex: 10,
+  },
+  dropdownTrigger: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    minHeight: 44,
   },
-  uuidText: {
-    fontFamily: 'monospace',
-    fontSize: 13,
-    color: '#0f172a',
-    flex: 1,
+  dropdownDisabled: {
+    backgroundColor: '#F8FAFC',
+    opacity: 0.6,
   },
-  copyHint: {
+  dropdownValue: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#0F172A',
+  },
+  dropdownPlaceholder: {
+    color: '#94A3B8',
+  },
+  dropdownArrow: {
     fontSize: 11,
-    color: '#3b82f6',
+    color: '#94A3B8',
     marginLeft: 8,
   },
-  codeBlock: {
-    backgroundColor: '#0f172a',
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 14,
+  dropdownArrowOpen: {
+    color: '#075E54',
   },
-  codeLabel: {
-    color: '#3b82f6',
-    fontSize: 11,
+  dropdownMenu: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    marginTop: 4,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    maxHeight: 300,
+    zIndex: 100,
+  },
+  dropdownItem: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  dropdownItemSelected: {
+    backgroundColor: '#F0F9FC',
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  dropdownItemTextSelected: {
+    color: '#075E54',
     fontWeight: '600',
+  },
+
+  // ===== ABOUT SECTION =====
+  aboutContainer: {
     marginBottom: 8,
   },
-  codeText: {
-    color: '#94a3b8',
-    fontFamily: 'monospace',
-    fontSize: 11,
-    lineHeight: 18,
+  characterCounter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  copyBtn: {
+  counterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  counterText: {
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  counterWarning: {
+    color: '#EF4444',
+    fontWeight: '600',
+  },
+  aboutInput: {
+    backgroundColor: '#fff',
+  },
+  aboutContent: {
+    minHeight: 120,
+    paddingVertical: 12,
+  },
+
+  // ===== BUSINESS ID CARD =====
+  businessIdCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  businessIdLeft: {
+    flex: 1,
+  },
+  businessIdLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  businessIdValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    fontFamily: 'monospace',
+  },
+  copyIconButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  copyLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#075E54',
+  },
+
+  // ===== INSTALLATION STEPS =====
+  installationSteps: {
+    marginBottom: 16,
+    gap: 12,
+  },
+  stepContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#E0F2FE',
+    borderWidth: 2,
+    borderColor: '#075E54',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#075E54',
+  },
+  stepTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+
+  // ===== CODE BLOCK =====
+  codeBlockContainer: {
+    backgroundColor: '#0F172A',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  codeBlockHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  codeBlockLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  copyCodeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#075E54',
     borderRadius: 8,
   },
+  copyCodeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  codeBlockText: {
+    padding: 14,
+    fontSize: 11,
+    fontFamily: 'monospace',
+    color: '#94A3B8',
+    lineHeight: 18,
+  },
+
+  // ===== EMBED HELPER TEXT =====
+  fieldHelper: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+  embedHelper: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 16,
+    lineHeight: 18,
+  },
+
+  // ===== COORDINATES ROW =====
+  coordinatesRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+
+  // ===== EXTRACT BUTTON =====
+  extractButton: {
+    backgroundColor: '#075E54',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  extractButtonDisabled: {
+    opacity: 0.5,
+  },
+  extractButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
+  },
+
+  // ===== EMBED ACTIONS =====
+  embedActionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  embedActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 14,
+    gap: 8,
+  },
+  previewButton: {
+    backgroundColor: '#F0F9FC',
+    borderWidth: 1.5,
+    borderColor: '#E0F2FE',
+  },
+  embedActionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#075E54',
+  },
+  docsButton: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  docsButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+
+  // ===== STICKY ACTION BAR =====
+  stickyActionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  actionBarContent: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    minHeight: 44,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  cancelButton: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  saveButton: {
+    backgroundColor: '#075E54',
+  },
+  saveButtonLoading: {
+    opacity: 0.8,
+  },
+  saveButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  editButton: {
+    backgroundColor: '#075E54',
+  },
+  editButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#fff',
+  },
 });
+
 
 export default AccountProfileView;

@@ -10,9 +10,14 @@
 
 ---
 
-## 🚀 Overview
+## 🌟 About The Project
 
-CRMLite Frontend is a comprehensive customer relationship management application designed for mobile-first interactions. It provides leads management, ticket tracking, booking systems, chat functionality, and more.
+**CRMLite** is a full-stack, multi-tenant CRM application seamlessly integrated with the Meta WhatsApp API. It automates customer interactions through dynamic WhatsApp menus, captures leads in real-time, and provides business owners with a centralized mobile dashboard to manage chats, appointments, and support tickets, significantly boosting their operational efficiency.
+
+### 💡 How it works:
+- **Business Side (This App):** Business owners use this React Native mobile app to monitor real-time WhatsApp chats via WebSockets, manage auto-captured leads, schedule appointments, and control their WhatsApp automation settings.
+- **Customer Side:** Customers simply message the business's WhatsApp number and are greeted with automated interactive menus powered by the backend—no app download required.
+- **Automation:** It offers 24/7 automation, ensuring that businesses never miss a potential lead, even outside working hours.
 
 ## 📱 Tech Stack
 
@@ -144,9 +149,9 @@ The application uses a comprehensive design system with:
 
 ### 7. Settings & Customization
 - User profile management
-- Business settings
-- Email customization
-- Preferences
+- Multi-Module WhatsApp Toggles (concurrently enable Leads, Appointments, Bookings)
+- Business & App Module settings
+- Menu & Welcome message customization
 
 ## 🚦 Getting Started
 
@@ -252,17 +257,20 @@ The application is organized into three component categories:
 1. **Global Components** (`src/components/global/`)
    - Reusable across entire application
    - Examples: Button, Input, Card, Badge, Modal
-   - Currently: 1 (to be expanded to 14+)
+   - Currently: 14+ global components
 
 2. **Shared Module Components** (`src/components/shared/`)
    - Reusable within specific feature modules
    - Organized by module: `leads/`, `tickets/`, `chat/`, etc.
-   - Currently: 0 (to be created: 40+)
+   - Currently: 40+ domain-specific components
 
 3. **Module-Specific Components**
    - Used by single screen only
    - Kept inline or in module folder
    - Example: DashboardHeader, LeadFormModal
+
+**📚 Component Catalog:** View the complete list of available components in [src/components/CATALOG.md](./src/components/CATALOG.md).
+
 
 ### State Management
 
@@ -321,52 +329,6 @@ npm test
 npm test -- --coverage  # With coverage report
 ```
 
-## 🎯 Refactoring Roadmap
-
-### Current Status
-- **Architecture Score:** 4.2/10
-- **Global Components:** 1 (needs 14+)
-- **Code Duplication:** 25% (target: <5%)
-- **Theme Usage:** 40% (target: 100%)
-
-### Phase 1: Documentation ✅ COMPLETE
-- All documentation created and committed
-- Ready for team review
-
-### Phase 2: Foundation (Week 1)
-- Extract design tokens
-- Create 5 core global components
-- Setup testing infrastructure
-
-### Phase 3: Component Library (Week 2)
-- Complete 14+ global components
-- Create 40+ shared module components
-
-### Phase 4: Screen Migration (Week 3)
-- Refactor all 15 screens
-- Replace embedded components
-- Update styling to use tokens
-
-### Phase 5: Polish (Week 4)
-- Comprehensive testing
-- Final documentation
-- Code review & cleanup
-
-**Total Timeline:** 80 hours over 4 weeks
-
-## 📊 Expected Improvements
-
-After completing refactoring:
-
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Global Components | 1 | 14+ | +1300% |
-| Code Duplication | 25% | <5% | -80% |
-| Theme Usage | 40% | 100% | +150% |
-| Dev Speed | 4/10 | 8/10 | +100% |
-| Design Consistency | 5/10 | 9/10 | +80% |
-| Average Screen Size | 400 lines | 100-150 lines | -75% |
-| Test Coverage | 10% | 60%+ | +500% |
 
 ## 🧪 Testing
 

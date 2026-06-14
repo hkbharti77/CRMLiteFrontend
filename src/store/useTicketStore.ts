@@ -79,10 +79,8 @@ interface TicketStore {
   }) => Promise<Ticket>;
   updateTicketStatus: (id: string, status: TicketStatus) => Promise<void>;
   updateTicketPriority: (id: string, priority: TicketPriority) => Promise<void>;
-  assignTicket: (id: string, agentId: string) => Promise<void>;
   addComment: (id: string, message: string, internal?: boolean) => Promise<void>;
   deleteTicket: (id: string) => Promise<void>;
-  getTicketById: (id: string) => Promise<Ticket>;
   
   // Utility actions
   setSelectedTicket: (ticket: Ticket | null) => void;
@@ -215,25 +213,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
     }
   },
 
-  // Assign ticket to agent
-  assignTicket: async (id: string, agentId: string) => {
-    try {
-      const response = await ticketApi.assign(id, agentId);
-      const updatedTicket = response.data;
-      
-      set((state) => ({
-        tickets: state.tickets.map((t) => 
-          t.id === id ? updatedTicket : t
-        ),
-        selectedTicket: state.selectedTicket?.id === id ? updatedTicket : state.selectedTicket
-      }));
-    } catch (error: any) {
-      console.error('Failed to assign ticket:', error);
-      set({ error: error.response?.data?.message || 'Failed to assign ticket' });
-      throw error;
-    }
-  },
-
   // Add comment to ticket
   addComment: async (id: string, message: string, internal = false) => {
     try {
@@ -267,27 +246,6 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
     } catch (error: any) {
       console.error('Failed to delete ticket:', error);
       set({ error: error.response?.data?.message || 'Failed to delete ticket' });
-      throw error;
-    }
-  },
-
-  // Get ticket by ID
-  getTicketById: async (id: string) => {
-    try {
-      const response = await ticketApi.getById(id);
-      const ticket = response.data;
-      
-      // Update the ticket in the list if it exists
-      set((state) => ({
-        tickets: state.tickets.map((t) => 
-          t.id === id ? ticket : t
-        )
-      }));
-      
-      return ticket;
-    } catch (error: any) {
-      console.error('Failed to get ticket:', error);
-      set({ error: error.response?.data?.message || 'Failed to get ticket' });
       throw error;
     }
   },

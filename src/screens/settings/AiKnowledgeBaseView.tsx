@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Platform } from 'react-native';
-import { Text, Card, Title, Button, ActivityIndicator, List, IconButton, Snackbar } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { Text, Button, ActivityIndicator, List, IconButton, Snackbar, Icon } from 'react-native-paper';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ragApi } from '../../services/api';
-import ConfirmDialog from '../../components/ConfirmDialog';
+import ConfirmDialog from '@components/global/Modal/ConfirmDialog';
+import { ChevronLeft } from 'lucide-react-native';
+import { colors, typography, sharedStyles } from '../../theme';
 
 interface DocumentFile {
   documentId: string;
@@ -44,7 +46,6 @@ const AiKnowledgeBaseView: React.FC<Props> = ({ onBack }) => {
   };
 
   const handleUpload = async () => {
-    // 🔑 Check token FIRST — show clear error if not logged in
     const token = await AsyncStorage.getItem('userToken');
     if (!token) {
       Alert.alert(
@@ -112,78 +113,74 @@ const AiKnowledgeBaseView: React.FC<Props> = ({ onBack }) => {
   };
 
   return (
-    <View style={{ flex: 1, paddingBottom: 40 }}>
-      <Button 
-        icon="arrow-left" 
-        mode="text" 
-        onPress={onBack} 
-        style={{ alignSelf: 'flex-start', marginBottom: 8 }}
-      >
-        Back to Settings
-      </Button>
-
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>AI Knowledge Base</Title>
-          <Text style={styles.subtitle}>
+    <View style={sharedStyles.container}>
+      <View style={sharedStyles.header}>
+        <TouchableOpacity style={sharedStyles.backButton} onPress={onBack}>
+          <ChevronLeft color={colors.text} size={24} />
+        </TouchableOpacity>
+        <View style={sharedStyles.headerContent}>
+          <Text style={typography.pageTitle}>AI Knowledge Base</Text>
+          <Text style={[typography.description, { marginTop: 4 }]}>
             Upload your business documents (PDFs, Word docs) to train your personalized support AI. The AI will use these to answer customer queries automatically.
           </Text>
+        </View>
+      </View>
 
+      <View style={[sharedStyles.tabContent, { paddingBottom: 40 }]}>
+        <View style={[sharedStyles.modernCard, { padding: 16 }]}>
           <Button 
             mode="contained" 
             icon="cloud-upload" 
             onPress={handleUpload}
             loading={uploading}
             disabled={uploading}
-            style={styles.uploadBtn}
-            buttonColor="#075E54"
+            style={sharedStyles.button}
+            buttonColor={colors.primary}
           >
             {uploading ? 'Uploading...' : 'Upload Document'}
           </Button>
-        </Card.Content>
-      </Card>
+        </View>
 
-      <Title style={styles.sectionTitle}>Trained Documents</Title>
+        <Text style={[typography.sectionTitle, { marginTop: 16, marginBottom: 16 }]}>Trained Documents</Text>
 
-      {loading && !uploading ? (
-        <ActivityIndicator color="#075E54" style={{ marginTop: 20 }} />
-      ) : documents.length === 0 ? (
-        <Card style={styles.emptyCard}>
-          <Card.Content>
-            <Text style={{ textAlign: 'center', color: '#666' }}>
+        {loading && !uploading ? (
+          <ActivityIndicator color={colors.primary} style={{ marginTop: 20 }} />
+        ) : documents.length === 0 ? (
+          <View style={[sharedStyles.modernCard, styles.emptyCard]}>
+            <Text style={{ textAlign: 'center', color: colors.muted }}>
               No documents found. Upload a file above to get started.
             </Text>
-          </Card.Content>
-        </Card>
-      ) : (
-        <ScrollView style={{ flex: 1 }}>
-          {documents.map((doc, index) => (
-            <Card key={doc.documentId || index} style={styles.docCard}>
-              <List.Item
-                title={doc.name}
-                titleStyle={{ fontSize: 14, fontWeight: '500' }}
-                description="Processed and trained"
-                descriptionStyle={{ color: '#4caf50', fontSize: 12 }}
-                left={props => <List.Icon {...props} icon="file-document-outline" color="#075E54" />}
-                right={props => (
-                  <IconButton
-                    {...props}
-                    icon="delete-outline"
-                    iconColor="#d32f2f"
-                    onPress={() => handleDeleteClick(doc.documentId)}
-                  />
-                )}
-              />
-            </Card>
-          ))}
-        </ScrollView>
-      )}
+          </View>
+        ) : (
+          <ScrollView style={{ flex: 1 }}>
+            {documents.map((doc, index) => (
+              <View key={doc.documentId || index} style={[sharedStyles.modernCard, { marginBottom: 8 }]}>
+                <List.Item
+                  title={doc.name}
+                  titleStyle={typography.cardTitle}
+                  description="Processed and trained"
+                  descriptionStyle={{ color: colors.success, fontSize: 12 }}
+                  left={props => <List.Icon {...props} icon="file-document-outline" color={colors.primary} />}
+                  right={props => (
+                    <IconButton
+                      {...props}
+                      icon="delete-outline"
+                      iconColor={colors.error}
+                      onPress={() => handleDeleteClick(doc.documentId)}
+                    />
+                  )}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        )}
+      </View>
 
       <Snackbar
         visible={snackbarVisible}
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
-        style={{ backgroundColor: '#075E54' }}
+        style={{ backgroundColor: colors.primary }}
       >
         {snackbarMsg}
       </Snackbar>
@@ -205,46 +202,15 @@ const AiKnowledgeBaseView: React.FC<Props> = ({ onBack }) => {
 };
 
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 16,
-    elevation: 2,
-    backgroundColor: '#fff',
-  },
-  docCard: {
-    marginBottom: 8,
-    elevation: 1,
-    backgroundColor: '#fff',
-  },
   emptyCard: {
+    padding: 24,
     elevation: 0,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#e2e8f0',
     borderStyle: 'dashed'
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#075E54',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#444',
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  uploadBtn: {
-    borderRadius: 8,
-    paddingVertical: 4,
   }
 });
 
 export default AiKnowledgeBaseView;
+

@@ -41,7 +41,6 @@ interface ActivityLogState {
   isLoadingTimeline: boolean;
 
   setTimeline: (contactId: string, entries: ActivityLogEntry[]) => void;
-  clearTimeline: (contactId: string) => void;
   setLoadingTimeline: (loading: boolean) => void;
 }
 
@@ -53,13 +52,6 @@ export const useActivityLogStore = create<ActivityLogState>((set) => ({
     set((state) => ({
       timelineByContact: { ...state.timelineByContact, [contactId]: entries },
     })),
-
-  clearTimeline: (contactId) =>
-    set((state) => {
-      const next = { ...state.timelineByContact };
-      delete next[contactId];
-      return { timelineByContact: next };
-    }),
 
   setLoadingTimeline: (loading) => set({ isLoadingTimeline: loading }),
 }));

@@ -77,14 +77,16 @@ const STATUS_CONFIG: Record<
 
 // ── Main Component ───────────────────────────────────────────────────────────
 
-export default function BookingScreen({ navigation }: any) {
+export default function BookingScreen({ navigation, route }: any) {
   const theme = useTheme();
   const { appointments, setAppointments, addAppointment, updateAppointment } =
     useAppointmentStore();
   const { bookings, setBookings, updateBooking } = useBookingStore();
 
   // ── State ────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = React.useState<'appointments' | 'bookings'>('appointments');
+  const isAppointmentMode = route?.name === 'Appointments';
+  const activeTab = isAppointmentMode ? 'appointments' : 'bookings';
+
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [snackMsg, setSnackMsg] = useState('');
@@ -386,26 +388,6 @@ export default function BookingScreen({ navigation }: any) {
             </Text>
             <Text variant="labelSmall" style={styles.summaryLabel}>Bookings</Text>
           </View>
-        </View>
-
-        {/* Tab switcher */}
-        <View style={styles.tabRow}>
-          <Button
-            mode={activeTab === 'appointments' ? 'contained' : 'outlined'}
-            onPress={() => setActiveTab('appointments')}
-            style={styles.tabBtn}
-            compact
-          >
-            📅 Appointments
-          </Button>
-          <Button
-            mode={activeTab === 'bookings' ? 'contained' : 'outlined'}
-            onPress={() => setActiveTab('bookings')}
-            style={styles.tabBtn}
-            compact
-          >
-            🎉 Bookings
-          </Button>
         </View>
 
         {activeTab === 'appointments' ? (

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Alert } from 'react-native';
-import { Card, Title, Text, TextInput, Button, List, Divider, IconButton, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Image, Alert, TouchableOpacity } from 'react-native';
+import { Text, TextInput, Button, List, Divider, IconButton, ActivityIndicator, Icon } from 'react-native-paper';
+import { ChevronLeft } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { whatsappApi } from '../../services/api';
+import { colors, typography, sharedStyles } from '../../theme';
 
 interface CustomItem {
   title: string;
@@ -38,9 +40,8 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
   onBack,
 }) => {
   const [activeAccordion, setActiveAccordion] = useState<string | number | undefined>('custom_list_1');
-  const [uploadingField, setUploadingField] = useState<string | null>(null); // e.g., 'm0_header' or 'm0_i1'
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-  // Parse existing data
   let subMenus: CustomSubMenu[] = [];
   try {
     subMenus = JSON.parse(customSubMenusJson);
@@ -48,7 +49,6 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
     subMenus = [];
   }
 
-  // Ensure 4 slots exist
   const ensureSlots = () => {
     const newMenus = [...subMenus];
     for (let i = 1; i <= 4; i++) {
@@ -63,7 +63,6 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
             });
         }
     }
-    // Sort by ID
     return newMenus.sort((a, b) => a.id.localeCompare(b.id));
   };
 
@@ -108,7 +107,6 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
         const asset = result.assets[0];
         setUploadingField(fieldId);
 
-        // Convert URI to Blob-like object for FormData
         const resp = await passedApi.uploadMedia(asset);
         onUpload(resp.data.url);
     } catch (error: any) {
@@ -120,32 +118,32 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <Button icon="arrow-left" mode="text" onPress={onBack} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
-        Back to Settings
-      </Button>
-
-      <Card style={styles.headerCard}>
-        <Card.Content>
-          <Title style={styles.title}>Custom Sub-Menus</Title>
-          <Text style={styles.subtitle}>
+    <View style={sharedStyles.container}>
+      <View style={sharedStyles.header}>
+        <TouchableOpacity style={sharedStyles.backButton} onPress={onBack}>
+          <ChevronLeft color={colors.text} size={24} />
+        </TouchableOpacity>
+        <View style={sharedStyles.headerContent}>
+          <Text style={typography.pageTitle}>Custom Sub-Menus</Text>
+          <Text style={[typography.description, { marginTop: 4 }]}>
             Define up to 4 custom lists that your bot can show when a customer clicks a specific button.
           </Text>
-        </Card.Content>
-      </Card>
+        </View>
+      </View>
 
-      <ScrollView style={{ flex: 1 }}>
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 100 }}>
         <List.AccordionGroup
             expandedId={activeAccordion}
             onAccordionPress={(id) => setActiveAccordion(activeAccordion === id ? undefined : id)}
         >
           {currentMenus.map((menu, mIdx) => (
-            <Card key={menu.id} style={styles.menuCard}>
+            <View key={menu.id} style={[sharedStyles.modernCard, { marginHorizontal: 16, marginTop: 16, marginBottom: 0 }]}>
               <List.Accordion
                 title={menu.triggerLabel || `Custom Menu ${mIdx + 1}`}
                 id={menu.id}
-                left={props => <List.Icon {...props} icon="format-list-bulleted" color="#075E54" />}
-                titleStyle={{ fontWeight: 'bold', color: '#075E54' }}
+                left={props => <List.Icon {...props} icon="format-list-bulleted" color={colors.primary} />}
+                titleStyle={[typography.cardTitle, { color: colors.primary }]}
+                style={{ backgroundColor: colors.card }}
               >
                 <View style={styles.accordionContent}>
                   <TextInput
@@ -153,18 +151,22 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                     value={menu.triggerLabel}
                     onChangeText={(v) => updateMenu(mIdx, { ...menu, triggerLabel: v })}
                     mode="outlined"
-                    style={styles.input}
+                    style={sharedStyles.input}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
                     placeholder="e.g. Our Schools"
                   />
-                  <Divider style={styles.divider} />
+                  <Divider style={sharedStyles.divider} />
                   
-                  <Text style={styles.sectionLabel}>WhatsApp Message Content</Text>
+                  <Text style={[typography.cardTitle, { marginBottom: 12, marginTop: 12 }]}>WhatsApp Message Content</Text>
                   <TextInput
                     label="Header Title (Shown on WhatsApp)"
                     value={menu.headerTitle}
                     onChangeText={(v) => updateMenu(mIdx, { ...menu, headerTitle: v })}
                     mode="outlined"
-                    style={styles.input}
+                    style={sharedStyles.input}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
                     placeholder="e.g. List of Branches"
                   />
                   <TextInput
@@ -174,15 +176,23 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                     mode="outlined"
                     multiline
                     numberOfLines={2}
-                    style={styles.input}
+                    style={sharedStyles.input}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
                     placeholder="Instructions for the user"
                   />
                   
-
-                  <Divider style={styles.divider} />
+                  <Divider style={sharedStyles.divider} />
                   <View style={styles.itemsHeader}>
-                    <Text style={styles.sectionLabel}>Menu Items ({menu.items.length}/10)</Text>
-                    <Button icon="plus" onPress={() => addItem(mIdx)} disabled={menu.items.length >= 10}>
+                    <Text style={typography.cardTitle}>Menu Items ({menu.items.length}/10)</Text>
+                    <Button 
+                      icon="plus" 
+                      mode="outlined"
+                      onPress={() => addItem(mIdx)} 
+                      disabled={menu.items.length >= 10}
+                      textColor={colors.primary}
+                      style={{ borderColor: colors.border }}
+                    >
                         Add Item
                     </Button>
                   </View>
@@ -195,17 +205,21 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                                 value={item.title}
                                 onChangeText={(v) => updateItem(mIdx, iIdx, 'title', v)}
                                 mode="outlined"
-                                style={[styles.input, { flex: 1, marginRight: 8 }]}
+                                style={[sharedStyles.input, { flex: 1, marginRight: 8, marginBottom: 0 }]}
+                                outlineColor={colors.border}
+                                activeOutlineColor={colors.primary}
                                 maxLength={24}
                             />
-                            <IconButton icon="delete-outline" iconColor="red" onPress={() => removeItem(mIdx, iIdx)} />
+                            <IconButton icon="delete-outline" iconColor={colors.error} onPress={() => removeItem(mIdx, iIdx)} />
                         </View>
                         <TextInput
                             label="Description (Optional)"
                             value={item.desc}
                             onChangeText={(v) => updateItem(mIdx, iIdx, 'desc', v)}
                             mode="outlined"
-                            style={styles.input}
+                            style={sharedStyles.input}
+                            outlineColor={colors.border}
+                            activeOutlineColor={colors.primary}
                             maxLength={72}
                         />
                         <TextInput
@@ -215,7 +229,9 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                             mode="outlined"
                             multiline
                             numberOfLines={3}
-                            style={styles.input}
+                            style={sharedStyles.input}
+                            outlineColor={colors.border}
+                            activeOutlineColor={colors.primary}
                             placeholder="What should the bot say back?"
                         />
 
@@ -223,7 +239,7 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                             {item.imageUrl ? (
                                 <View style={styles.previewContainer}>
                                     <Image source={{ uri: item.imageUrl }} style={styles.previewImageSmall} />
-                                    <IconButton icon="close-circle" iconColor="red" size={16} style={styles.removeImageIconSmall} onPress={() => updateItem(mIdx, iIdx, 'imageUrl', '')} />
+                                    <IconButton icon="close-circle" iconColor={colors.error} size={16} style={styles.removeImageIconSmall} onPress={() => updateItem(mIdx, iIdx, 'imageUrl', '')} />
                                 </View>
                             ) : (
                                 <Button 
@@ -233,6 +249,7 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                                     loading={uploadingField === `m${mIdx}_i${iIdx}`}
                                     disabled={!!uploadingField}
                                     labelStyle={{ fontSize: 12 }}
+                                    textColor={colors.primary}
                                 >
                                     Add Item Image
                                 </Button>
@@ -242,7 +259,7 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
                   ))}
                 </View>
               </List.Accordion>
-            </Card>
+            </View>
           ))}
         </List.AccordionGroup>
       </ScrollView>
@@ -253,9 +270,9 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
             onPress={handleSave}
             loading={loading}
             disabled={loading}
-            buttonColor="#075E54"
+            buttonColor={colors.primary}
             icon="check"
-            style={styles.saveButton}
+            style={[sharedStyles.button, { width: '100%' }]}
         >
             Save All Sub-Menus
         </Button>
@@ -265,105 +282,66 @@ const CustomSubMenusView: React.FC<CustomSubMenusViewProps> = ({
 };
 
 const styles = StyleSheet.create({
-  headerCard: {
-    margin: 16,
-    backgroundColor: '#e8f5e9',
-  },
-  menuCard: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#075E54',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
   accordionContent: {
-    padding: 12,
-    backgroundColor: '#fff',
-  },
-  input: {
-    marginBottom: 12,
-    backgroundColor: '#fff',
-  },
-  divider: {
-    marginVertical: 12,
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#444',
-    marginBottom: 8,
+    padding: 16,
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   itemsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginVertical: 12,
   },
   itemBox: {
-    backgroundColor: '#f9f9f9',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.background,
+    padding: 16,
+    borderRadius: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: colors.border,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 12,
   },
   footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
     elevation: 8,
-  },
-  saveButton: {
-    paddingVertical: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   imageSection: {
-    marginBottom: 16,
-  },
-  imageLabel: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 4,
+    marginTop: 8,
   },
   previewContainer: {
     position: 'relative',
     alignSelf: 'flex-start',
   },
-  previewImage: {
-    width: '100%',
-    height: 150,
-    borderRadius: 8,
-    backgroundColor: '#eee',
-  },
   previewImageSmall: {
     width: 100,
     height: 100,
     borderRadius: 8,
-    backgroundColor: '#eee',
-  },
-  removeImageIcon: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#fff',
+    backgroundColor: colors.border,
   },
   removeImageIconSmall: {
     position: 'absolute',
     top: -8,
     right: -8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
   }
 });
 
 export default CustomSubMenusView;
+

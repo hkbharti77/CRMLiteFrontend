@@ -1,7 +1,10 @@
 import React from 'react';
-import { Portal, Dialog, Button, Text, useTheme } from 'react-native-paper';
+import { StyleSheet } from 'react-native';
+import { Portal, Dialog, Text, useTheme } from 'react-native-paper';
+import { tokens } from '@theme/tokens';
+import { AppButton } from '../Button/AppButton';
 
-interface ConfirmDialogProps {
+export interface ConfirmDialogProps {
   visible: boolean;
   title: string;
   message: string;
@@ -26,19 +29,21 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   
   return (
     <Portal>
-      <Dialog visible={visible} onDismiss={onCancel} style={{ borderRadius: 12, backgroundColor: '#fff' }}>
+      <Dialog visible={visible} onDismiss={onCancel} style={{ borderRadius: tokens.borderRadius.lg, backgroundColor: theme.colors.surface }}>
         <Dialog.Title style={{ fontWeight: 'bold' }}>{title}</Dialog.Title>
         <Dialog.Content>
           <Text variant="bodyMedium">{message}</Text>
         </Dialog.Content>
         <Dialog.Actions>
-          <Button onPress={onCancel}>{cancelLabel}</Button>
-          <Button 
-            onPress={onConfirm} 
-            textColor={destructive ? theme.colors.error : theme.colors.primary}
+          <AppButton variant="text" onPress={onCancel}>
+            {cancelLabel}
+          </AppButton>
+          <AppButton 
+            variant={destructive ? 'destructive' : 'primary'}
+            onPress={onConfirm}
           >
             {confirmLabel}
-          </Button>
+          </AppButton>
         </Dialog.Actions>
       </Dialog>
     </Portal>

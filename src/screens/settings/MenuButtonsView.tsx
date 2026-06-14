@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Card, Title, Text, TextInput, Button, SegmentedButtons, ActivityIndicator, Switch, Menu, Divider } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Text, TextInput, Button, SegmentedButtons, ActivityIndicator, Switch, Menu, Divider, Icon } from 'react-native-paper';
+import { ChevronLeft } from 'lucide-react-native';
 import { flowConfigApi } from '../../services/api';
+import { colors, typography, sharedStyles } from '../../theme';
 
 interface MenuButtonsViewProps {
-  menuItems: { title: string; desc: string; isCatalog?: boolean }[];
-  setMenuItems: (items: { title: string; desc: string; isCatalog?: boolean }[]) => void;
+  menuItems: { title: string; desc: string; isCatalog?: boolean; customListId?: string }[];
+  setMenuItems: (items: { title: string; desc: string; isCatalog?: boolean; customListId?: string }[]) => void;
   menuType: string;
   setMenuType: (type: string) => void;
   welcomeMessage: string;
@@ -108,10 +110,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
     ABOUT: '📂 About & Contact'
   });
 
-  // Fetch the fixed trigger labels from backend based on tenant's sub-category
   useEffect(() => {
     setLoadingLabels(true);
-    // 1. Fetch Trigger Labels
     flowConfigApi.getTriggerLabels()
       .then((res: any) => {
         setTriggerButtonLabel(res.data?.triggerButtonLabel || '📅 Book Now');
@@ -120,7 +120,6 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
       .catch(() => {})
       .finally(() => setLoadingLabels(false));
 
-    // 2. Fetch Feature Labels (Trust, SOS, etc)
     const { whatsappApi } = require('../../services/api');
     whatsappApi.getFeatureLabels()
       .then((res: any) => {
@@ -129,10 +128,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
       .catch(() => {});
   }, [tenantSubCategory]);
 
-  // Decide the fixed trigger label to display based on current menu type
   const fixedTriggerLabel = menuType === 'button' ? triggerButtonLabel : triggerListLabel;
 
-  // Placeholder examples for editable slots (index 1+)
   const resolvePlaceholders = (): string[] => {
     const cat = (tenantCategory || '').toLowerCase();
     if (cat.includes('health') || cat.includes('care')) {
@@ -149,32 +146,31 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
 
   const placeholders = resolvePlaceholders();
 
-  // ── DYNAMIC SLOT CALCULATION ──────────────────────────────────────────
-  // Calculate which features are enabled to show them as "Occupied"
   const reservedFeatures: string[] = [];
   if (showTrustButton && reviewUrl) reservedFeatures.push(featureLabels.TRUST);
   if (showOfferButton && offerText) reservedFeatures.push(featureLabels.OFFER);
   if (showAboutContact) reservedFeatures.push(featureLabels.ABOUT);
   if (showSosButton) reservedFeatures.push(featureLabels.SOS);
 
-  // Total visible slots is 3 for buttons, 10 for list.
-  // We always have 1 fixed trigger at the top.
-  // In button mode, the 3rd slot is ALWAYS reserved for a feature/about.
-  // In list mode, SOS, About, Trust, and Offer occupy slots at the bottom.
   const reservedCount = menuType === 'button' ? 1 : reservedFeatures.length;
   const maxManualSlots = (menuType === 'button' ? 1 : 9) - (menuType === 'list' ? reservedCount : 0);
 
   return (
-    <View style={{ flex: 1, paddingBottom: 40 }}>
-      <Button icon="arrow-left" mode="text" onPress={onBack} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
-        Back to Settings
-      </Button>
+    <View style={sharedStyles.container}>
+      <View style={sharedStyles.header}>
+        <TouchableOpacity style={sharedStyles.backButton} onPress={onBack}>
+          <ChevronLeft color={colors.text} size={24} />
+        </TouchableOpacity>
+        <View style={sharedStyles.headerContent}>
+          <Text style={typography.pageTitle}>Menu Configuration</Text>
+        </View>
+      </View>
 
-      {/* ─── SECTION 1: CUSTOM GREETINGS ────────────────────────────────────── */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Automated Greetings</Title>
-          <Text style={styles.subtitle}>These messages are sent right before your menu buttons appear.</Text>
+      <ScrollView style={sharedStyles.tabContent} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* ─── SECTION 1: CUSTOM GREETINGS ────────────────────────────────────── */}
+        <View style={[sharedStyles.modernCard, { padding: 20 }]}>
+          <Text style={[typography.sectionTitle, { marginBottom: 4 }]}>Automated Greetings</Text>
+          <Text style={typography.description}>These messages are sent right before your menu buttons appear.</Text>
           
           <View style={styles.greetingContainer}>
              <TextInput
@@ -182,7 +178,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                value={welcomeMessage}
                onChangeText={setWelcomeMessage}
                mode="outlined"
-               style={styles.greetingInput}
+               style={sharedStyles.input}
+               outlineColor={colors.border}
+               activeOutlineColor={colors.primary}
                multiline
                numberOfLines={4}
                placeholder="Sent to NEW leads only"
@@ -193,7 +191,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                value={returningMessage}
                onChangeText={setReturningMessage}
                mode="outlined"
-               style={styles.greetingInput}
+               style={sharedStyles.input}
+               outlineColor={colors.border}
+               activeOutlineColor={colors.primary}
                multiline
                numberOfLines={3}
                placeholder="Sent to repeat customers"
@@ -211,7 +211,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               <Button
                 mode="outlined"
                 onPress={() => setIsEditingGreetings(false)}
-                style={[styles.button, { flex: 1 }]}
+                style={[sharedStyles.button, { flex: 1 }]}
+                textColor={colors.text}
                 disabled={loading}
               >
                 Cancel
@@ -224,8 +225,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                 }}
                 loading={loading}
                 disabled={loading}
-                style={[styles.button, { flex: 1 }]}
-                buttonColor="#075E54"
+                style={[sharedStyles.button, { flex: 1 }]}
+                buttonColor={colors.primary}
                 icon="check"
               >
                 Save Greetings
@@ -235,20 +236,18 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
             <Button
               mode="contained"
               onPress={() => setIsEditingGreetings(true)}
-              style={styles.button}
-              buttonColor="#075E54"
+              style={sharedStyles.button}
+              buttonColor={colors.primary}
               icon="pencil"
             >
               Edit Greetings
             </Button>
           )}
-        </Card.Content>
-      </Card>
+        </View>
 
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Menu Buttons Configuration</Title>
-          <Text style={styles.subtitle}>
+        <View style={[sharedStyles.modernCard, { padding: 20 }]}>
+          <Text style={[typography.sectionTitle, { marginBottom: 4 }]}>Menu Buttons Configuration</Text>
+          <Text style={typography.description}>
             Create an interactive menu for your customers. The first slot is automatically set as your booking/enquiry trigger.
           </Text>
 
@@ -260,7 +259,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
           ) : null}
 
           {/* Menu Type Selector */}
-          <Text style={[styles.subtitle, { marginTop: 8, marginBottom: 8 }]}>Choose Formatting Style</Text>
+          <Text style={[typography.label, { marginTop: 8, marginBottom: 8 }]}>Choose Formatting Style</Text>
           <SegmentedButtons
             value={menuType}
             onValueChange={setMenuType}
@@ -277,29 +276,29 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
             alignItems: 'center', 
             justifyContent: 'space-between',
             padding: 12,
-            backgroundColor: '#e3f2fd',
+            backgroundColor: colors.surface,
             borderRadius: 8,
-            marginBottom: 10
+            marginBottom: 10,
+            borderWidth: 1,
+            borderColor: colors.border
           }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: 'bold', color: '#1976d2' }}>📋 Include "About & Contact" button</Text>
-              <Text style={{ fontSize: 12, color: '#666' }}>Shows your business info and maps location.</Text>
+              <Text style={{ fontWeight: 'bold', color: colors.primary }}>📋 Include "About & Contact" button</Text>
+              <Text style={{ fontSize: 12, color: colors.muted }}>Shows your business info and maps location.</Text>
             </View>
             <Switch 
               value={showAboutContact} 
               onValueChange={setShowAboutContact}
-              color="#075E54"
+              color={colors.primary}
               disabled={!isEditingButtons}
             />
           </View>
-        </Card.Content>
-      </Card>
+        </View>
 
-      {/* ─── SECTION 1.5: DYNAMIC FEATURE DATA ──────────────────────────────── */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Dynamic Feature Buttons</Title>
-          <Text style={styles.subtitle}>
+        {/* ─── SECTION 1.5: DYNAMIC FEATURE DATA ──────────────────────────────── */}
+        <View style={[sharedStyles.modernCard, { padding: 20 }]}>
+          <Text style={[typography.sectionTitle, { marginBottom: 4 }]}>Dynamic Feature Buttons</Text>
+          <Text style={typography.description}>
             Manage the data for your special buttons. One of these can be set as the 3rd button in the main menu.
           </Text>
 
@@ -309,7 +308,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                <Switch 
                  value={showTrustButton} 
                  onValueChange={setShowTrustButton}
-                 color="#075E54"
+                 color={colors.primary}
                  disabled={!isEditingFeatures}
                />
             </View>
@@ -318,7 +317,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               value={reviewUrl}
               onChangeText={setReviewUrl}
               mode="outlined"
-              style={styles.featureInput}
+              style={sharedStyles.input}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
               placeholder="e.g. Google Maps Review URL"
               editable={isEditingFeatures && showTrustButton}
               left={<TextInput.Icon icon="star-outline" />}
@@ -329,7 +330,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                <Switch 
                  value={showOfferButton} 
                  onValueChange={setShowOfferButton}
-                 color="#075E54"
+                 color={colors.primary}
                  disabled={!isEditingFeatures}
                />
             </View>
@@ -338,7 +339,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               value={offerText}
               onChangeText={setOfferText}
               mode="outlined"
-              style={styles.featureInput}
+              style={sharedStyles.input}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
               multiline
               numberOfLines={2}
               placeholder="e.g. Use code SAVE20 for 20% off!"
@@ -351,7 +354,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                <Switch 
                  value={showSosButton} 
                  onValueChange={setShowSosButton}
-                 color="#075E54"
+                 color={colors.primary}
                  disabled={!isEditingFeatures}
                />
             </View>
@@ -360,14 +363,16 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               value={sosNote}
               onChangeText={setSosNote}
               mode="outlined"
-              style={styles.featureInput}
+              style={sharedStyles.input}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
               placeholder="e.g. Call us at +91 98765 43210"
               editable={isEditingFeatures && showSosButton}
               left={<TextInput.Icon icon="account-supervisor-circle" />}
             />
           </View>
 
-          <Text style={[styles.sectionLabel, { marginTop: 10 }]}>Main Menu: Choose 3rd Button</Text>
+          <Text style={[typography.label, { marginTop: 10 }]}>Main Menu: Choose 3rd Button</Text>
           <SegmentedButtons
             value={thirdButtonType}
             onValueChange={setThirdButtonType}
@@ -385,7 +390,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               <Button
                 mode="outlined"
                 onPress={() => setIsEditingFeatures(false)}
-                style={[styles.button, { flex: 1 }]}
+                style={[sharedStyles.button, { flex: 1 }]}
+                textColor={colors.text}
                 disabled={loading}
               >
                 Cancel
@@ -393,13 +399,13 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               <Button
                 mode="contained"
                 onPress={async () => {
-                  await handleSaveGreetings(); // Reusing the greeting save logic which saves full config
+                  await handleSaveGreetings();
                   setIsEditingFeatures(false);
                 }}
                 loading={loading}
                 disabled={loading}
-                style={[styles.button, { flex: 1 }]}
-                buttonColor="#075E54"
+                style={[sharedStyles.button, { flex: 1 }]}
+                buttonColor={colors.primary}
                 icon="check"
               >
                 Save Features
@@ -409,21 +415,19 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
             <Button
               mode="contained"
               onPress={() => setIsEditingFeatures(true)}
-              style={styles.button}
-              buttonColor="#075E54"
+              style={sharedStyles.button}
+              buttonColor={colors.primary}
               icon="pencil"
             >
               Edit Dynamic Content
             </Button>
           )}
-        </Card.Content>
-      </Card>
+        </View>
 
-      {/* ─── SECTION 2: MENU BUTTONS ────────────────────────────────────────── */}
-      <Card style={styles.card}>
-        <Card.Content>
-          <Title style={styles.title}>Interactive Button Layout</Title>
-          <Text style={styles.subtitle}>Configure the quick buttons or list items that customers see.</Text>
+        {/* ─── SECTION 2: MENU BUTTONS ────────────────────────────────────────── */}
+        <View style={[sharedStyles.modernCard, { padding: 20 }]}>
+          <Text style={[typography.sectionTitle, { marginBottom: 4 }]}>Interactive Button Layout</Text>
+          <Text style={typography.description}>Configure the quick buttons or list items that customers see.</Text>
 
           <View style={styles.fixedSlot}>
             <View style={styles.fixedSlotHeader}>
@@ -431,7 +435,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               <Text style={styles.fixedSlotNote}>Auto-set · Cannot be changed</Text>
             </View>
             {loadingLabels ? (
-              <ActivityIndicator size="small" color="#075E54" style={{ marginVertical: 8 }} />
+              <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
             ) : (
               <TextInput
                 label="Trigger Button (Fixed)"
@@ -439,9 +443,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                 editable={false}
                 mode="outlined"
                 style={styles.fixedInput}
-                outlineColor="#075E54"
-                activeOutlineColor="#075E54"
-                left={<TextInput.Icon icon="lock" color="#075E54" />}
+                outlineColor={colors.primary}
+                activeOutlineColor={colors.primary}
+                left={<TextInput.Icon icon="lock" color={colors.primary} />}
               />
             )}
             <Text style={styles.fixedHint}>
@@ -450,7 +454,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
           </View>
 
           {/* ─── SLOTS 1+: EDITABLE MENU OPTIONS ─────────────────────────────── */}
-          <Text style={styles.sectionLabel}>Customizable Options</Text>
+          <Text style={[typography.label, { marginBottom: 10 }]}>Customizable Options</Text>
 
           {menuItems.map((item, index) => {
             if (index >= maxManualSlots) return null; 
@@ -459,7 +463,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               <View key={index} style={[styles.editableSlot, item.isCatalog && styles.catalogSlotHighlight]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                   <Text style={styles.optionLabel}>Manual Option {editIndex + 2}</Text>
-                  {item.isCatalog && <Text style={{ color: '#1976d2', fontWeight: 'bold', fontSize: 10 }}>🛍️ Catalog Link</Text>}
+                  {item.isCatalog && <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 10 }}>🛍️ Catalog Link</Text>}
                 </View>
 
                 <TextInput
@@ -471,7 +475,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                     setMenuItems(newItems);
                   }}
                   mode="outlined"
-                  style={{ backgroundColor: '#fff', marginBottom: menuType === 'list' ? 8 : 4, height: 40 }}
+                  style={[sharedStyles.input, { marginBottom: menuType === 'list' ? 8 : 4, height: 40 }]}
+                  outlineColor={colors.border}
+                  activeOutlineColor={colors.primary}
                   maxLength={24}
                   editable={isEditingButtons}
                 />
@@ -486,7 +492,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                       setMenuItems(newItems);
                     }}
                     mode="outlined"
-                    style={{ backgroundColor: '#fff', height: 40, marginBottom: 8 }}
+                    style={[sharedStyles.input, { height: 40, marginBottom: 8 }]}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
                     maxLength={72}
                     editable={isEditingButtons}
                   />
@@ -509,9 +517,10 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                       }}
                       disabled={!isEditingButtons}
                       icon={item.isCatalog ? "store-check" : "link-variant"}
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, borderColor: colors.border }}
                       labelStyle={{ fontSize: 10 }}
-                      buttonColor={item.isCatalog ? "#1976d2" : undefined}
+                      buttonColor={item.isCatalog ? colors.primary : undefined}
+                      textColor={item.isCatalog ? undefined : colors.primary}
                   >
                       {item.isCatalog ? "Catalog" : "Link Catalog"}
                   </Button>
@@ -527,9 +536,10 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                           onPress={() => setMenuVisible(editIndex)}
                           disabled={!isEditingButtons}
                           icon="format-list-bulleted"
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', borderColor: colors.border }}
                           labelStyle={{ fontSize: 10 }}
-                          buttonColor={item.customListId ? "#673ab7" : undefined}
+                          buttonColor={item.customListId ? colors.accent : undefined}
+                          textColor={item.customListId ? undefined : colors.text}
                         >
                           {item.customListId ? (item.customListId.startsWith('custom_list') ? "Linked List" : "Quick Response") : "Link Action"}
                         </Button>
@@ -543,7 +553,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                                 if (idx !== editIndex) return it;
                                 return {
                                   ...it,
-                                  isCatalog: false, // Mutual exclusion
+                                  isCatalog: false,
                                   customListId: `custom_list_${num}`
                                 };
                             });
@@ -563,7 +573,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                                 if (idx !== editIndex) return it;
                                 return {
                                   ...it,
-                                  isCatalog: false, // Mutual exclusion
+                                  isCatalog: false,
                                   customListId: `custom_msg_${num}`
                                 };
                             });
@@ -614,19 +624,20 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
           )}
 
           {reservedCount + maxManualSlots < 9 && menuType === 'list' && (
-             <View style={{ padding: 10, backgroundColor: '#f5f5f5', borderRadius: 8, marginTop: 10 }}>
-                <Text style={{ fontSize: 11, color: '#999', textAlign: 'center' }}>
+             <View style={{ padding: 10, backgroundColor: colors.background, borderRadius: 8, marginTop: 10 }}>
+                <Text style={{ fontSize: 11, color: colors.muted, textAlign: 'center' }}>
                   Additional slots are hidden to respect WhatsApp's 10-item limit.
                 </Text>
              </View>
           )}
 
           {isEditingButtons ? (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
               <Button
                 mode="outlined"
                 onPress={() => setIsEditingButtons(false)}
-                style={[styles.button, { flex: 1 }]}
+                style={[sharedStyles.button, { flex: 1 }]}
+                textColor={colors.text}
                 disabled={loading}
               >
                 Cancel
@@ -639,8 +650,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
                 }}
                 loading={loading}
                 disabled={loading}
-                style={[styles.button, { flex: 1 }]}
-                buttonColor="#075E54"
+                style={[sharedStyles.button, { flex: 1 }]}
+                buttonColor={colors.primary}
                 icon="check"
               >
                 Save Layout
@@ -650,41 +661,23 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
             <Button
               mode="contained"
               onPress={() => setIsEditingButtons(true)}
-              style={styles.button}
-              buttonColor="#075E54"
+              style={[sharedStyles.button, { marginTop: 16 }]}
+              buttonColor={colors.primary}
               icon="pencil"
             >
               Edit Menu Layout
             </Button>
           )}
-        </Card.Content>
-      </Card>
+        </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    marginBottom: 16,
-    elevation: 4,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#075E54',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 16,
-  },
-  button: {
-    marginTop: 12,
-    paddingVertical: 4,
-  },
   categoryBadge: {
     backgroundColor: '#e8f5e9',
-    borderRadius: 20,
+    borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 6,
     alignSelf: 'flex-start',
@@ -695,12 +688,11 @@ const styles = StyleSheet.create({
     color: '#2e7d32',
     fontWeight: '600',
   },
-  // ── Fixed Trigger Slot ──────────────────────────────────────────────────
   fixedSlot: {
-    backgroundColor: '#f0f8f4',
+    backgroundColor: colors.surface,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#075E54',
+    borderColor: colors.primary,
     padding: 12,
     marginBottom: 20,
   },
@@ -713,58 +705,48 @@ const styles = StyleSheet.create({
   fixedSlotBadge: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#075E54',
+    color: colors.primary,
   },
   fixedSlotNote: {
     fontSize: 11,
-    color: '#999',
+    color: colors.muted,
     fontStyle: 'italic',
   },
   fixedInput: {
-    backgroundColor: '#e8f5e9',
+    backgroundColor: colors.background,
     height: 48,
   },
   fixedHint: {
     fontSize: 12,
-    color: '#555',
+    color: colors.muted,
     marginTop: 6,
     fontStyle: 'italic',
-  },
-  // ── Editable Slots ──────────────────────────────────────────────────────
-  sectionLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#444',
-    marginBottom: 10,
   },
   editableSlot: {
     marginBottom: 14,
     padding: 10,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: colors.background,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   optionLabel: {
     fontWeight: 'bold',
-    color: '#1976d2',
+    color: colors.primary,
     marginBottom: 8,
     fontSize: 13,
   },
   catalogSlotHighlight: {
-    borderColor: '#1976d2',
-    borderWidth: 1,
-    backgroundColor: '#e3f2fd',
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
   },
   greetingContainer: {
      marginBottom: 20,
      padding: 10,
-     backgroundColor: '#fffbe6',
+     backgroundColor: colors.surface,
      borderRadius: 8,
      borderWidth: 1,
      borderColor: '#ffe58f',
-  },
-  greetingInput: {
-     backgroundColor: '#fff',
-     marginBottom: 10,
   },
   hintBox: {
     marginTop: 10,
@@ -788,17 +770,13 @@ const styles = StyleSheet.create({
   hintTag: {
     fontWeight: 'bold',
     fontFamily: 'monospace',
-    color: '#075E54',
+    color: colors.primary,
   },
   featureContainer: {
     marginBottom: 10,
     padding: 8,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
     borderRadius: 8,
-  },
-  featureInput: {
-    marginBottom: 12,
-    backgroundColor: '#fff',
   },
   featureHeader: {
     flexDirection: 'row',
@@ -808,7 +786,7 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontWeight: 'bold',
-    color: '#075E54',
+    color: colors.primary,
   },
   occupiedSlot: {
     marginBottom: 10,
@@ -831,7 +809,7 @@ const styles = StyleSheet.create({
   },
   occupiedText: {
     fontSize: 13,
-    color: '#555',
+    color: colors.muted,
     fontStyle: 'italic',
   },
 });

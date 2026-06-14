@@ -213,6 +213,8 @@ export const userApi = {
     latitude?: number;
     longitude?: number;
     logoUrl?: string;
+    forceShowBooking?: boolean | null;
+    forceShowLeads?: boolean | null;
   }) => api.put('/users/me', data),
   // Security Suite
   getSecurityDashboard: () => api.get('/users/me/security-dashboard'),
@@ -361,7 +363,6 @@ export const ragApi = {
 export const ticketApi = {
   // Tickets
   getAll: (page = 0, size = 20) => api.get(`/tickets?page=${page}&size=${size}`),
-  getById: (id: string) => api.get(`/tickets/${id}`),
   search: (q: string, page = 0) => api.get(`/tickets/search?q=${encodeURIComponent(q)}&page=${page}`),
   create: (data: {
     subject: string;
@@ -378,8 +379,6 @@ export const ticketApi = {
     api.patch(`/tickets/${id}/status?status=${status}`),
   updatePriority: (id: string, priority: string) =>
     api.patch(`/tickets/${id}/priority?priority=${priority}`),
-  assign: (id: string, agentId: string) =>
-    api.patch(`/tickets/${id}/assign?agentId=${agentId}`),
   addComment: (id: string, message: string, internal = false) =>
     api.post(`/tickets/${id}/comments`, { message, internal }),
   delete: (id: string) => api.delete(`/tickets/${id}`),

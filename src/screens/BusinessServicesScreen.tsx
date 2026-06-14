@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, Image, Alert, Platform } from 'react-native';
+import { View, StyleSheet, FlatList, Image, Alert, Platform, TouchableOpacity } from 'react-native';
 import { Appbar, FAB, Card, Title, Paragraph, Button, Portal, Modal, TextInput, ActivityIndicator, IconButton, Text, useTheme } from 'react-native-paper';
+import { ChevronLeft } from 'lucide-react-native';
+import { colors, typography, sharedStyles } from '../theme';
 import { businessServiceApi } from '../services/api';
 import * as DocumentPicker from 'expo-document-picker';
 import { SERVER_HOST } from '../services/api';
 
-export default function BusinessServicesScreen() {
+export default function BusinessServicesScreen({ onBack }: { onBack?: () => void }) {
   const theme = useTheme();
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -117,23 +119,42 @@ export default function BusinessServicesScreen() {
   };
 
   const renderItem = ({ item }: { item: any }) => (
-    <Card style={styles.card}>
-      {item.imageUrl && (
-        <Card.Cover source={{ uri: item.imageUrl }} />
+    <View style={sharedStyles.modernCard}>
+      {item.imageUrl ? (
+        <Image source={{ uri: item.imageUrl }} style={{ width: '100%', height: 200 }} />
+      ) : (
+        <View style={{ width: '100%', height: 150, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' }}>
+          <Text style={{ color: '#94A3B8' }}>No Image Provided</Text>
+        </View>
       )}
-      <Card.Content style={styles.cardContent}>
-        <Title>{item.name}</Title>
-        {item.description ? <Paragraph numberOfLines={3}>{item.description}</Paragraph> : null}
-      </Card.Content>
-      <Card.Actions>
-        <Button onPress={() => openModal(item)}>Edit</Button>
-        <Button color="red" onPress={() => handleDelete(item.id)}>Delete</Button>
-      </Card.Actions>
-    </Card>
+      <View style={{ padding: 20 }}>
+        <Text style={typography.sectionTitle}>{item.name}</Text>
+        {item.description ? <Text style={[typography.description, { marginTop: 4 }]} numberOfLines={3}>{item.description}</Text> : null}
+        
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, gap: 8 }}>
+          <Button mode="outlined" textColor={colors.primary} style={{ borderColor: '#E2E8F0', borderRadius: 20 }} onPress={() => openModal(item)}>Edit</Button>
+          <Button mode="contained" buttonColor="#EF4444" style={{ borderRadius: 20 }} onPress={() => handleDelete(item.id)}>Delete</Button>
+        </View>
+      </View>
+    </View>
   );
 
   return (
-    <View style={styles.container}>
+    <View style={sharedStyles.container}>
+      {onBack && (
+        <View style={sharedStyles.header}>
+          <TouchableOpacity style={sharedStyles.backButton} onPress={onBack}>
+            <ChevronLeft color={colors.text} size={24} />
+          </TouchableOpacity>
+          <View style={sharedStyles.headerContent}>
+            <Text style={typography.pageTitle}>Products & Services</Text>
+            <Text style={[typography.description, { marginTop: 4 }]}>
+              Manage your product catalog
+            </Text>
+          </View>
+        </View>
+      )}
+
       {loading ? (
         <ActivityIndicator style={styles.loader} size="large" />
       ) : services.length === 0 ? (
@@ -145,7 +166,8 @@ export default function BusinessServicesScreen() {
           data={services}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          showsVerticalScrollIndicator={false}
         />
       )}
 

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Alert } from 'react-native';
-import { Card, Title, Text, TextInput, Button, List, Divider, IconButton, ActivityIndicator } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, Image, Alert, TouchableOpacity } from 'react-native';
+import { Text, TextInput, Button, List, Divider, IconButton, Icon } from 'react-native-paper';
+import { ChevronLeft } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { whatsappApi } from '../../services/api';
+import { colors, typography, sharedStyles } from '../../theme';
 
 interface CustomQuickMessage {
   id: string;
@@ -27,7 +29,6 @@ const CustomMessagesView: React.FC<CustomMessagesViewProps> = ({
   const [activeAccordion, setActiveAccordion] = useState<string | number | undefined>('msg_1');
   const [uploadingField, setUploadingField] = useState<string | null>(null);
 
-  // Parse existing data or initialize 6 slots
   let messages: CustomQuickMessage[] = [];
   try {
     if (customMessagesJson) {
@@ -37,12 +38,11 @@ const CustomMessagesView: React.FC<CustomMessagesViewProps> = ({
     console.error('Failed to parse customMessagesJson', e);
   }
 
-  // Ensure exactly 6 slots
   const initialMessages: CustomQuickMessage[] = Array.from({ length: 6 }, (_, i) => ({
     id: `custom_msg_${i + 1}`,
-    name: (messages[i]?.name) || `Quick Response ${i + 1}`,
-    response: (messages[i]?.response) || '',
-    imageUrl: (messages[i]?.imageUrl) || '',
+    name: messages[i]?.name || `Quick Response ${i + 1}`,
+    response: messages[i]?.response || '',
+    imageUrl: messages[i]?.imageUrl || '',
   }));
 
   const [currentMessages, setCurrentMessages] = useState<CustomQuickMessage[]>(initialMessages);
@@ -56,29 +56,24 @@ const CustomMessagesView: React.FC<CustomMessagesViewProps> = ({
   const handlePicker = async (index: number) => {
     const apiToUse = passedApi || whatsappApi;
     if (!apiToUse) {
-        console.error('whatsappApi is undefined in CustomMessagesView');
-        Alert.alert('Error', 'API not initialized. Please try again.');
-        return;
+      Alert.alert('Error', 'API not initialized. Please try again.');
+      return;
     }
-
     try {
-        const result = await DocumentPicker.getDocumentAsync({
-            type: 'image/*',
-            copyToCacheDirectory: true
-        });
-
-        if (result.canceled) return;
-
-        const asset = result.assets[0];
-        setUploadingField(`msg_${index}`);
-
-        const resp = await apiToUse.uploadMedia(asset);
-        updateMessage(index, 'imageUrl', resp.data.url);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'image/*',
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled) return;
+      const asset = result.assets[0];
+      setUploadingField(`msg_${index}`);
+      const resp = await apiToUse.uploadMedia(asset);
+      updateMessage(index, 'imageUrl', resp.data.url);
     } catch (error: any) {
-        console.error('Upload error:', error);
-        Alert.alert('Upload Failed', error.response?.data || 'Could not upload image.');
+      console.error('Upload error:', error);
+      Alert.alert('Upload Failed', error.response?.data || 'Could not upload image.');
     } finally {
-        setUploadingField(null);
+      setUploadingField(null);
     }
   };
 
@@ -87,160 +82,156 @@ const CustomMessagesView: React.FC<CustomMessagesViewProps> = ({
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Card style={styles.headerCard}>
-        <View style={styles.header}>
-          <IconButton icon="arrow-left" onPress={onBack} />
-          <Title>Custom Quick Responses (6 Slots)</Title>
+    <View style={sharedStyles.container}>
+      {/* Header */}
+      <View style={sharedStyles.header}>
+        <TouchableOpacity style={sharedStyles.backButton} onPress={onBack}>
+          <ChevronLeft color={colors.text} size={24} />
+        </TouchableOpacity>
+        <View style={sharedStyles.headerContent}>
+          <Text style={typography.pageTitle}>Quick Responses</Text>
+          <Text style={[typography.description, { marginTop: 4 }]}>
+            Define up to 6 direct text responses. Link buttons to these messages in the button editor.
+          </Text>
         </View>
-        <Text style={styles.subtitle}>
-          Define up to 6 direct text responses. Use the button editor to link a button directly to these messages.
-        </Text>
-      </Card>
+      </View>
 
-      <List.AccordionGroup
-        expandedId={activeAccordion}
-        onAccordionPress={(id) => setActiveAccordion(id)}
+      <ScrollView
+        style={sharedStyles.tabContent}
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {currentMessages.map((msg, idx) => (
-          <Card key={msg.id} style={styles.menuCard}>
-            <List.Accordion
-              title={msg.name || `Slot ${idx + 1}`}
-              id={`msg_${idx + 1}`}
-              left={(props) => <List.Icon {...props} icon="message-text-outline" />}
-            >
-              <View style={styles.cardContent}>
-                <TextInput
-                  label="Internal Name (Label for you)"
-                  value={msg.name}
-                  onChangeText={(v) => updateMessage(idx, 'name', v)}
-                  mode="outlined"
-                  style={styles.input}
-                  placeholder="e.g. Welcome Greeting"
-                />
-
-                <TextInput
-                  label="Response Text (Sent to customer)"
-                  value={msg.response}
-                  onChangeText={(v) => updateMessage(idx, 'response', v)}
-                  mode="outlined"
-                  multiline
-                  numberOfLines={4}
-                  style={styles.input}
-                  placeholder="What should the bot say back immediately?"
-                />
-
-                <View style={styles.imageSection}>
-                  <Text style={styles.imageLabel}>Optional Image</Text>
-                  {msg.imageUrl ? (
-                    <View style={styles.previewContainer}>
-                      <Image source={{ uri: msg.imageUrl }} style={styles.previewImage} />
-                      <IconButton
-                        icon="close-circle"
-                        iconColor="red"
-                        size={20}
-                        style={styles.removeImageIcon}
-                        onPress={() => updateMessage(idx, 'imageUrl', '')}
-                      />
-                    </View>
-                  ) : (
-                    <Button
-                      mode="outlined"
-                      icon="camera"
-                      onPress={() => handlePicker(idx)}
-                      loading={uploadingField === `msg_${idx}`}
-                      disabled={!!uploadingField}
-                    >
-                      Upload Image
-                    </Button>
-                  )}
+        <List.AccordionGroup
+          expandedId={activeAccordion}
+          onAccordionPress={(id) => setActiveAccordion(id)}
+        >
+          {currentMessages.map((msg, idx) => (
+            <View key={msg.id} style={[sharedStyles.modernCard, { marginBottom: 8 }]}>
+              <List.Accordion
+                title={msg.name || `Slot ${idx + 1}`}
+                id={`msg_${idx + 1}`}
+                left={(props) => (
+                  <List.Icon {...props} icon="message-text-outline" color={colors.primary} />
+                )}
+                titleStyle={[typography.cardTitle, { color: colors.text }]}
+                style={{ backgroundColor: colors.card }}
+              >
+                <View style={styles.cardContent}>
+                  <TextInput
+                    label="Internal Name (Label for you)"
+                    value={msg.name}
+                    onChangeText={(v) => updateMessage(idx, 'name', v)}
+                    mode="outlined"
+                    style={sharedStyles.input}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
+                    placeholder="e.g. Welcome Greeting"
+                  />
+                  <TextInput
+                    label="Response Text (Sent to customer)"
+                    value={msg.response}
+                    onChangeText={(v) => updateMessage(idx, 'response', v)}
+                    mode="outlined"
+                    multiline
+                    numberOfLines={4}
+                    style={sharedStyles.input}
+                    outlineColor={colors.border}
+                    activeOutlineColor={colors.primary}
+                    placeholder="What should the bot say back immediately?"
+                  />
+                  <View style={styles.imageSection}>
+                    <Text style={typography.metaText}>Optional Image</Text>
+                    {msg.imageUrl ? (
+                      <View style={styles.previewContainer}>
+                        <Image source={{ uri: msg.imageUrl }} style={styles.previewImage} />
+                        <IconButton
+                          icon="close-circle"
+                          iconColor={colors.error}
+                          size={20}
+                          style={styles.removeImageIcon}
+                          onPress={() => updateMessage(idx, 'imageUrl', '')}
+                        />
+                      </View>
+                    ) : (
+                      <Button
+                        mode="outlined"
+                        icon="camera"
+                        onPress={() => handlePicker(idx)}
+                        loading={uploadingField === `msg_${idx}`}
+                        disabled={!!uploadingField}
+                        textColor={colors.primary}
+                        style={{ borderColor: colors.border }}
+                      >
+                        Upload Image
+                      </Button>
+                    )}
+                  </View>
                 </View>
-              </View>
-            </List.Accordion>
-          </Card>
-        ))}
-      </List.AccordionGroup>
+              </List.Accordion>
+            </View>
+          ))}
+        </List.AccordionGroup>
+      </ScrollView>
 
-      <Button
-        mode="contained"
-        onPress={handleSave}
-        style={styles.saveButton}
-        contentStyle={styles.saveButtonContent}
-      >
-        Save All Quick Responses
-      </Button>
-      <View style={{ height: 40 }} />
-    </ScrollView>
+      {/* Sticky Save Footer */}
+      <View style={styles.footer}>
+        <Button
+          mode="contained"
+          onPress={handleSave}
+          buttonColor={colors.primary}
+          icon="check"
+          style={[sharedStyles.button, { width: '100%' }]}
+          contentStyle={{ paddingVertical: 4 }}
+        >
+          Save All Quick Responses
+        </Button>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    padding: 16,
-  },
-  headerCard: {
-    padding: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginLeft: 48,
-    marginTop: -8,
-  },
-  menuCard: {
-    marginBottom: 8,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
   cardContent: {
     padding: 16,
-    backgroundColor: '#fff',
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
-  input: {
-    marginBottom: 12,
-    backgroundColor: '#fff',
-  },
-  saveButton: {
-    marginTop: 16,
-    backgroundColor: '#6200ee',
-    borderRadius: 8,
-  },
-  saveButtonContent: {
-    paddingVertical: 8,
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: colors.card,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   imageSection: {
-    marginTop: 8,
-    marginBottom: 16,
-  },
-  imageLabel: {
-    fontSize: 12,
-    color: '#666',
+    marginTop: 4,
     marginBottom: 8,
   },
   previewContainer: {
     position: 'relative',
     alignSelf: 'flex-start',
     width: '100%',
+    marginTop: 8,
   },
   previewImage: {
     width: '100%',
     height: 180,
-    borderRadius: 8,
-    backgroundColor: '#eee',
+    borderRadius: 12,
+    backgroundColor: colors.border,
   },
   removeImageIcon: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#fff',
+    top: -8,
+    right: -8,
+    backgroundColor: colors.card,
   },
 });
 

@@ -1,153 +1,12 @@
+import { StyleSheet } from 'react-native';
 import { MD3LightTheme, MD3DarkTheme, configureFonts } from 'react-native-paper';
-
-// ============================================================================
-// DESIGN SYSTEM - PREMIUM SAAS MOBILE FIRST
-// ============================================================================
-
-// TYPOGRAPHY SYSTEM
-const fontConfig = {
-  displayLarge: { fontFamily: 'System', fontWeight: '700', fontSize: 48 },
-  displayMedium: { fontFamily: 'System', fontWeight: '700', fontSize: 40 },
-  displaySmall: { fontFamily: 'System', fontWeight: '700', fontSize: 32 },
-  headlineLarge: { fontFamily: 'System', fontWeight: '700', fontSize: 28 },
-  headlineMedium: { fontFamily: 'System', fontWeight: '700', fontSize: 24 },
-  headlineSmall: { fontFamily: 'System', fontWeight: '600', fontSize: 20 },
-  titleLarge: { fontFamily: 'System', fontWeight: '600', fontSize: 18 },
-  titleMedium: { fontFamily: 'System', fontWeight: '600', fontSize: 16 },
-  titleSmall: { fontFamily: 'System', fontWeight: '600', fontSize: 14 },
-  labelLarge: { fontFamily: 'System', fontWeight: '600', fontSize: 14 },
-  labelMedium: { fontFamily: 'System', fontWeight: '500', fontSize: 12 },
-  labelSmall: { fontFamily: 'System', fontWeight: '500', fontSize: 11 },
-  bodyLarge: { fontFamily: 'System', fontWeight: '400', fontSize: 16 },
-  bodyMedium: { fontFamily: 'System', fontWeight: '400', fontSize: 14 },
-  bodySmall: { fontFamily: 'System', fontWeight: '400', fontSize: 13 },
-} as const;
-
-// COLOR PALETTE - PREMIUM SAAS
-const colors = {
-  // Primary Brand Colors (Modern Teal/Green - Tech SaaS)
-  primary: '#0F766E',        // Deep Teal (Primary action)
-  primaryLight: '#14B8A6',   // Bright Teal (Hover/Secondary)
-  primaryLighter: '#CCFBF1', // Very light Teal (Background)
-  
-  // Secondary Colors (Deep Blue - Professional)
-  secondary: '#1E3A8A',      // Deep Blue (Supporting elements)
-  secondaryLight: '#3B82F6', // Bright Blue (Accents)
-  
-  // Neutral Colors (Clean & Modern)
-  surface: '#FFFFFF',
-  background: '#F9FAFB',
-  backgroundDark: '#F3F4F6',
-  
-  // Text Colors (High Contrast)
-  textPrimary: '#111827',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
-  
-  // Semantic Colors
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#3B82F6',
-  
-  // Borders & Dividers
-  border: '#E5E7EB',
-  borderLight: '#F3F4F6',
-  
-  // Shadows (Subtle premium feel)
-  shadow: 'rgba(0, 0, 0, 0.08)',
-  shadowMedium: 'rgba(0, 0, 0, 0.12)',
-  shadowLarge: 'rgba(0, 0, 0, 0.16)',
-};
-
-// DARK MODE COLORS
-const colorsDark = {
-  primary: '#14B8A6',
-  primaryLight: '#2DD4BF',
-  primaryLighter: '#134E4A',
-  secondary: '#60A5FA',
-  secondaryLight: '#93C5FD',
-  surface: '#1F2937',
-  background: '#111827',
-  backgroundDark: '#0F172A',
-  textPrimary: '#F9FAFB',
-  textSecondary: '#D1D5DB',
-  textTertiary: '#9CA3AF',
-  success: '#10B981',
-  warning: '#F59E0B',
-  error: '#EF4444',
-  info: '#60A5FA',
-  border: '#374151',
-  borderLight: '#1F2937',
-  shadow: 'rgba(0, 0, 0, 0.3)',
-  shadowMedium: 'rgba(0, 0, 0, 0.4)',
-  shadowLarge: 'rgba(0, 0, 0, 0.5)',
-};
-
-// SPACING SYSTEM (Mobile-First)
-export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
-  xxxl: 40,
-};
-
-// BORDER RADIUS (Premium Rounded)
-export const borderRadius = {
-  none: 0,
-  sm: 4,
-  md: 8,
-  lg: 12,
-  xl: 16,
-  full: 9999,
-};
-
-// SHADOW SYSTEM (Elevation-based)
-export const shadows = {
-  none: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0,
-    shadowRadius: 0,
-    elevation: 0,
-  },
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  xl: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-};
+import { tokens, spacing, borderRadius, shadows, fontConfig } from './theme/tokens';
+import { colors, colorsDark } from './theme/colors';
 
 // LIGHT THEME
 export const theme = {
   ...MD3LightTheme,
-  fonts: configureFonts({ config: fontConfig }),
+  fonts: configureFonts({ config: tokens.typography }),
   colors: {
     ...MD3LightTheme.colors,
     primary: colors.primary,
@@ -165,13 +24,13 @@ export const theme = {
     outline: colors.border,
     outlineVariant: colors.borderLight,
   },
-  roundness: 12,
+  roundness: tokens.borderRadius.lg,
 };
 
 // DARK THEME
 export const themeDark = {
   ...MD3DarkTheme,
-  fonts: configureFonts({ config: fontConfig }),
+  fonts: configureFonts({ config: tokens.typography }),
   colors: {
     ...MD3DarkTheme.colors,
     primary: colorsDark.primary,
@@ -189,8 +48,94 @@ export const themeDark = {
     outline: colorsDark.border,
     outlineVariant: colorsDark.borderLight,
   },
-  roundness: 12,
+  roundness: tokens.borderRadius.lg,
 };
 
-// EXPORT COLOR PALETTES
-export { colors, colorsDark };
+export const typography = {
+  pageTitle: { fontSize: 24, fontWeight: '700' as const, color: colors.text },
+  sectionTitle: { fontSize: 18, fontWeight: '600' as const, color: colors.text },
+  cardTitle: { fontSize: 16, fontWeight: '500' as const, color: colors.text },
+  description: { fontSize: 14, fontWeight: '400' as const, color: colors.muted },
+  metaText: { fontSize: 12, fontWeight: '400' as const, color: colors.muted },
+  label: { fontSize: 14, fontWeight: '600' as const, color: colors.text },
+};
+
+export const sharedStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row' as const,
+    alignItems: 'flex-start' as const,
+    padding: 24,
+    paddingTop: 16,
+    backgroundColor: colors.background,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 12,
+  },
+  headerContent: {
+    flex: 1,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#fff',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modernCard: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden' as const,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  controlRow: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    padding: 16,
+  },
+  controlIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    marginRight: 16,
+  },
+  controlTextWrapper: {
+    flex: 1,
+  },
+  divider: {
+    backgroundColor: colors.border,
+    height: 1,
+  },
+  tabContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  button: {
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  input: {
+    backgroundColor: colors.card,
+    marginBottom: 12,
+  }
+});
+
+// EXPORT ALL
+export { colors, colorsDark, tokens, spacing, borderRadius, shadows, fontConfig };

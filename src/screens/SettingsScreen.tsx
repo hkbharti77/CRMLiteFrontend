@@ -13,6 +13,7 @@ import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
 import SupportCategoriesView from './settings/SupportCategoriesView';
 import SystemHealthView from './settings/SystemHealthView';
+import FlowFieldsView from './settings/FlowFieldsView';
 import { 
   Settings, 
   Search, 
@@ -35,6 +36,9 @@ import {
   Globe
 } from 'lucide-react-native';
 
+import { AppAvatar } from '@components/global/Avatar/AppAvatar';
+import { AppSearchBar } from '@components/global/SearchBar/AppSearchBar';
+
 const SettingsScreen = () => {
   const theme = useTheme();
   const { clearToken, businessName } = useAuthStore();
@@ -47,7 +51,7 @@ const SettingsScreen = () => {
   const [appSecret, setAppSecret] = useState('');
   const [interactiveMenuJson, setInteractiveMenuJson] = useState('');
   const [menuType, setMenuType] = useState('list');
-  const [menuItems, setMenuItems] = useState(
+  const [menuItems, setMenuItems] = useState<{ title: string; desc: string; isCatalog?: boolean; customListId?: string }[]>(
     Array(9).fill(null).map(() => ({ title: '', desc: '', isCatalog: false, customListId: '' }))
   );
   const [showAboutContact, setShowAboutContact] = useState(true);
@@ -75,8 +79,8 @@ const SettingsScreen = () => {
     businessSubType: '',
     address: '',
     aboutUs: '',
-    latitude: null as number | null,
-    longitude: null as number | null,
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
     logoUrl: ''
   });
   const [activeView, setActiveView] = useState<string | null>(null);
@@ -125,8 +129,8 @@ const SettingsScreen = () => {
           businessSubType: response.data.businessSubType || '',
           address: response.data.address || '',
           aboutUs: response.data.aboutUs || '',
-          latitude: response.data.latitude || null,
-          longitude: response.data.longitude || null,
+          latitude: response.data.latitude || undefined,
+          longitude: response.data.longitude || undefined,
           logoUrl: response.data.logoUrl || ''
         });
       }
@@ -362,10 +366,11 @@ const SettingsScreen = () => {
     return JSON.stringify(payload);
   };
 
-  const handleSaveProfile = async () => {
+  const handleSaveProfile = async (overrideProfile?: any) => {
     setLoading(true);
     try {
-      await userApi.updateProfile(accountProfile);
+      await userApi.updateProfile(overrideProfile || accountProfile);
+      useAuthStore.getState().fetchProfileOverrides();
       setSnackbarMsg('Account profile updated successfully!');
       setSnackbarVisible(true);
     } catch (error) {
@@ -480,7 +485,6 @@ const SettingsScreen = () => {
           setShowSosButton={setShowSosButton}
           customSubMenusJson={customSubMenusJson}
           customMessagesJson={customMessagesJson}
-          whatsappApi={whatsappApi}
         />
       );
     }
@@ -540,12 +544,7 @@ const SettingsScreen = () => {
 
     if (activeView === 'services') {
       return (
-        <View style={{ flex: 1 }}>
-          <Button icon="arrow-left" mode="text" onPress={() => setActiveView(null)} style={{ alignSelf: 'flex-start', marginBottom: 8 }}>
-            Back to Settings
-          </Button>
-          <BusinessServicesScreen />
-        </View>
+        <BusinessServicesScreen onBack={() => setActiveView(null)} />
       );
     }
 
@@ -574,6 +573,12 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'flow_fields') {
+      return (
+        <FlowFieldsView onBack={() => setActiveView(null)} />
+      );
+    }
+
     // ===== MAIN SETTINGS HOME =====
     return (
       <View style={styles.mainContainer}>
@@ -581,7 +586,9 @@ const SettingsScreen = () => {
         <ProfileCard accountProfile={accountProfile} onPress={() => setActiveView('account')} />
 
         {/* ===== SEARCH BAR ===== */}
-        <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+        <View style={{ marginBottom: 24 }}>
+          <AppSearchBar value={searchQuery} onChangeText={setSearchQuery} placeholder="Search settings..." />
+        </View>
 
         {/* ===== ACCOUNT SECTION ===== */}
         <SettingsSection title="Account">
@@ -644,6 +651,13 @@ const SettingsScreen = () => {
             title="Products & Services"
             description="Manage your catalog"
             onPress={() => setActiveView('services')}
+            divider
+          />
+          <SettingsItem
+            icon={<FileText size={20} color="#075E54" />}
+            title="Form Fields"
+            description="Customize WhatsApp form fields"
+            onPress={() => setActiveView('flow_fields')}
             divider
           />
           <SettingsItem
@@ -785,8 +799,8 @@ function ProfileCard({ accountProfile, onPress }: ProfileCardProps) {
   return (
     <TouchableOpacity style={styles.profileCard} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.profileContent}>
-        <View style={styles.profileAvatar}>
-          <User size={32} color="#fff" />
+        <View style={{ marginRight: 12 }}>
+          <AppAvatar name={accountProfile.displayName || 'User'} imageUrl={accountProfile.logoUrl} size={56} />
         </View>
         <View style={styles.profileInfo}>
           <Text style={styles.profileName}>{accountProfile.displayName || 'User'}</Text>
@@ -799,25 +813,7 @@ function ProfileCard({ accountProfile, onPress }: ProfileCardProps) {
   );
 }
 
-interface SearchBarProps {
-  searchQuery: string;
-  setSearchQuery: (query: string) => void;
-}
 
-function SearchBar({ searchQuery, setSearchQuery }: SearchBarProps) {
-  return (
-    <View style={styles.searchContainer}>
-      <Search size={18} color="#999" style={styles.searchIcon} />
-      <RNTextInput
-        style={styles.searchInput}
-        placeholder="Search settings..."
-        placeholderTextColor="#999"
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
-    </View>
-  );
-}
 
 interface SettingsSectionProps {
   title: string;

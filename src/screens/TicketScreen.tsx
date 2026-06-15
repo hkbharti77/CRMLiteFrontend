@@ -27,8 +27,9 @@ import {
   Searchbar,
   Badge,
 } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTicketStore, useFilteredTickets, type Ticket, type TicketStatus, type TicketPriority } from '../store/useTicketStore';
+import { colors } from '../theme/colors';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -353,92 +354,127 @@ export default function TicketScreen({ navigation }: any) {
       <Portal>
         {/* ── Create Ticket Dialog ─────────────────────────────────────────── */}
         <Dialog visible={showCreate} onDismiss={() => { setShowCreate(false); resetForm(); }}
-          style={styles.dialog}>
-          <Dialog.Title>🎫 New Ticket</Dialog.Title>
-          <Dialog.ScrollArea style={{ maxHeight: 500 }}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-              <ScrollView>
+          style={[styles.dialog, { maxHeight: '90%', backgroundColor: '#FFFFFF', padding: 0 }]}>
+          
+          <View style={styles.dialogHeader}>
+            <View>
+              <Text variant="titleLarge" style={styles.dialogTitleText}>
+                New Ticket
+              </Text>
+              <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>Create a new support request</Text>
+            </View>
+            <IconButton icon="close" size={20} onPress={() => { setShowCreate(false); resetForm(); }} style={styles.closeIcon} />
+          </View>
+
+          <Divider style={styles.divider} />
+
+          <Dialog.ScrollArea style={{ paddingHorizontal: 0 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flexShrink: 1 }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.dialogScrollContent}>
+                
+                <Text variant="labelMedium" style={styles.modernSectionLabel}>Ticket Details</Text>
                 <TextInput label="Subject *" value={form.subject}
                   onChangeText={(v) => setForm((f) => ({ ...f, subject: v }))}
-                  mode="outlined" style={styles.input} />
+                  mode="outlined" style={styles.modernInput} 
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
                 <TextInput label="Description *" value={form.description}
                   onChangeText={(v) => setForm((f) => ({ ...f, description: v }))}
-                  mode="outlined" multiline numberOfLines={4} style={styles.input} />
+                  mode="outlined" multiline numberOfLines={4} style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
+                  
+                <Text variant="labelMedium" style={[styles.modernSectionLabel, { marginTop: 8 }]}>Customer Information</Text>
                 <TextInput label="Customer Name" value={form.submitterName}
                   onChangeText={(v) => setForm((f) => ({ ...f, submitterName: v }))}
-                  mode="outlined" style={styles.input} />
+                  mode="outlined" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
                 <TextInput label="Customer Email" value={form.submitterEmail}
                   onChangeText={(v) => setForm((f) => ({ ...f, submitterEmail: v }))}
-                  mode="outlined" keyboardType="email-address" style={styles.input} />
+                  mode="outlined" keyboardType="email-address" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
                 <TextInput label="Customer Phone" value={form.submitterPhone}
                   onChangeText={(v) => setForm((f) => ({ ...f, submitterPhone: v }))}
-                  mode="outlined" keyboardType="phone-pad" style={styles.input} />
+                  mode="outlined" keyboardType="phone-pad" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
+                  
+                <Text variant="labelMedium" style={[styles.modernSectionLabel, { marginTop: 8 }]}>Classification</Text>
                 <TextInput label="Category" value={form.category}
                   onChangeText={(v) => setForm((f) => ({ ...f, category: v }))}
-                  mode="outlined" placeholder="e.g. Billing, Technical" style={styles.input} />
+                  mode="outlined" placeholder="e.g. Billing, Technical" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
 
-                <Text variant="labelMedium" style={styles.fieldLabel}>Priority</Text>
-                <View style={styles.chipRow}>
+                <Text variant="labelMedium" style={styles.fieldLabelModern}>Priority</Text>
+                <View style={styles.chipRowCreate}>
                   {PRIORITIES.map((p) => (
-                    <Chip key={p} selected={form.priority === p}
-                      onPress={() => setForm((f) => ({ ...f, priority: p }))}
-                      style={form.priority === p
-                        ? { backgroundColor: PRIORITY_CONFIG[p].bg }
-                        : undefined}
-                      textStyle={form.priority === p
-                        ? { color: PRIORITY_CONFIG[p].color, fontWeight: '700' }
-                        : undefined}
-                      compact>
-                      {PRIORITY_CONFIG[p].icon} {p}
-                    </Chip>
+                    <TouchableOpacity key={p} onPress={() => setForm((f) => ({ ...f, priority: p }))} activeOpacity={0.7}>
+                      <View style={[styles.modernChip, { 
+                        backgroundColor: form.priority === p ? PRIORITY_CONFIG[p].bg : '#F8FAFC',
+                        borderColor: form.priority === p ? PRIORITY_CONFIG[p].color + '40' : '#E2E8F0',
+                        borderWidth: 1 
+                      }]}>
+                        <Text style={{ 
+                          color: form.priority === p ? PRIORITY_CONFIG[p].color : '#64748B', 
+                          fontWeight: form.priority === p ? '700' : '500', 
+                          fontSize: 12 
+                        }}>
+                          {PRIORITY_CONFIG[p].icon} {p}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
                   ))}
                 </View>
               </ScrollView>
             </KeyboardAvoidingView>
           </Dialog.ScrollArea>
-          <Dialog.Actions>
-            <Button onPress={() => { setShowCreate(false); resetForm(); }}>Cancel</Button>
+
+          <View style={styles.dialogFooter}>
+            <Button onPress={() => { setShowCreate(false); resetForm(); }} textColor="#64748B">Cancel</Button>
             <Button mode="contained" onPress={handleCreate} loading={creating}
-              disabled={!form.subject.trim() || !form.description.trim() || creating}>
-              Create
+              disabled={!form.subject.trim() || !form.description.trim() || creating}
+              style={styles.primaryBtn} contentStyle={{ paddingHorizontal: 12 }}>
+              Create Ticket
             </Button>
-          </Dialog.Actions>
+          </View>
         </Dialog>
 
         {/* ── Ticket Detail Dialog ─────────────────────────────────────────── */}
         {selectedTicket && (
           <Dialog visible={showDetail} onDismiss={() => setShowDetail(false)}
-            style={[styles.dialog, { maxHeight: '90%' }]}>
-            <Dialog.Title style={{ paddingBottom: 0 }}>
-              <Text style={[styles.ticketNum, { color: theme.colors.primary }]}>
-                {selectedTicket.ticketNumber}
-              </Text>
-            </Dialog.Title>
-            <Dialog.ScrollArea style={{ maxHeight: 560 }}>
-              <ScrollView>
-                {/* Subject */}
-                <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 12 }}>
+            style={[styles.dialog, { maxHeight: '90%', backgroundColor: '#FFFFFF', padding: 0 }]}>
+            
+            <View style={styles.dialogHeader}>
+              <View>
+                <Text style={[styles.ticketNum, { color: theme.colors.primary, fontSize: 13 }]}>
+                  {selectedTicket.ticketNumber}
+                </Text>
+                <Text variant="titleLarge" style={styles.dialogTitleText}>
                   {selectedTicket.subject}
                 </Text>
+              </View>
+              <IconButton icon="close" size={20} onPress={() => setShowDetail(false)} style={styles.closeIcon} />
+            </View>
 
+            <Divider style={styles.divider} />
+
+            <Dialog.ScrollArea style={{ paddingHorizontal: 0 }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.dialogScrollContent}>
+                
                 {/* Status + Priority row */}
-                <View style={[styles.chipRow, { marginBottom: 16 }]}>
+                <View style={styles.chipRowDetail}>
                   {/* Status menu */}
                   <Menu
                     visible={statusMenuId === selectedTicket.id}
                     onDismiss={() => setStatusMenuId(null)}
                     anchor={
-                      <TouchableOpacity onPress={() => setStatusMenuId(selectedTicket.id)}>
-                        <Chip compact
-                          style={{ backgroundColor: STATUS_CONFIG[selectedTicket.status].bg }}
-                          textStyle={{ color: STATUS_CONFIG[selectedTicket.status].color, fontWeight: '700' }}>
-                          {STATUS_CONFIG[selectedTicket.status].label} ▾
-                        </Chip>
+                      <TouchableOpacity onPress={() => setStatusMenuId(selectedTicket.id)} activeOpacity={0.7}>
+                        <View style={[styles.modernChip, { backgroundColor: STATUS_CONFIG[selectedTicket.status].bg, borderColor: STATUS_CONFIG[selectedTicket.status].color + '40', borderWidth: 1 }]}>
+                          <Text style={{ color: STATUS_CONFIG[selectedTicket.status].color, fontWeight: '600', fontSize: 12 }}>
+                            {STATUS_CONFIG[selectedTicket.status].label} ▾
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     }>
                     {STATUSES.map((s) => (
-                      <Menu.Item key={s} title={STATUS_CONFIG[s].label}
-                        onPress={() => handleStatusChange(selectedTicket, s)} />
+                      <Menu.Item key={s} title={STATUS_CONFIG[s].label} onPress={() => handleStatusChange(selectedTicket, s)} />
                     ))}
                   </Menu>
 
@@ -447,110 +483,123 @@ export default function TicketScreen({ navigation }: any) {
                     visible={priorityMenuId === selectedTicket.id}
                     onDismiss={() => setPriorityMenuId(null)}
                     anchor={
-                      <TouchableOpacity onPress={() => setPriorityMenuId(selectedTicket.id)}>
-                        <Chip compact
-                          style={{ backgroundColor: PRIORITY_CONFIG[selectedTicket.priority].bg }}
-                          textStyle={{ color: PRIORITY_CONFIG[selectedTicket.priority].color, fontWeight: '700' }}>
-                          {PRIORITY_CONFIG[selectedTicket.priority].icon} {selectedTicket.priority} ▾
-                        </Chip>
+                      <TouchableOpacity onPress={() => setPriorityMenuId(selectedTicket.id)} activeOpacity={0.7}>
+                        <View style={[styles.modernChip, { backgroundColor: PRIORITY_CONFIG[selectedTicket.priority].bg, borderColor: PRIORITY_CONFIG[selectedTicket.priority].color + '40', borderWidth: 1 }]}>
+                          <Text style={{ color: PRIORITY_CONFIG[selectedTicket.priority].color, fontWeight: '600', fontSize: 12 }}>
+                            {PRIORITY_CONFIG[selectedTicket.priority].icon} {selectedTicket.priority} ▾
+                          </Text>
+                        </View>
                       </TouchableOpacity>
                     }>
                     {PRIORITIES.map((p) => (
-                      <Menu.Item key={p} title={`${PRIORITY_CONFIG[p].icon} ${p}`}
-                        onPress={() => handlePriorityChange(selectedTicket, p)} />
+                      <Menu.Item key={p} title={`${PRIORITY_CONFIG[p].icon} ${p}`} onPress={() => handlePriorityChange(selectedTicket, p)} />
                     ))}
                   </Menu>
 
                   {selectedTicket.slaBreached && (
-                    <Chip compact style={{ backgroundColor: '#FEF2F2' }}
-                      textStyle={{ color: '#dc2626', fontSize: 10 }}>SLA Breached ⚠️</Chip>
+                    <View style={[styles.modernChip, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1 }]}>
+                      <Text style={{ color: '#DC2626', fontWeight: '600', fontSize: 12 }}>SLA Breached ⚠️</Text>
+                    </View>
                   )}
                 </View>
 
-                {/* Info table */}
-                <View style={styles.infoTable}>
-                  {selectedTicket.submitterName && infoRow('Customer', selectedTicket.submitterName)}
-                  {selectedTicket.submitterEmail && infoRow('Email', selectedTicket.submitterEmail)}
-                  {selectedTicket.submitterPhone && infoRow('Phone', selectedTicket.submitterPhone)}
-                  {selectedTicket.assignedToName && infoRow('Assigned To', selectedTicket.assignedToName)}
-                  {selectedTicket.category && infoRow('Category', selectedTicket.category)}
-                  {selectedTicket.source && infoRow('Source', selectedTicket.source)}
-                  {selectedTicket.createdAtHuman && infoRow('Created', selectedTicket.createdAtHuman)}
+                {/* Info Cards Grid */}
+                <View style={styles.infoGrid}>
+                  {selectedTicket.submitterName && <InfoBlock label="Customer" value={selectedTicket.submitterName} icon="account-outline" />}
+                  {selectedTicket.submitterEmail && <InfoBlock label="Email" value={selectedTicket.submitterEmail} icon="email-outline" />}
+                  {selectedTicket.submitterPhone && <InfoBlock label="Phone" value={selectedTicket.submitterPhone} icon="phone-outline" />}
+                  {selectedTicket.assignedToName && <InfoBlock label="Assigned To" value={selectedTicket.assignedToName} icon="account-tie-outline" />}
+                  {selectedTicket.category && <InfoBlock label="Category" value={selectedTicket.category} icon="folder-outline" />}
+                  {selectedTicket.source && <InfoBlock label="Source" value={selectedTicket.source} icon="web" />}
+                  {selectedTicket.createdAtHuman && <InfoBlock label="Created" value={selectedTicket.createdAtHuman} icon="clock-outline" />}
                 </View>
 
                 {/* Description */}
-                <Text variant="labelMedium" style={styles.sectionLabel}>Description</Text>
-                <Text variant="bodyMedium" style={styles.descText}>
-                  {selectedTicket.description}
-                </Text>
+                <View style={styles.sectionContainer}>
+                  <Text variant="labelMedium" style={styles.modernSectionLabel}>Description</Text>
+                  <View style={styles.descriptionCard}>
+                    <Text variant="bodyMedium" style={styles.descText}>
+                      {selectedTicket.description}
+                    </Text>
+                  </View>
+                </View>
 
                 {/* Comments */}
                 {(selectedTicket.comments?.length ?? 0) > 0 && (
-                  <>
-                    <Text variant="labelMedium" style={[styles.sectionLabel, { marginTop: 16 }]}>
-                      Comments ({selectedTicket.comments!.length})
+                  <View style={styles.sectionContainer}>
+                    <Text variant="labelMedium" style={styles.modernSectionLabel}>
+                      Activity & Comments ({selectedTicket.comments!.length})
                     </Text>
-                    {selectedTicket.comments!.map((c) => (
-                      <View key={c.id} style={styles.commentBubble}>
-                        <View style={styles.commentHeader}>
-                          <Avatar.Text size={24}
+                    <View style={styles.timelineContainer}>
+                      {selectedTicket.comments!.map((c, idx) => (
+                        <View key={c.id} style={styles.timelineItem}>
+                          <View style={styles.timelineLine} />
+                          <Avatar.Text size={32}
                             label={c.authorName.split(' ').map((n) => n[0]).join('')}
-                            style={{ backgroundColor: theme.colors.primaryContainer }}
-                            labelStyle={{ color: theme.colors.primary, fontSize: 9 }} />
-                          <Text variant="labelSmall" style={{ fontWeight: '700', marginLeft: 6 }}>
-                            {c.authorName}
-                          </Text>
-                          <Text variant="bodySmall" style={{ color: '#999', marginLeft: 'auto' }}>
-                            {new Date(c.createdAt).toLocaleDateString()}
-                          </Text>
+                            style={styles.timelineAvatar}
+                            labelStyle={{ color: '#0F766E', fontSize: 12, fontWeight: 'bold' }} />
+                          <View style={styles.commentContent}>
+                            <View style={styles.commentHeaderModern}>
+                              <Text style={styles.commentAuthor}>{c.authorName}</Text>
+                              <Text style={styles.commentDate}>{new Date(c.createdAt).toLocaleDateString()} {new Date(c.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+                            </View>
+                            <Text style={styles.commentMessage}>{c.message}</Text>
+                          </View>
                         </View>
-                        <Text variant="bodySmall" style={styles.commentText}>{c.message}</Text>
-                      </View>
-                    ))}
-                  </>
+                      ))}
+                    </View>
+                  </View>
                 )}
 
-                {/* Add comment */}
-                <Text variant="labelMedium" style={[styles.sectionLabel, { marginTop: 16 }]}>
-                  Add Reply
-                </Text>
-                <TextInput
-                  value={commentText}
-                  onChangeText={setCommentText}
-                  mode="outlined"
-                  multiline
-                  numberOfLines={3}
-                  placeholder="Type your reply..."
-                  style={styles.input}
-                />
-                <View style={[styles.chipRow, { marginBottom: 8 }]}>
-                  <Chip selected={!commentInternal} onPress={() => setCommentInternal(false)} compact>
-                    📤 Public
-                  </Chip>
-                  <Chip selected={commentInternal} onPress={() => setCommentInternal(true)} compact>
-                    🔒 Internal
-                  </Chip>
+                {/* Add Reply */}
+                <View style={styles.sectionContainer}>
+                  <Text variant="labelMedium" style={styles.modernSectionLabel}>Add Reply</Text>
+                  <View style={styles.replyBox}>
+                    <TextInput
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      mode="flat"
+                      multiline
+                      numberOfLines={4}
+                      placeholder="Type your reply here..."
+                      style={styles.replyInput}
+                      underlineColor="transparent"
+                      activeUnderlineColor="transparent"
+                    />
+                    <View style={styles.replyFooter}>
+                      <View style={styles.replyVisibility}>
+                        <TouchableOpacity 
+                          style={[styles.visibilityBtn, !commentInternal && styles.visibilityBtnActive]} 
+                          onPress={() => setCommentInternal(false)}>
+                          <Text style={[styles.visibilityText, !commentInternal && styles.visibilityTextActive]}>Public</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          style={[styles.visibilityBtn, commentInternal && styles.visibilityBtnActiveInternal]} 
+                          onPress={() => setCommentInternal(true)}>
+                          <Text style={[styles.visibilityText, commentInternal && styles.visibilityTextActiveInternal]}>Internal Note</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <Button mode="contained" onPress={handleAddComment}
+                        loading={sendingComment}
+                        disabled={!commentText.trim() || sendingComment}
+                        style={styles.sendReplyBtn}
+                        contentStyle={{ paddingHorizontal: 12 }}>
+                        Send Reply
+                      </Button>
+                    </View>
+                  </View>
                 </View>
-                <Button mode="contained" onPress={handleAddComment}
-                  loading={sendingComment}
-                  disabled={!commentText.trim() || sendingComment}
-                  style={{ marginBottom: 8 }}>
-                  Send Reply
-                </Button>
 
-                <Divider style={{ marginVertical: 12 }} />
-
-                {/* Delete */}
-                <Button mode="outlined" textColor="#dc2626"
-                  icon="delete-outline"
-                  onPress={() => handleDelete(selectedTicket)}>
-                  Delete Ticket
-                </Button>
+                {/* Delete Area */}
+                <View style={styles.dangerZone}>
+                  <Button mode="text" textColor="#EF4444"
+                    icon="delete-outline"
+                    onPress={() => handleDelete(selectedTicket)}>
+                    Delete Ticket
+                  </Button>
+                </View>
               </ScrollView>
             </Dialog.ScrollArea>
-            <Dialog.Actions>
-              <Button onPress={() => setShowDetail(false)}>Close</Button>
-            </Dialog.Actions>
           </Dialog>
         )}
       </Portal>
@@ -563,6 +612,20 @@ export default function TicketScreen({ navigation }: any) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+function InfoBlock({ label, value, icon }: { label: string; value: string; icon: string }) {
+  return (
+    <View style={styles.infoBlockContainer}>
+      <View style={styles.infoBlockIconWrap}>
+        <MaterialCommunityIcons name={icon as any} size={16} color="#64748B" />
+      </View>
+      <View style={styles.infoBlockContent}>
+        <Text style={styles.infoBlockLabel}>{label}</Text>
+        <Text style={styles.infoBlockValue} numberOfLines={1} ellipsizeMode="tail">{value}</Text>
+      </View>
+    </View>
+  );
+}
 
 function infoRow(label: string, value: string) {
   return (
@@ -615,7 +678,7 @@ const styles = StyleSheet.create({
   infoValue: { flex: 1, color: '#374151', fontWeight: '500' },
 
   sectionLabel: { color: '#6b7280', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', fontSize: 11 },
-  descText: { color: '#374151', lineHeight: 22, marginBottom: 8 },
+  descText: { color: '#334155', lineHeight: 22, fontSize: 14 },
 
   commentBubble: {
     backgroundColor: '#f5f5ff',
@@ -625,4 +688,50 @@ const styles = StyleSheet.create({
   },
   commentHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   commentText: { color: '#374151', lineHeight: 18 },
+
+  // --- Modern Ticket Detail Dialog Styles ---
+  dialogHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, paddingBottom: 16 },
+  dialogTitleText: { fontWeight: '700', color: '#0F172A', marginTop: 4 },
+  closeIcon: { margin: 0 },
+  divider: { backgroundColor: '#E2E8F0' },
+  dialogScrollContent: { padding: 20, paddingBottom: 40 },
+  chipRowDetail: { flexDirection: 'row', gap: 8, marginBottom: 20 },
+  modernChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
+  infoBlockContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, width: '48%', borderWidth: 1, borderColor: '#F1F5F9' },
+  infoBlockIconWrap: { backgroundColor: '#FFFFFF', padding: 6, borderRadius: 8, marginRight: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  infoBlockContent: { flex: 1 },
+  infoBlockLabel: { color: '#64748B', fontSize: 11, fontWeight: '600', marginBottom: 2, textTransform: 'uppercase' },
+  infoBlockValue: { color: '#0F172A', fontSize: 13, fontWeight: '500' },
+  sectionContainer: { marginBottom: 24 },
+  modernSectionLabel: { color: '#0F172A', fontWeight: '700', marginBottom: 12, fontSize: 14 },
+  descriptionCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  timelineContainer: { marginTop: 4 },
+  timelineItem: { flexDirection: 'row', marginBottom: 16 },
+  timelineLine: { position: 'absolute', left: 15, top: 32, bottom: -16, width: 2, backgroundColor: '#E2E8F0' },
+  timelineAvatar: { backgroundColor: '#CCFBF1', marginRight: 12 },
+  commentContent: { flex: 1, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  commentHeaderModern: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  commentAuthor: { fontWeight: '600', color: '#0F172A', fontSize: 13 },
+  commentDate: { color: '#64748B', fontSize: 11 },
+  commentMessage: { color: '#334155', lineHeight: 20, fontSize: 13 },
+  replyBox: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, overflow: 'hidden' },
+  replyInput: { backgroundColor: '#FFFFFF', minHeight: 80, fontSize: 14, paddingHorizontal: 4 },
+  replyFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#F8FAFC', borderTopWidth: 1, borderTopColor: '#E2E8F0' },
+  replyVisibility: { flexDirection: 'row', backgroundColor: '#E2E8F0', borderRadius: 8, padding: 2 },
+  visibilityBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+  visibilityBtnActive: { backgroundColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1 },
+  visibilityText: { fontSize: 12, fontWeight: '500', color: '#64748B' },
+  visibilityTextActive: { color: '#0F766E' },
+  visibilityBtnActiveInternal: { backgroundColor: '#FEF2F2', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 1, elevation: 1 },
+  visibilityTextActiveInternal: { color: '#DC2626' },
+  sendReplyBtn: { borderRadius: 8, backgroundColor: '#0F766E' },
+  dangerZone: { marginTop: 12, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 16 },
+  
+  // Create Dialog additions
+  modernInput: { marginBottom: 16, backgroundColor: '#FFFFFF', fontSize: 14 },
+  fieldLabelModern: { marginBottom: 8, color: '#0F172A', fontWeight: '600', fontSize: 14 },
+  chipRowCreate: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
+  dialogFooter: { flexDirection: 'row', justifyContent: 'flex-end', padding: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#F8FAFC', gap: 12 },
+  primaryBtn: { borderRadius: 8, backgroundColor: '#0F766E' }
 });

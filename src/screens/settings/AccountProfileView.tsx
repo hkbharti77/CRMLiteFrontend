@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, TouchableOpacity, Clipboard, Alert, ScrollView, SafeAreaView, Platform, TextInput as RNTextInput } from 'react-native';
-import { Card, Title, Text, TextInput, Button, Snackbar } from 'react-native-paper';
+import { Card, Title, Text, TextInput, Button, Snackbar, Switch } from 'react-native-paper';
 import { categoryApi, SERVER_HOST } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
 import { ChevronLeft, Copy, MapPin, Eye, EyeOff, AlertCircle, Check } from 'lucide-react-native';
@@ -8,7 +8,7 @@ import { ChevronLeft, Copy, MapPin, Eye, EyeOff, AlertCircle, Check } from 'luci
 interface AccountProfileViewProps {
   accountProfile: any;
   setAccountProfile: (profile: any) => void;
-  handleSaveProfile: () => void;
+  handleSaveProfile: (overrideProfile?: any) => void;
   loading: boolean;
   onBack: () => void;
 }
@@ -31,7 +31,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
   const [descriptionLength, setDescriptionLength] = useState(accountProfile.aboutUs?.length || 0);
   const [changes, setChanges] = useState(false);
 
-  const { userId } = useAuthStore();
+  const { userId, flowType } = useAuthStore();
 
   const API_BASE = SERVER_HOST;
 
@@ -103,7 +103,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         {/* ===== HEADER ===== */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <ChevronLeft size={24} color="#075E54" />
+            <ChevronLeft size={24} color="#0F766E" />
           </TouchableOpacity>
           <View style={styles.headerContent}>
             <Text style={styles.pageTitle}>Account Profile</Text>
@@ -155,7 +155,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         </SectionCard>
 
         {/* ===== BUSINESS INFORMATION SECTION ===== */}
-        <SectionCard title="Business Information">
+        <SectionCard title="Business Information" style={{ zIndex: 100, elevation: 100 }}>
           <FormField
             label="Business Name"
             value={accountProfile.businessName}
@@ -164,7 +164,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             placeholder="Your business name"
           />
 
-          <View style={styles.dropdownContainer}>
+          <View style={[styles.dropdownContainer, { zIndex: 2000, elevation: 2000 }]}>
             <Text style={styles.fieldLabel}>Business Category</Text>
             <DropdownField
               value={accountProfile.businessType}
@@ -185,7 +185,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           </View>
 
           {accountProfile.businessType && (
-            <View style={styles.dropdownContainer}>
+            <View style={[styles.dropdownContainer, { zIndex: 1000, elevation: 1000 }]}>
               <Text style={styles.fieldLabel}>Sub Category</Text>
               <DropdownField
                 value={accountProfile.businessSubType}
@@ -205,7 +205,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         </SectionCard>
 
         {/* ===== BUSINESS LOCATION SECTION ===== */}
-        <SectionCard title="Business Location">
+        <SectionCard title="Business Location" style={{ zIndex: 10, elevation: 10 }}>
           <Text style={styles.fieldHelper}>📍 These coordinates will be used to share your shop location on WhatsApp</Text>
           
           <FormField
@@ -214,7 +214,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             onChangeText={setMapsUrl}
             editable={isEditing}
             placeholder="https://www.google.com/maps/..."
-            icon={<MapPin size={18} color="#075E54" />}
+            icon={<MapPin size={18} color="#0F766E" />}
           />
 
           {isEditing && (
@@ -279,6 +279,77 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           </View>
         </SectionCard>
 
+        {/* ===== APP MODULES SECTION ===== */}
+        <SectionCard title="App Modules" icon="⚙️">
+          <Text style={styles.embedHelper}>Enable or disable specific features based on your business needs.</Text>
+          
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabelContainer}>
+              <Text style={styles.switchLabel}>Leads & Pipeline Module</Text>
+              <Text style={styles.switchDescription}>Manage customer inquiries and sales pipeline</Text>
+            </View>
+            <Switch
+              value={flowType === 'LEAD' ? true : (accountProfile.forceShowLeads ?? false)}
+              disabled={flowType === 'LEAD'}
+              onValueChange={async (val) => {
+                const updates: any = { forceShowLeads: val };
+                if (val) {
+                  if (flowType !== 'APPOINTMENT') updates.forceShowAppointment = false;
+                  if (flowType !== 'BOOKING') updates.forceShowBooking = false;
+                }
+                const newProfile = { ...accountProfile, ...updates };
+                setAccountProfile(newProfile);
+                try { await handleSaveProfile(newProfile); } catch (e) {}
+              }}
+              color="#0F766E"
+            />
+          </View>
+
+          <View style={styles.switchRow}>
+            <View style={styles.switchLabelContainer}>
+              <Text style={styles.switchLabel}>Appointments Module</Text>
+              <Text style={styles.switchDescription}>Allow customers to schedule appointments</Text>
+            </View>
+            <Switch
+              value={flowType === 'APPOINTMENT' ? true : (accountProfile.forceShowAppointment ?? false)}
+              disabled={flowType === 'APPOINTMENT'}
+              onValueChange={async (val) => {
+                const updates: any = { forceShowAppointment: val };
+                if (val) {
+                  if (flowType !== 'LEAD') updates.forceShowLeads = false;
+                  if (flowType !== 'BOOKING') updates.forceShowBooking = false;
+                }
+                const newProfile = { ...accountProfile, ...updates };
+                setAccountProfile(newProfile);
+                try { await handleSaveProfile(newProfile); } catch (e) {}
+              }}
+              color="#0F766E"
+            />
+          </View>
+
+          <View style={[styles.switchRow, { borderBottomWidth: 0 }]}>
+            <View style={styles.switchLabelContainer}>
+              <Text style={styles.switchLabel}>Bookings Module</Text>
+              <Text style={styles.switchDescription}>Allow customers to book your services</Text>
+            </View>
+            <Switch
+              value={flowType === 'BOOKING' ? true : (accountProfile.forceShowBooking ?? false)}
+              disabled={flowType === 'BOOKING'}
+              onValueChange={async (val) => {
+                const updates: any = { forceShowBooking: val };
+                if (val) {
+                  if (flowType !== 'LEAD') updates.forceShowLeads = false;
+                  if (flowType !== 'APPOINTMENT') updates.forceShowAppointment = false;
+                }
+                const newProfile = { ...accountProfile, ...updates };
+                setAccountProfile(newProfile);
+                try { await handleSaveProfile(newProfile); } catch (e) {}
+              }}
+              color="#0F766E"
+            />
+          </View>
+        </SectionCard>
+
         {/* ===== WEB BOT EMBED SECTION ===== */}
         <SectionCard title="Website Chat Widget" icon="🤖">
           <Text style={styles.embedHelper}>Connect your website with AI-powered chat</Text>
@@ -292,7 +363,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               style={styles.copyIconButton}
               onPress={() => userId && copyToClipboard(userId, 'businessId')}
             >
-              <Copy size={18} color={copiedField === 'businessId' ? '#10B981' : '#075E54'} />
+              <Copy size={18} color={copiedField === 'businessId' ? '#10B981' : '#0F766E'} />
               <Text style={[styles.copyLabel, copiedField === 'businessId' && { color: '#10B981' }]}>
                 {copiedField === 'businessId' ? 'Copied' : 'Copy'}
               </Text>
@@ -326,7 +397,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
 
           <View style={styles.embedActionsContainer}>
             <TouchableOpacity style={[styles.embedActionButton, styles.previewButton]}>
-              <Eye size={18} color="#075E54" />
+              <Eye size={18} color="#0F766E" />
               <Text style={styles.embedActionText}>Preview Widget</Text>
             </TouchableOpacity>
             <TouchableOpacity 
@@ -394,11 +465,12 @@ interface SectionCardProps {
   title: string;
   icon?: string;
   children: React.ReactNode;
+  style?: any;
 }
 
-function SectionCard({ title, icon, children }: SectionCardProps) {
+function SectionCard({ title, icon, children, style }: SectionCardProps) {
   return (
-    <View style={styles.sectionCard}>
+    <View style={[styles.sectionCard, style]}>
       <View style={styles.sectionHeader}>
         {icon && <Text style={styles.sectionIcon}>{icon}</Text>}
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -487,7 +559,7 @@ function DropdownField({
         onPress={onPress}
         disabled={disabled}
       >
-        <Text style={[styles.dropdownValue, !value && styles.dropdownPlaceholder]}>
+        <Text style={[styles.dropdownValue, !value && styles.dropdownPlaceholder]} numberOfLines={1} ellipsizeMode="tail">
           {loading ? 'Loading...' : (value || placeholder)}
         </Text>
         <Text style={[styles.dropdownArrow, isOpen && styles.dropdownArrowOpen]}>▼</Text>
@@ -599,7 +671,7 @@ const styles = StyleSheet.create({
   // ===== PROFILE CARD =====
   profileCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 14,
     padding: 20,
     marginBottom: 24,
     flexDirection: 'row',
@@ -608,7 +680,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
   avatarContainer: {
     alignItems: 'center',
@@ -617,7 +689,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#075E54',
+    backgroundColor: '#0F766E',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -634,7 +706,7 @@ const styles = StyleSheet.create({
   changePhotoText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#075E54',
+    color: '#0F766E',
   },
   profileInfo: {
     flex: 1,
@@ -666,19 +738,19 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#075E54',
+    color: '#0F766E',
   },
 
   // ===== SECTION CARD =====
   sectionCard: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 14,
     marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 3,
+    elevation: 2,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -767,6 +839,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   dropdownValue: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '500',
     color: '#0F172A',
@@ -780,7 +853,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   dropdownArrowOpen: {
-    color: '#075E54',
+    color: '#0F766E',
   },
   dropdownMenu: {
     position: 'absolute',
@@ -814,7 +887,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
   },
   dropdownItemTextSelected: {
-    color: '#075E54',
+    color: '#0F766E',
     fontWeight: '600',
   },
 
@@ -886,7 +959,7 @@ const styles = StyleSheet.create({
   copyLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#075E54',
+    color: '#0F766E',
   },
 
   // ===== INSTALLATION STEPS =====
@@ -905,14 +978,14 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#E0F2FE',
     borderWidth: 2,
-    borderColor: '#075E54',
+    borderColor: '#0F766E',
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepNumberText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#075E54',
+    color: '#0F766E',
   },
   stepTitle: {
     fontSize: 14,
@@ -949,7 +1022,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: '#075E54',
+    backgroundColor: '#0F766E',
     borderRadius: 8,
   },
   copyCodeText: {
@@ -979,6 +1052,30 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
+  // ===== SWITCHES =====
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  switchLabelContainer: {
+    flex: 1,
+    marginRight: 16,
+  },
+  switchLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  switchDescription: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+
   // ===== COORDINATES ROW =====
   coordinatesRow: {
     flexDirection: 'row',
@@ -987,7 +1084,7 @@ const styles = StyleSheet.create({
 
   // ===== EXTRACT BUTTON =====
   extractButton: {
-    backgroundColor: '#075E54',
+    backgroundColor: '#0F766E',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 14,
@@ -1026,7 +1123,7 @@ const styles = StyleSheet.create({
   embedActionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#075E54',
+    color: '#0F766E',
   },
   docsButton: {
     backgroundColor: '#F8FAFC',
@@ -1081,7 +1178,7 @@ const styles = StyleSheet.create({
     color: '#0F172A',
   },
   saveButton: {
-    backgroundColor: '#075E54',
+    backgroundColor: '#0F766E',
   },
   saveButtonLoading: {
     opacity: 0.8,
@@ -1092,7 +1189,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   editButton: {
-    backgroundColor: '#075E54',
+    backgroundColor: '#0F766E',
   },
   editButtonText: {
     fontSize: 15,

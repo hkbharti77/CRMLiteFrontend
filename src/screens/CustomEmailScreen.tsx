@@ -21,6 +21,7 @@ import {
   Snackbar,
   Divider,
   SegmentedButtons,
+  IconButton,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { customEmailApi } from '../services/api';
@@ -288,33 +289,50 @@ export default function CustomEmailScreen() {
       <Portal>
         {/* ── Compose Dialog ───────────────────────────────────────────────── */}
         <Dialog visible={showCompose} onDismiss={() => { setShowCompose(false); resetForm(); }}
-          style={styles.dialog}>
-          <Dialog.Title>📧 Compose Email</Dialog.Title>
-          <Dialog.ScrollArea style={{ maxHeight: 560 }}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-              <ScrollView>
+          style={[styles.dialog, { maxHeight: '90%', backgroundColor: '#FFFFFF', padding: 0 }]}>
+          
+          <View style={styles.dialogHeader}>
+            <View>
+              <Text variant="titleLarge" style={styles.dialogTitleText}>
+                Compose Email
+              </Text>
+              <Text style={{ color: '#64748B', fontSize: 13, marginTop: 2 }}>Send a new email campaign</Text>
+            </View>
+            <IconButton icon="close" size={20} onPress={() => { setShowCompose(false); resetForm(); }} style={styles.closeIcon} />
+          </View>
+
+          <Divider style={styles.divider} />
+
+          <Dialog.ScrollArea style={{ paddingHorizontal: 0 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flexShrink: 1 }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.dialogScrollContent}>
+                
+                <Text variant="labelMedium" style={styles.modernSectionLabel}>Email Content</Text>
                 <TextInput label="Subject *" value={form.subject}
                   onChangeText={(v) => setForm((f) => ({ ...f, subject: v }))}
-                  mode="outlined" style={styles.input} />
+                  mode="outlined" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
 
                 <TextInput label="Body *" value={form.body}
                   onChangeText={(v) => setForm((f) => ({ ...f, body: v }))}
                   mode="outlined" multiline numberOfLines={6}
                   placeholder="Write your message here..."
-                  style={styles.input} />
+                  style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
 
+                <Text variant="labelMedium" style={[styles.modernSectionLabel, { marginTop: 8 }]}>Call to Action</Text>
                 <TextInput label="CTA Button Label (optional)" value={form.ctaLabel}
                   onChangeText={(v) => setForm((f) => ({ ...f, ctaLabel: v }))}
-                  mode="outlined" placeholder="e.g. Claim Offer" style={styles.input} />
+                  mode="outlined" placeholder="e.g. Claim Offer" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
 
                 <TextInput label="CTA Button URL (optional)" value={form.ctaUrl}
                   onChangeText={(v) => setForm((f) => ({ ...f, ctaUrl: v }))}
                   mode="outlined" keyboardType="url"
-                  placeholder="https://yoursite.com/offer" style={styles.input} />
+                  placeholder="https://yoursite.com/offer" style={styles.modernInput}
+                  outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
 
-                <Divider style={{ marginVertical: 8 }} />
-
-                <Text variant="labelMedium" style={styles.fieldLabel}>Send To</Text>
+                <Text variant="labelMedium" style={[styles.modernSectionLabel, { marginTop: 8 }]}>Recipients</Text>
                 <SegmentedButtons
                   value={form.recipientMode}
                   onValueChange={(v) => setForm((f) => ({ ...f, recipientMode: v as RecipientMode }))}
@@ -323,14 +341,16 @@ export default function CustomEmailScreen() {
                     { value: 'TAGGED', label: '🏷️ Tagged' },
                     { value: 'MANUAL', label: '✉️ Manual' },
                   ]}
-                  style={{ marginBottom: 12 }}
+                  style={{ marginBottom: 16 }}
+                  theme={{ colors: { secondaryContainer: '#CCFBF1', onSecondaryContainer: '#0F766E', outline: '#E2E8F0' } }}
                 />
 
                 {form.recipientMode === 'TAGGED' && (
                   <TextInput label="Tags (comma-separated)" value={form.tagsFilter}
                     onChangeText={(v) => setForm((f) => ({ ...f, tagsFilter: v }))}
                     mode="outlined" placeholder="e.g. vip,premium,returning"
-                    style={styles.input} />
+                    style={styles.modernInput}
+                    outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
                 )}
 
                 {form.recipientMode === 'MANUAL' && (
@@ -338,60 +358,75 @@ export default function CustomEmailScreen() {
                     onChangeText={(v) => setForm((f) => ({ ...f, manualRecipients: v }))}
                     mode="outlined" multiline numberOfLines={3}
                     placeholder="alice@example.com, bob@example.com"
-                    keyboardType="email-address" style={styles.input} />
+                    keyboardType="email-address" style={styles.modernInput}
+                    outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
                 )}
 
                 {/* Preview note */}
                 <View style={styles.previewNote}>
-                  <Ionicons name="information-circle-outline" size={16} color="#6366f1" />
-                  <Text variant="bodySmall" style={{ color: '#6366f1', marginLeft: 6, flex: 1 }}>
-                    Emails are sent using your branded ChatCRM Lite template with header and footer.
+                  <Ionicons name="information-circle-outline" size={16} color="#0F766E" />
+                  <Text variant="bodySmall" style={{ color: '#0F766E', marginLeft: 6, flex: 1, fontWeight: '500' }}>
+                    Emails are sent using your branded template with header and footer.
                   </Text>
                 </View>
               </ScrollView>
             </KeyboardAvoidingView>
           </Dialog.ScrollArea>
-          <Dialog.Actions style={{ flexWrap: 'wrap', gap: 4 }}>
-            <Button onPress={() => { setShowCompose(false); resetForm(); }}>Cancel</Button>
-            <Button onPress={handleSaveDraft}
-              disabled={!form.subject.trim() || !form.body.trim()}>
-              Save Draft
-            </Button>
+
+          <View style={styles.dialogFooter}>
+            <View style={{ flexDirection: 'row' }}>
+              <Button onPress={() => { setShowCompose(false); resetForm(); }} textColor="#64748B">Cancel</Button>
+              <Button onPress={handleSaveDraft}
+                disabled={!form.subject.trim() || !form.body.trim()}
+                textColor="#0F766E" style={{ marginLeft: 8 }}>
+                Save Draft
+              </Button>
+            </View>
             <Button mode="contained" onPress={handleSend} loading={sending}
-              disabled={!form.subject.trim() || !form.body.trim() || sending}>
+              disabled={!form.subject.trim() || !form.body.trim() || sending}
+              style={styles.primaryBtn} contentStyle={{ paddingHorizontal: 12 }}>
               Send Now
             </Button>
-          </Dialog.Actions>
+          </View>
         </Dialog>
 
         {/* ── Campaign Detail Dialog ───────────────────────────────────────── */}
         {selectedCampaign && (
           <Dialog visible={showDetail} onDismiss={() => setShowDetail(false)}
-            style={styles.dialog}>
-            <Dialog.Title>{STATUS_CONFIG[selectedCampaign.status].icon} Campaign Detail</Dialog.Title>
-            <Dialog.ScrollArea style={{ maxHeight: 480 }}>
-              <ScrollView>
-                <Text variant="titleMedium" style={{ fontWeight: '700', marginBottom: 12 }}>
+            style={[styles.dialog, { maxHeight: '90%', backgroundColor: '#FFFFFF', padding: 0 }]}>
+            
+            <View style={styles.dialogHeader}>
+              <View>
+                <Text style={{ fontSize: 24, marginBottom: 4 }}>{STATUS_CONFIG[selectedCampaign.status].icon}</Text>
+                <Text variant="titleLarge" style={styles.dialogTitleText}>
                   {selectedCampaign.subject}
                 </Text>
+              </View>
+              <IconButton icon="close" size={20} onPress={() => setShowDetail(false)} style={styles.closeIcon} />
+            </View>
+
+            <Divider style={styles.divider} />
+
+            <Dialog.ScrollArea style={{ paddingHorizontal: 0 }}>
+              <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.dialogScrollContent}>
 
                 {/* Stats */}
                 {selectedCampaign.status === 'SENT' && (
                   <View style={styles.campaignStats}>
                     <View style={styles.statBox}>
-                      <Text style={[styles.statBoxNum, { color: '#16a34a' }]}>
+                      <Text style={[styles.statBoxNum, { color: '#0F766E' }]}>
                         {selectedCampaign.totalSent}
                       </Text>
                       <Text style={styles.statBoxLabel}>Delivered</Text>
                     </View>
                     <View style={styles.statBox}>
-                      <Text style={[styles.statBoxNum, { color: '#dc2626' }]}>
+                      <Text style={[styles.statBoxNum, { color: '#EF4444' }]}>
                         {selectedCampaign.totalFailed}
                       </Text>
                       <Text style={styles.statBoxLabel}>Failed</Text>
                     </View>
                     <View style={styles.statBox}>
-                      <Text style={[styles.statBoxNum, { color: '#6366f1' }]}>
+                      <Text style={[styles.statBoxNum, { color: '#0F172A' }]}>
                         {selectedCampaign.totalSent + selectedCampaign.totalFailed}
                       </Text>
                       <Text style={styles.statBoxLabel}>Total</Text>
@@ -410,34 +445,34 @@ export default function CustomEmailScreen() {
                 </View>
 
                 {/* Body preview */}
-                <Text variant="labelMedium" style={styles.sectionLabel}>Message Body</Text>
+                <Text variant="labelMedium" style={styles.modernSectionLabel}>Message Body</Text>
                 <View style={styles.bodyPreviewBox}>
-                  <Text variant="bodySmall" style={{ color: '#374151', lineHeight: 20 }}>
+                  <Text variant="bodyMedium" style={{ color: '#334155', lineHeight: 22 }}>
                     {selectedCampaign.body.replace(/<br>/g, '\n').replace(/<[^>]*>/g, '')}
                   </Text>
                 </View>
 
                 {/* CTA */}
                 {selectedCampaign.ctaLabel && (
-                  <>
-                    <Text variant="labelMedium" style={[styles.sectionLabel, { marginTop: 12 }]}>
-                      CTA Button
-                    </Text>
-                    <Text variant="bodySmall" style={{ color: '#6366f1' }}>
-                      [{selectedCampaign.ctaLabel}] → {selectedCampaign.ctaUrl}
-                    </Text>
-                  </>
+                  <View style={{ marginTop: 24 }}>
+                    <Text variant="labelMedium" style={styles.modernSectionLabel}>Call to Action</Text>
+                    <View style={styles.ctaPreviewBox}>
+                      <Text style={styles.ctaPreviewLabel}>{selectedCampaign.ctaLabel}</Text>
+                      <Text style={styles.ctaPreviewUrl}>{selectedCampaign.ctaUrl}</Text>
+                    </View>
+                  </View>
                 )}
               </ScrollView>
             </Dialog.ScrollArea>
-            <Dialog.Actions>
-              <Button onPress={() => setShowDetail(false)}>Close</Button>
+
+            <View style={[styles.dialogFooter, { justifyContent: 'flex-end' }]}>
+              <Button onPress={() => setShowDetail(false)} textColor="#64748B">Close</Button>
               <Button mode="contained" onPress={() => handleResend(selectedCampaign)}
                 loading={resending} disabled={resending}
-                icon="email-sync-outline">
+                icon="email-sync-outline" style={[styles.primaryBtn, { marginLeft: 12 }]}>
                 Resend
               </Button>
-            </Dialog.Actions>
+            </View>
           </Dialog>
         )}
       </Portal>
@@ -533,10 +568,30 @@ const styles = StyleSheet.create({
 
   sectionLabel: { color: '#6b7280', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', fontSize: 11 },
   bodyPreviewBox: {
-    backgroundColor: '#f5f5ff',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  ctaPreviewBox: {
+    backgroundColor: '#CCFBF1',
     borderRadius: 8,
     padding: 12,
     borderLeftWidth: 3,
-    borderLeftColor: '#6366f1',
+    borderLeftColor: '#0F766E',
   },
+  ctaPreviewLabel: { color: '#0F766E', fontWeight: '700', fontSize: 13, marginBottom: 2 },
+  ctaPreviewUrl: { color: '#0F766E', fontSize: 12 },
+
+  // --- Modern Dialog Styles ---
+  dialogHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 20, paddingBottom: 16 },
+  dialogTitleText: { fontWeight: '700', color: '#0F172A', marginTop: 4 },
+  closeIcon: { margin: 0 },
+  divider: { backgroundColor: '#E2E8F0' },
+  dialogScrollContent: { padding: 20, paddingBottom: 40 },
+  modernSectionLabel: { color: '#0F172A', fontWeight: '700', marginBottom: 12, fontSize: 14 },
+  modernInput: { marginBottom: 16, backgroundColor: '#FFFFFF', fontSize: 14 },
+  dialogFooter: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderTopWidth: 1, borderTopColor: '#E2E8F0', backgroundColor: '#F8FAFC' },
+  primaryBtn: { borderRadius: 8, backgroundColor: '#0F766E' }
 });

@@ -213,7 +213,15 @@ export const userApi = {
     latitude?: number;
     longitude?: number;
     logoUrl?: string;
+    forceShowBooking?: boolean | null;
+    forceShowLeads?: boolean | null;
+    forceShowAppointment?: boolean | null;
   }) => api.put('/users/me', data),
+  updateActiveFlowType: (flowType: 'lead' | 'appointment' | 'booking') => api.put('/users/me', {
+    forceShowLeads: flowType === 'lead',
+    forceShowAppointment: flowType === 'appointment',
+    forceShowBooking: flowType === 'booking',
+  }),
   // Security Suite
   getSecurityDashboard: () => api.get('/users/me/security-dashboard'),
   getSessions: () => api.get('/users/me/sessions'),
@@ -309,9 +317,10 @@ export const businessServiceApi = {
   delete: (id: string) => api.delete(`/business-services/${id}`),
 };
 
-// Returns fixed trigger button/list labels based on tenant's business sub-category
 export const flowConfigApi = {
   getTriggerLabels: () => api.get('/flow-config/trigger-labels'),
+  getFlowFields: (flowType?: string) => api.get(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`),
+  saveFlowFields: (fields: any[], flowType?: string) => api.post(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`, fields),
 };
 
 export const ragApi = {
@@ -354,6 +363,7 @@ export const ragApi = {
   listDocuments: () => api.get('/rag/documents'),
   getStatus: (docId: string) => api.get(`/rag/status/${docId}`),
   deleteDocument: (docId: string) => api.delete(`/rag/documents/${docId}`),
+  downloadDocument: (docId: string) => api.get(`/rag/documents/${docId}/download`, { responseType: 'blob' }),
   trainText: (content: string) => api.post('/knowledge-base/train', { content }),
 };
 
@@ -361,7 +371,6 @@ export const ragApi = {
 export const ticketApi = {
   // Tickets
   getAll: (page = 0, size = 20) => api.get(`/tickets?page=${page}&size=${size}`),
-  getById: (id: string) => api.get(`/tickets/${id}`),
   search: (q: string, page = 0) => api.get(`/tickets/search?q=${encodeURIComponent(q)}&page=${page}`),
   create: (data: {
     subject: string;
@@ -378,8 +387,6 @@ export const ticketApi = {
     api.patch(`/tickets/${id}/status?status=${status}`),
   updatePriority: (id: string, priority: string) =>
     api.patch(`/tickets/${id}/priority?priority=${priority}`),
-  assign: (id: string, agentId: string) =>
-    api.patch(`/tickets/${id}/assign?agentId=${agentId}`),
   addComment: (id: string, message: string, internal = false) =>
     api.post(`/tickets/${id}/comments`, { message, internal }),
   delete: (id: string) => api.delete(`/tickets/${id}`),
@@ -422,9 +429,10 @@ export const supportFormConfigApi = {
 };
 
 export const monitoringApi = {
-  getHealth: () => api.get('/actuator/health'),
-  getMetrics: () => api.get('/actuator/metrics'),
-  getMetricDetails: (name: string) => api.get(`/actuator/metrics/${name}`),
+  getHealth: () => api.get(`${SERVER_HOST}/actuator/health`),
+  getMetrics: () => api.get(`${SERVER_HOST}/actuator/metrics`),
+  getMetricDetails: (name: string) => api.get(`${SERVER_HOST}/actuator/metrics/${name}`),
 };
 
 export default api;
+

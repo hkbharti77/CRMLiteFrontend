@@ -39,6 +39,7 @@ export type MainTabParamList = {
   Dashboard: undefined;
   Inbox: undefined;
   Pipeline: undefined;
+  Appointments: undefined;
   Booking: undefined;
   Tickets: undefined;
   Emails: undefined;
@@ -59,6 +60,15 @@ function AuthNavigator() {
 
 function MainNavigator() {
   const theme = useTheme();
+  const { flowType, forceShowBooking, forceShowAppointment, forceShowLeads } = useAuthStore();
+
+  const isLeadNiche = flowType === 'LEAD';
+  const isAppointmentNiche = flowType === 'APPOINTMENT';
+  const isBookingNiche = flowType === 'BOOKING';
+
+  const shouldShowLeads = forceShowLeads !== null ? forceShowLeads : isLeadNiche;
+  const shouldShowAppointments = forceShowAppointment !== null ? forceShowAppointment : isAppointmentNiche;
+  const shouldShowBooking = forceShowBooking !== null ? forceShowBooking : isBookingNiche;
   
   return (
     <Tab.Navigator
@@ -71,6 +81,8 @@ function MainNavigator() {
             iconName = focused ? 'chatbubble' : 'chatbubble-outline';
           } else if (route.name === 'Pipeline') {
             iconName = focused ? 'list' : 'list-outline';
+          } else if (route.name === 'Appointments') {
+            iconName = focused ? 'time' : 'time-outline';
           } else if (route.name === 'Booking') {
             iconName = focused ? 'calendar' : 'calendar-outline';
           } else if (route.name === 'Tickets') {
@@ -90,8 +102,15 @@ function MainNavigator() {
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Inbox" component={ChatListScreen} />
-      <Tab.Screen name="Pipeline" component={PipelineScreen} />
-      <Tab.Screen name="Booking" component={BookingScreen} />
+      {shouldShowLeads && (
+        <Tab.Screen name="Pipeline" component={PipelineScreen} />
+      )}
+      {shouldShowAppointments && (
+        <Tab.Screen name="Appointments" component={BookingScreen} />
+      )}
+      {shouldShowBooking && (
+        <Tab.Screen name="Booking" component={BookingScreen} />
+      )}
       <Tab.Screen
         name="Tickets"
         component={TicketScreen}
@@ -108,7 +127,7 @@ function MainNavigator() {
 }
 
 export default function AppNavigator() {
-  const { userToken, userId, tenantId, onboardingCompleted, isLoading, restoreToken } = useAuthStore();
+  const { userToken, userId, tenantId, onboardingCompleted, isLoading, restoreToken, flowType, forceShowBooking, forceShowLeads } = useAuthStore();
   const { connect, isConnected } = useWebSocketStore();
 
   useEffect(() => {

@@ -5,7 +5,7 @@ import { ArrowRight, Users, AlertCircle, Calendar, CheckCircle, Inbox, BarChart2
 import { useAuthStore } from '../store/useAuthStore';
 import { useLeadStore } from '../store/useLeadStore';
 import { useTicketStore } from '../store/useTicketStore';
-import { crmApi, messageApi, appointmentApi } from '../services/api';
+import { crmApi, messageApi, appointmentApi, bookingApi } from '../services/api';
 import { tokens } from '../theme/tokens';
 import { spacing } from '../theme';
 import { ScreenHeader } from '@components/global/Header/ScreenHeader';
@@ -246,9 +246,18 @@ const activityStyles = StyleSheet.create({
 
 export default function DashboardScreen({ navigation }: any) {
   const theme = useTheme();
-  const { businessName, userToken } = useAuthStore();
+  const { businessName, userToken, flowType, forceShowBooking, forceShowAppointment, forceShowLeads } = useAuthStore();
   const { leads, setLeads, isLoading: leadsLoading } = useLeadStore();
   const { stats: ticketStats, fetchTickets } = useTicketStore();
+
+  const isLeadNiche = flowType === 'LEAD';
+  const isAppointmentNiche = flowType === 'APPOINTMENT';
+  const isBookingNiche = flowType === 'BOOKING';
+
+  const shouldShowLeads = forceShowLeads !== null ? forceShowLeads : isLeadNiche;
+  const shouldShowAppointments = forceShowAppointment !== null ? forceShowAppointment : isAppointmentNiche;
+  const shouldShowBooking = forceShowBooking !== null ? forceShowBooking : isBookingNiche;
+  const shouldShowMeetings = shouldShowAppointments || shouldShowBooking;
 
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -308,10 +317,15 @@ export default function DashboardScreen({ navigation }: any) {
       setRecentActivity(activities);
 
       try {
-        const todayRes = await appointmentApi.getToday();
-        setTodayAppointments(todayRes.data || []);
+        if (shouldShowAppointments) {
+          const todayRes = await appointmentApi.getToday();
+          setTodayAppointments(todayRes.data || []);
+        } else if (shouldShowBooking) {
+          const bookingsRes = await bookingApi.getByStatus('CONFIRMED');
+          setTodayAppointments(bookingsRes.data || []);
+        }
       } catch (e) {
-        console.warn('Appointments not available', e);
+        console.warn('Appointments/Bookings not available', e);
       }
 
       try {
@@ -405,36 +419,51 @@ export default function DashboardScreen({ navigation }: any) {
             )}
           </View>
 
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Today's Appointments</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Booking')}>
-                <ArrowRight size={18} color={theme.colors.primary} strokeWidth={2} />
-              </TouchableOpacity>
-            </View>
-            
-            {todayAppointments.length > 0 ? (
-              <View style={styles.appointmentsContainer}>
-                {todayAppointments.slice(0, 3).map((appt) => (
-                  <AppointmentCard
-                    key={appt.id}
-                    appointment={{
-                      id: appt.id,
-                      title: appt.title || 'Meeting',
-                      date: appt.appointmentDateTime ? new Date(appt.appointmentDateTime).toLocaleDateString() : 'Today',
-                      time: appt.appointmentDateTime ? new Date(appt.appointmentDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---',
-                      locationType: 'video',
-                      contactName: appt.contactName || 'Client',
-                      status: 'scheduled'
-                    }}
-                    onPress={() => navigation.navigate('Booking')}
-                  />
-                ))}
+          {shouldShowMeetings && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  {shouldShowAppointments ? "Today's Appointments" : "Recent Bookings"}
+                </Text>
+                <TouchableOpacity onPress={() => navigation.navigate(shouldShowAppointments ? 'Appointments' : 'Booking')}>
+                  <ArrowRight size={18} color={theme.colors.primary} strokeWidth={2} />
+                </TouchableOpacity>
               </View>
-            ) : (
-              <EmptyState title="No meetings today" description="You're all caught up!" icon={<Calendar size={48} color={theme.colors.onSurfaceVariant} />} />
-            )}
-          </View>
+              
+              {todayAppointments.length > 0 ? (
+                <View style={styles.appointmentsContainer}>
+                  {todayAppointments.slice(0, 3).map((appt) => {
+                    const isBooking = !appt.appointmentDateTime;
+                    return (
+                      <AppointmentCard
+                        key={appt.id}
+                        appointment={{
+                          id: appt.id,
+                          title: isBooking ? appt.service : (appt.title || 'Meeting'),
+                          date: isBooking 
+                            ? (appt.createdAt ? new Date(appt.createdAt).toLocaleDateString() : 'Today') 
+                            : (appt.appointmentDateTime ? new Date(appt.appointmentDateTime).toLocaleDateString() : 'Today'),
+                          time: isBooking
+                            ? (appt.preferredSlot || '---')
+                            : (appt.appointmentDateTime ? new Date(appt.appointmentDateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '---'),
+                          locationType: 'video',
+                          contactName: appt.contactName || 'Client',
+                          status: appt.status?.toLowerCase() || 'scheduled'
+                        }}
+                        onPress={() => navigation.navigate(shouldShowAppointments ? 'Appointments' : 'Booking')}
+                      />
+                    );
+                  })}
+                </View>
+              ) : (
+                <EmptyState 
+                  title={shouldShowAppointments ? "No meetings today" : "No recent bookings"} 
+                  description="You're all caught up!" 
+                  icon={<Calendar size={48} color={theme.colors.onSurfaceVariant} />} 
+                />
+              )}
+            </View>
+          )}
 
           <View style={{ height: spacing.xxxl }} />
         </ScrollView>

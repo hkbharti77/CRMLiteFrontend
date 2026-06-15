@@ -22,25 +22,39 @@ const SystemHealthView: React.FC<SystemHealthViewProps> = ({ onBack }) => {
   const fetchHealthData = async () => {
     try {
       const healthRes = await monitoringApi.getHealth();
-      setHealthStatus(healthRes.data.status || 'UNKNOWN');
-      const components = healthRes.data.components || {};
-      setDbStatus(components.db?.status || 'UNKNOWN');
-      setRedisStatus(components.redis?.status || 'UNKNOWN');
-      if (components.diskSpace?.details?.free) {
-        const freeGB = (components.diskSpace.details.free / (1024 * 1024 * 1024)).toFixed(2);
-        setDiskSpace(`${freeGB} GB Free`);
+      processHealthData(healthRes.data);
+    } catch (error: any) {
+      console.error('Error fetching system health:', error);
+      if (error.response && error.response.data) {
+        processHealthData(error.response.data);
+      } else {
+        setHealthStatus('DOWN');
       }
-      const uptimeRes = await monitoringApi.getMetricDetails('process.uptime').catch(() => null);
+    }
+
+    try {
+      const uptimeRes = await monitoringApi.getMetricDetails('process.uptime');
       if (uptimeRes?.data?.measurements?.[0]?.value) {
         setSystemUptime(uptimeRes.data.measurements[0].value);
       }
-      const failuresRes = await monitoringApi.getMetricDetails('workflow.failures').catch(() => null);
+    } catch (e) {}
+
+    try {
+      const failuresRes = await monitoringApi.getMetricDetails('workflow.failures');
       if (failuresRes?.data?.measurements?.[0]?.value) {
         setWorkflowFailures(failuresRes.data.measurements[0].value);
       }
-    } catch (error) {
-      console.error('Error fetching system health:', error);
-      setHealthStatus('DOWN');
+    } catch (e) {}
+  };
+
+  const processHealthData = (data: any) => {
+    setHealthStatus(data.status || 'UNKNOWN');
+    const components = data.components || {};
+    setDbStatus(components.db?.status || 'UNKNOWN');
+    setRedisStatus(components.redis?.status || 'UNKNOWN');
+    if (components.diskSpace?.details?.free) {
+      const freeGB = (components.diskSpace.details.free / (1024 * 1024 * 1024)).toFixed(2);
+      setDiskSpace(`${freeGB} GB Free`);
     }
   };
 

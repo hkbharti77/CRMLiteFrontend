@@ -283,7 +283,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
             borderColor: colors.border
           }}>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontWeight: 'bold', color: colors.primary }}>📋 Include "About & Contact" button</Text>
+              <Text style={{ fontWeight: 'bold' as const, color: colors.primary }}>📋 Include "About & Contact" button</Text>
               <Text style={{ fontSize: 12, color: colors.muted }}>Shows your business info and maps location.</Text>
             </View>
             <Switch 
@@ -463,7 +463,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               <View key={index} style={[styles.editableSlot, item.isCatalog && styles.catalogSlotHighlight]}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
                   <Text style={styles.optionLabel}>Manual Option {editIndex + 2}</Text>
-                  {item.isCatalog && <Text style={{ color: colors.primary, fontWeight: 'bold', fontSize: 10 }}>🛍️ Catalog Link</Text>}
+                  {item.isCatalog && <Text style={{ color: colors.primary, fontWeight: 'bold' as const, fontSize: 10 }}>🛍️ Catalog Link</Text>}
                 </View>
 
                 <TextInput

@@ -110,7 +110,12 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({ onBack }) => {
   const handleUndeleteLeads = async () => {
     try {
       const res = await userApi.recoverLeads();
-      Alert.alert("Success", res.data);
+      const message = String(res.data);
+      if (message.includes("0")) {
+        Alert.alert("Data Recovery", "No recently lost leads were found to recover.");
+      } else {
+        Alert.alert("Success", message);
+      }
       fetchDashboard();
     } catch (e) {
       Alert.alert("Error", "Failed to recover leads");
@@ -120,8 +125,22 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({ onBack }) => {
   const handleExportData = async () => {
     try {
       const res = await userApi.exportData();
-      Alert.alert("Data Exported", "Your business data has been aggregated securely. Ready for download.");
-      console.log("Exported Data:", res.data);
+      
+      if (typeof document !== 'undefined') {
+        const jsonString = JSON.stringify(res.data, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `CRMLite_Export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } else {
+        Alert.alert("Data Exported", "Your business data has been aggregated securely. Check console for output.");
+        console.log("Exported Data:", res.data);
+      }
     } catch (e) {
       Alert.alert("Error", "Export failed");
     }

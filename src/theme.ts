@@ -52,11 +52,12 @@ export const themeDark = {
 };
 
 export const typography = {
-  pageTitle: { fontSize: 24, fontWeight: '700', color: colors.text },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: colors.text },
-  cardTitle: { fontSize: 16, fontWeight: '500', color: colors.text },
-  description: { fontSize: 14, fontWeight: '400', color: colors.muted },
-  metaText: { fontSize: 12, fontWeight: '400', color: colors.muted },
+  pageTitle: { fontSize: 24, fontWeight: '700' as const, color: colors.text },
+  sectionTitle: { fontSize: 18, fontWeight: '600' as const, color: colors.text },
+  cardTitle: { fontSize: 16, fontWeight: '500' as const, color: colors.text },
+  description: { fontSize: 14, fontWeight: '400' as const, color: colors.muted },
+  metaText: { fontSize: 12, fontWeight: '400' as const, color: colors.muted },
+  label: { fontSize: 14, fontWeight: '600' as const, color: colors.text },
 };
 
 export const sharedStyles = StyleSheet.create({

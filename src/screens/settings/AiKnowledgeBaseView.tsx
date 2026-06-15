@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity, Platform } from 'react-native';
 import { Text, Button, ActivityIndicator, List, IconButton, Snackbar, Icon } from 'react-native-paper';
 import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,9 @@ import { colors, typography, sharedStyles } from '../../theme';
 interface DocumentFile {
   documentId: string;
   name: string;
+  totalChunks?: number;
+  embeddingSize?: number;
+  vectorModel?: string;
 }
 
 interface Props {
@@ -112,6 +115,30 @@ const AiKnowledgeBaseView: React.FC<Props> = ({ onBack }) => {
     }
   };
 
+  const handleDownload = async (docId: string, filename: string) => {
+    try {
+      setSnackbarMsg('Starting download...');
+      setSnackbarVisible(true);
+      const response = await ragApi.downloadDocument(docId);
+      
+      if (Platform.OS === 'web') {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${filename}.txt`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      } else {
+        Alert.alert('Download Started', 'The text file has been retrieved.');
+      }
+    } catch (error) {
+      console.error('Download failed', error);
+      Alert.alert('Download Failed', 'Failed to download the document text.');
+    }
+  };
+
   return (
     <View style={sharedStyles.container}>
       <View style={sharedStyles.header}>
@@ -158,16 +185,37 @@ const AiKnowledgeBaseView: React.FC<Props> = ({ onBack }) => {
                 <List.Item
                   title={doc.name}
                   titleStyle={typography.cardTitle}
-                  description="Processed and trained"
-                  descriptionStyle={{ color: colors.success, fontSize: 12 }}
+                  description={() => (
+                    <View style={{ marginTop: 4 }}>
+                      <Text style={{ color: colors.success, fontSize: 12, fontWeight: 'bold' }}>Processed and trained</Text>
+                      {doc.totalChunks !== undefined && (
+                        <Text style={{ color: colors.muted, fontSize: 11, marginTop: 4 }}>
+                          • Total AI Chunks: {doc.totalChunks}
+                        </Text>
+                      )}
+                      {doc.vectorModel && (
+                        <Text style={{ color: colors.muted, fontSize: 11 }}>
+                          • Vector Model: {doc.vectorModel} ({doc.embeddingSize}d)
+                        </Text>
+                      )}
+                    </View>
+                  )}
                   left={props => <List.Icon {...props} icon="file-document-outline" color={colors.primary} />}
                   right={props => (
-                    <IconButton
-                      {...props}
-                      icon="delete-outline"
-                      iconColor={colors.error}
-                      onPress={() => handleDeleteClick(doc.documentId)}
-                    />
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <IconButton
+                        {...props}
+                        icon="download-outline"
+                        iconColor={colors.primary}
+                        onPress={() => handleDownload(doc.documentId, doc.name)}
+                      />
+                      <IconButton
+                        {...props}
+                        icon="delete-outline"
+                        iconColor={colors.error}
+                        onPress={() => handleDeleteClick(doc.documentId)}
+                      />
+                    </View>
                   )}
                 />
               </View>

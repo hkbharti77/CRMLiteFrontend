@@ -24,6 +24,7 @@ export const colors = {
   warning: '#F59E0B',        // User requested Warning: #F59E0B
   error: '#EF4444',          // User requested Error: #EF4444
   info: '#3B82F6',
+  accent: '#F59E0B',         // Added accent color
   
   // Borders & Dividers
   border: '#E2E8F0',         // User requested Border: #E2E8F0
@@ -57,6 +58,7 @@ export const colorsDark = {
   warning: '#F59E0B',
   error: '#EF4444',
   info: '#60A5FA',
+  accent: '#F59E0B',
   border: '#374151',
   borderLight: '#1F2937',
   shadow: 'rgba(0, 0, 0, 0.3)',

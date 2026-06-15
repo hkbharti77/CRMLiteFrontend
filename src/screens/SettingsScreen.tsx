@@ -13,6 +13,7 @@ import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
 import SupportCategoriesView from './settings/SupportCategoriesView';
 import SystemHealthView from './settings/SystemHealthView';
+import FlowFieldsView from './settings/FlowFieldsView';
 import { 
   Settings, 
   Search, 
@@ -572,6 +573,12 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'flow_fields') {
+      return (
+        <FlowFieldsView onBack={() => setActiveView(null)} />
+      );
+    }
+
     // ===== MAIN SETTINGS HOME =====
     return (
       <View style={styles.mainContainer}>
@@ -644,6 +651,13 @@ const SettingsScreen = () => {
             title="Products & Services"
             description="Manage your catalog"
             onPress={() => setActiveView('services')}
+            divider
+          />
+          <SettingsItem
+            icon={<FileText size={20} color="#075E54" />}
+            title="Form Fields"
+            description="Customize WhatsApp form fields"
+            onPress={() => setActiveView('flow_fields')}
             divider
           />
           <SettingsItem

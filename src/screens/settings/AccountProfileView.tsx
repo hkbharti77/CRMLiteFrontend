@@ -155,7 +155,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         </SectionCard>
 
         {/* ===== BUSINESS INFORMATION SECTION ===== */}
-        <SectionCard title="Business Information">
+        <SectionCard title="Business Information" style={{ zIndex: 100, elevation: 100 }}>
           <FormField
             label="Business Name"
             value={accountProfile.businessName}
@@ -164,7 +164,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             placeholder="Your business name"
           />
 
-          <View style={styles.dropdownContainer}>
+          <View style={[styles.dropdownContainer, { zIndex: 2000, elevation: 2000 }]}>
             <Text style={styles.fieldLabel}>Business Category</Text>
             <DropdownField
               value={accountProfile.businessType}
@@ -185,7 +185,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           </View>
 
           {accountProfile.businessType && (
-            <View style={styles.dropdownContainer}>
+            <View style={[styles.dropdownContainer, { zIndex: 1000, elevation: 1000 }]}>
               <Text style={styles.fieldLabel}>Sub Category</Text>
               <DropdownField
                 value={accountProfile.businessSubType}
@@ -205,7 +205,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         </SectionCard>
 
         {/* ===== BUSINESS LOCATION SECTION ===== */}
-        <SectionCard title="Business Location">
+        <SectionCard title="Business Location" style={{ zIndex: 10, elevation: 10 }}>
           <Text style={styles.fieldHelper}>📍 These coordinates will be used to share your shop location on WhatsApp</Text>
           
           <FormField
@@ -465,11 +465,12 @@ interface SectionCardProps {
   title: string;
   icon?: string;
   children: React.ReactNode;
+  style?: any;
 }
 
-function SectionCard({ title, icon, children }: SectionCardProps) {
+function SectionCard({ title, icon, children, style }: SectionCardProps) {
   return (
-    <View style={styles.sectionCard}>
+    <View style={[styles.sectionCard, style]}>
       <View style={styles.sectionHeader}>
         {icon && <Text style={styles.sectionIcon}>{icon}</Text>}
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -558,7 +559,7 @@ function DropdownField({
         onPress={onPress}
         disabled={disabled}
       >
-        <Text style={[styles.dropdownValue, !value && styles.dropdownPlaceholder]}>
+        <Text style={[styles.dropdownValue, !value && styles.dropdownPlaceholder]} numberOfLines={1} ellipsizeMode="tail">
           {loading ? 'Loading...' : (value || placeholder)}
         </Text>
         <Text style={[styles.dropdownArrow, isOpen && styles.dropdownArrowOpen]}>▼</Text>
@@ -838,6 +839,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   dropdownValue: {
+    flex: 1,
     fontSize: 14,
     fontWeight: '500',
     color: '#0F172A',

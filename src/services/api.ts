@@ -215,7 +215,13 @@ export const userApi = {
     logoUrl?: string;
     forceShowBooking?: boolean | null;
     forceShowLeads?: boolean | null;
+    forceShowAppointment?: boolean | null;
   }) => api.put('/users/me', data),
+  updateActiveFlowType: (flowType: 'lead' | 'appointment' | 'booking') => api.put('/users/me', {
+    forceShowLeads: flowType === 'lead',
+    forceShowAppointment: flowType === 'appointment',
+    forceShowBooking: flowType === 'booking',
+  }),
   // Security Suite
   getSecurityDashboard: () => api.get('/users/me/security-dashboard'),
   getSessions: () => api.get('/users/me/sessions'),
@@ -311,9 +317,10 @@ export const businessServiceApi = {
   delete: (id: string) => api.delete(`/business-services/${id}`),
 };
 
-// Returns fixed trigger button/list labels based on tenant's business sub-category
 export const flowConfigApi = {
   getTriggerLabels: () => api.get('/flow-config/trigger-labels'),
+  getFlowFields: (flowType?: string) => api.get(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`),
+  saveFlowFields: (fields: any[], flowType?: string) => api.post(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`, fields),
 };
 
 export const ragApi = {
@@ -356,6 +363,7 @@ export const ragApi = {
   listDocuments: () => api.get('/rag/documents'),
   getStatus: (docId: string) => api.get(`/rag/status/${docId}`),
   deleteDocument: (docId: string) => api.delete(`/rag/documents/${docId}`),
+  downloadDocument: (docId: string) => api.get(`/rag/documents/${docId}/download`, { responseType: 'blob' }),
   trainText: (content: string) => api.post('/knowledge-base/train', { content }),
 };
 
@@ -421,9 +429,10 @@ export const supportFormConfigApi = {
 };
 
 export const monitoringApi = {
-  getHealth: () => api.get('/actuator/health'),
-  getMetrics: () => api.get('/actuator/metrics'),
-  getMetricDetails: (name: string) => api.get(`/actuator/metrics/${name}`),
+  getHealth: () => api.get(`${SERVER_HOST}/actuator/health`),
+  getMetrics: () => api.get(`${SERVER_HOST}/actuator/metrics`),
+  getMetricDetails: (name: string) => api.get(`${SERVER_HOST}/actuator/metrics/${name}`),
 };
 
 export default api;
+

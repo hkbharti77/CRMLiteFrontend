@@ -321,6 +321,8 @@ export const flowConfigApi = {
   getTriggerLabels: () => api.get('/flow-config/trigger-labels'),
   getFlowFields: (flowType?: string) => api.get(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`),
   saveFlowFields: (fields: any[], flowType?: string) => api.post(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`, fields),
+  getFlowGreeting: (flowType?: string) => api.get(`/flow-config/greeting${flowType ? `?flowType=${flowType}` : ''}`),
+  saveFlowGreeting: (greetingMessage: string, flowType?: string) => api.post(`/flow-config/greeting${flowType ? `?flowType=${flowType}` : ''}`, { greetingMessage }),
 };
 
 export const ragApi = {

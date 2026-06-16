@@ -56,6 +56,7 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
   });
   const [categoryTemplates, setCategoryTemplates] = useState<Record<string, string[]>>({});
   const [newCategoryText, setNewCategoryText] = useState('');
+  const [whatsappGreeting, setWhatsappGreeting] = useState('');
   const [activeAccordion, setActiveAccordion] = useState<string | number | undefined>('basic');
 
   useEffect(() => {
@@ -65,8 +66,12 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
 
   const fetchConfig = async () => {
     try {
-      const response = await supportFormConfigApi.getConfig();
-      if (response.data) setConfig(response.data);
+      const [res, greetingRes] = await Promise.all([
+        supportFormConfigApi.getConfig().catch(() => ({ data: null })),
+        import('../../services/api').then(m => m.flowConfigApi.getFlowGreeting('support')).catch(() => ({ data: { greetingMessage: '' } }))
+      ]);
+      if (res.data) setConfig(res.data);
+      if (greetingRes.data?.greetingMessage) setWhatsappGreeting(greetingRes.data.greetingMessage);
     } catch (error: any) {
       if (error.response?.status !== 404) {
         Alert.alert('Error', 'Failed to load configuration');
@@ -92,7 +97,11 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
     }
     setLoading(true);
     try {
-      await supportFormConfigApi.updateConfig(config);
+      const { flowConfigApi } = await import('../../services/api');
+      await Promise.all([
+        supportFormConfigApi.updateConfig(config),
+        flowConfigApi.saveFlowGreeting(whatsappGreeting, 'support')
+      ]);
       Alert.alert('Success', 'Support configuration saved successfully!');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to save configuration');
@@ -241,12 +250,26 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
                   value={config.formDescription}
                   onChangeText={(text) => setConfig((prev) => ({ ...prev, formDescription: text }))}
                   mode="outlined"
-                  multiline
-                  numberOfLines={3}
                   style={sharedStyles.input}
+                  multiline
+                  numberOfLines={2}
                   outlineColor={colors.border}
                   activeOutlineColor={colors.primary}
                 />
+                <TextInput
+                  label="WhatsApp Intro/Greeting Message (Optional)"
+                  value={whatsappGreeting}
+                  onChangeText={setWhatsappGreeting}
+                  mode="outlined"
+                  style={sharedStyles.input}
+                  multiline
+                  numberOfLines={3}
+                  outlineColor={colors.border}
+                  activeOutlineColor={colors.primary}
+                />
+                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12, marginTop: -8 }}>
+                  This message will be sent to the user right before the first question of the WhatsApp support flow.
+                </Text>
                 <TextInput
                   label="Success Message"
                   value={config.successMessage}

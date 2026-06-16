@@ -66,6 +66,7 @@ const SettingsScreen = () => {
   const [showTrustButton, setShowTrustButton] = useState(true);
   const [showOfferButton, setShowOfferButton] = useState(true);
   const [showSosButton, setShowSosButton] = useState(true);
+  const [showSupportFormButton, setShowSupportFormButton] = useState(true);
   const [customSubMenusJson, setCustomSubMenusJson] = useState('[]');
   const [customMessagesJson, setCustomMessagesJson] = useState('[]');
   
@@ -163,6 +164,7 @@ const SettingsScreen = () => {
         setShowTrustButton(response.data.showTrustButton !== false);
         setShowOfferButton(response.data.showOfferButton !== false);
         setShowSosButton(response.data.showSosButton !== false);
+        setShowSupportFormButton(response.data.showSupportFormButton !== false);
         setCustomSubMenusJson(response.data.customSubMenusJson || '[]');
         setCustomMessagesJson(response.data.customMessagesJson || '[]');
 
@@ -228,6 +230,7 @@ const SettingsScreen = () => {
         showTrustButton,
         showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
         customMessagesJson
       });
@@ -264,6 +267,7 @@ const SettingsScreen = () => {
         showTrustButton,
         showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
         customMessagesJson
       });
@@ -299,6 +303,7 @@ const SettingsScreen = () => {
         showTrustButton,
         showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
         customMessagesJson
       });
@@ -483,6 +488,8 @@ const SettingsScreen = () => {
           setShowOfferButton={setShowOfferButton}
           showSosButton={showSosButton}
           setShowSosButton={setShowSosButton}
+          showSupportFormButton={showSupportFormButton}
+          setShowSupportFormButton={setShowSupportFormButton}
           customSubMenusJson={customSubMenusJson}
           customMessagesJson={customMessagesJson}
         />

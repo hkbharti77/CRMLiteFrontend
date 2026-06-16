@@ -23,6 +23,7 @@ interface FlowFieldsViewProps {
 
 const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initialFlowType }) => {
   const [fields, setFields] = useState<FlowFieldConfig[]>([]);
+  const [greetingMessage, setGreetingMessage] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeFlowType, setActiveFlowType] = useState<string>(initialFlowType || 'lead');
@@ -74,9 +75,13 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
 
   const fetchFields = async (type: string) => {
     try {
-      const res = await flowConfigApi.getFlowFields(type);
+      const [res, greetingRes] = await Promise.all([
+        flowConfigApi.getFlowFields(type),
+        flowConfigApi.getFlowGreeting(type)
+      ]);
       const sorted = (res.data || []).sort((a: FlowFieldConfig, b: FlowFieldConfig) => a.order - b.order);
       setFields(sorted);
+      setGreetingMessage(greetingRes.data?.greetingMessage || '');
     } catch (error) {
       console.error("Failed to fetch flow fields:", error);
       Alert.alert("Error", "Could not load flow fields configuration.");
@@ -101,9 +106,12 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
     setSaving(true);
     try {
       const updatedFields = fields.map((f, index) => ({ ...f, order: index }));
-      await flowConfigApi.saveFlowFields(updatedFields, activeFlowType);
+      await Promise.all([
+        flowConfigApi.saveFlowFields(updatedFields, activeFlowType),
+        flowConfigApi.saveFlowGreeting(greetingMessage, activeFlowType)
+      ]);
       setFields(updatedFields);
-      Alert.alert("Success", "Flow fields configuration saved successfully!");
+      Alert.alert("Success", "Flow fields and greeting saved successfully!");
     } catch (error) {
       console.error("Failed to save flow fields:", error);
       Alert.alert("Error", "Could not save flow fields configuration.");
@@ -176,7 +184,24 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
             Enable, reorder, and rename the questions your bot will ask the customer.
           </Text>
 
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, marginBottom: 16 }}>
+          <View style={{ marginTop: 16 }}>
+            <TextInput
+              label="Intro/Greeting Message (Optional)"
+              value={greetingMessage}
+              onChangeText={setGreetingMessage}
+              mode="outlined"
+              multiline
+              numberOfLines={3}
+              style={[sharedStyles.input, { height: 80, marginBottom: 8 }]}
+              outlineColor={colors.border}
+              activeOutlineColor={colors.primary}
+            />
+            <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 16 }}>
+              This message will be sent right before the first question of this flow.
+            </Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 8, marginBottom: 16 }}>
             <Button
               mode="outlined"
               onPress={() => {

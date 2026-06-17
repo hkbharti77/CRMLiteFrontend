@@ -120,9 +120,14 @@ export const whatsappApi = {
     showSosButton?: boolean;
     customSubMenusJson?: string;
     customMessagesJson?: string;
+    flowCancelMenuJson?: string;
+    flowCompletionMenuJson?: string;
+    aiResponseMenuJson?: string;
+    guardrailMessageAbuse?: string;
+    guardrailMessageGibberish?: string;
   }) =>
     api.post('/whatsapp-config', config),
-  uploadMedia: (file: any) => {
+  uploadMedia: async (file: any) => {
     const formData = new FormData();
     if (Platform.OS === 'web' && file.file) {
       formData.append('file', file.file);
@@ -198,6 +203,11 @@ export const activityApi = {
 
   /** Global CRM feed for the owner's dashboard */
   getOwnerFeed: () => api.get('/activity-logs/feed'),
+};
+
+export const dashboardApi = {
+  getAggregate: () => api.get('/dashboard/aggregate'),
+  exportReport: (format: 'csv' | 'pdf') => api.get(`/dashboard/export?format=${format}`, { responseType: 'blob' }),
 };
 
 export const userApi = {

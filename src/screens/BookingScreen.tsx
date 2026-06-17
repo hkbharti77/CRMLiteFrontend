@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
   Linking,
   Platform,
   TouchableOpacity,
+  Animated,
 } from 'react-native';
 import {
   Text,
@@ -21,7 +22,6 @@ import {
   Avatar,
   IconButton,
   Divider,
-  ActivityIndicator,
   Snackbar,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,6 +29,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { appointmentApi, bookingApi, crmApi } from '../services/api';
 import { useAppointmentStore, Appointment } from '../store/useAppointmentStore';
 import { useBookingStore, Booking } from '../store/useBookingStore';
+import { ScreenHeader } from '@components/global/Header/ScreenHeader';
+import { tokens } from '../theme/tokens';
+import { EmptyState } from '@components/global/EmptyState/EmptyState';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -63,6 +66,40 @@ function isPast(iso: string): boolean {
   return new Date(iso) < new Date();
 }
 
+// ── SKELETON LOADER ─────────────────────────────────────────────────────────
+const BookingSkeleton = () => {
+  const theme = useTheme();
+  const anim = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.3, duration: 1000, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+  const skeletonColor = theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+
+  return (
+    <View style={{ padding: tokens.spacing.md }}>
+      <Animated.View style={{ opacity: anim }}>
+        {/* Pills */}
+        <View style={{ flexDirection: 'row', marginBottom: tokens.spacing.lg }}>
+          <View style={{ width: 100, height: 40, backgroundColor: skeletonColor, borderRadius: 20, marginRight: 10 }} />
+          <View style={{ width: 100, height: 40, backgroundColor: skeletonColor, borderRadius: 20, marginRight: 10 }} />
+          <View style={{ width: 100, height: 40, backgroundColor: skeletonColor, borderRadius: 20 }} />
+        </View>
+        {/* List Skeleton */}
+        <View style={{ height: 120, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg, marginBottom: tokens.spacing.md }} />
+        <View style={{ height: 120, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg, marginBottom: tokens.spacing.md }} />
+        <View style={{ height: 120, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg }} />
+      </Animated.View>
+    </View>
+  );
+};
+
 // ── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<
@@ -84,8 +121,7 @@ export default function BookingScreen({ navigation, route }: any) {
   const { bookings, setBookings, updateBooking } = useBookingStore();
 
   // ── State ────────────────────────────────────────────────────────────────
-  const isAppointmentMode = route?.name === 'Appointments';
-  const activeTab = isAppointmentMode ? 'appointments' : 'bookings';
+  const [activeTab, setActiveTab] = useState<'today' | 'upcoming' | 'bookings'>('today');
 
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -235,24 +271,20 @@ export default function BookingScreen({ navigation, route }: any) {
     const isScheduled = appt.status === 'SCHEDULED';
 
     return (
-      <Card key={appt.id} style={styles.apptCard} elevation={1}>
-        <Card.Content style={styles.cardContent}>
+      <View key={appt.id} style={[styles.apptCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+        <View style={styles.cardContent}>
           {/* Top row */}
           <View style={styles.cardRow}>
             <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text variant="titleSmall" style={styles.apptTitle}>{appt.title}</Text>
-              <Text variant="bodySmall" style={styles.apptMeta}>
+              <Text style={[styles.apptTitle, { color: theme.colors.onSurface }]}>{appt.title}</Text>
+              <Text style={[styles.apptMeta, { color: theme.colors.onSurfaceVariant }]}>
                 {formatDateTime(appt.appointmentDateTime)}
               </Text>
             </View>
-            <Chip
-              compact
-              style={[styles.statusChip, { backgroundColor: cfg.bg }]}
-              textStyle={{ color: cfg.color, fontSize: 10, fontWeight: '700' }}
-            >
-              {cfg.label}
-            </Chip>
+            <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+              <Text style={{ color: cfg.color, fontSize: 10, fontWeight: '700' }}>{cfg.label}</Text>
+            </View>
           </View>
 
           {/* Contact row */}
@@ -261,19 +293,19 @@ export default function BookingScreen({ navigation, route }: any) {
             onPress={() => navigation.navigate('ContactProfile', { contactId: appt.contactId })}
           >
             <Avatar.Text
-              size={28}
+              size={32}
               label={appt.contactName?.split(' ').map((n) => n[0]).join('') || '?'}
-              style={{ backgroundColor: theme.colors.primaryContainer }}
-              labelStyle={{ color: theme.colors.primary, fontSize: 11 }}
+              style={{ backgroundColor: `${tokens.colors.primary}15` }}
+              labelStyle={{ color: tokens.colors.primary, fontSize: 12, fontWeight: 'bold' }}
             />
-            <Text variant="labelSmall" style={[styles.contactName, { color: theme.colors.primary }]}>
+            <Text style={[styles.contactName, { color: theme.colors.onSurface }]}>
               {appt.contactName}
             </Text>
           </TouchableOpacity>
 
           {/* Notes */}
           {!!appt.notes && (
-            <Text variant="bodySmall" style={styles.notesText} numberOfLines={2}>
+            <Text style={[styles.notesText, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
               📝 {appt.notes}
             </Text>
           )}
@@ -281,7 +313,7 @@ export default function BookingScreen({ navigation, route }: any) {
           {/* Actions */}
           {isScheduled && (
             <>
-              <Divider style={{ marginVertical: 8 }} />
+              <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
               <View style={styles.actionsRow}>
                 {appt.meetingLink ? (
                   <Button
@@ -323,27 +355,82 @@ export default function BookingScreen({ navigation, route }: any) {
               </View>
             </>
           )}
-        </Card.Content>
-      </Card>
+        </View>
+      </View>
     );
   };
 
-  const renderSection = (label: string, icon: string, data: Appointment[], emptyText: string) => (
-    <View style={styles.section}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name={icon as any} size={16} color={theme.colors.primary} />
-        <Text variant="titleSmall" style={[styles.sectionLabel, { color: theme.colors.primary }]}>
-          {label}
-        </Text>
-        <Chip compact style={styles.countChip}>{data.length}</Chip>
+  const renderBookings = () => {
+    if (bookings.length === 0) {
+      return <EmptyState title="No Bookings" description="You don't have any customer bookings." icon={<Ionicons name="bookmark-outline" size={48} color={theme.colors.onSurfaceVariant} />} />;
+    }
+
+    return bookings.map((b) => (
+      <View key={b.id} style={[styles.apptCard, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+        <View style={styles.cardContent}>
+          <View style={styles.cardRow}>
+            <View style={[styles.statusDot, { backgroundColor:
+              b.status === 'CONFIRMED' ? '#1565C0' :
+              b.status === 'COMPLETED' ? '#2E7D32' : '#B71C1C'
+            }]} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={[styles.apptTitle, { color: theme.colors.onSurface }]}>{b.service}</Text>
+              {b.preferredSlot && (
+                <Text style={[styles.apptMeta, { color: theme.colors.onSurfaceVariant }]}>🕐 {b.preferredSlot}</Text>
+              )}
+            </View>
+            <View style={[styles.statusBadge, { backgroundColor:
+              b.status === 'CONFIRMED' ? '#E3F2FD' :
+              b.status === 'COMPLETED' ? '#E8F5E9' : '#FFEBEE'
+            }]}>
+              <Text style={{ color:
+                b.status === 'CONFIRMED' ? '#1565C0' :
+                b.status === 'COMPLETED' ? '#2E7D32' : '#B71C1C',
+                fontSize: 10, fontWeight: '700'
+              }}>{b.status}</Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.contactRow}
+            onPress={() => navigation.navigate('ContactProfile', { contactId: b.contactId })}
+          >
+            <Avatar.Text size={32}
+              label={b.contactName?.split(' ').map((n: string) => n[0]).join('') || '?'}
+              style={{ backgroundColor: `${tokens.colors.primary}15` }}
+              labelStyle={{ color: tokens.colors.primary, fontSize: 12, fontWeight: 'bold' }}
+            />
+            <Text style={[styles.contactName, { color: theme.colors.onSurface }]}>
+              {b.contactName}
+            </Text>
+          </TouchableOpacity>
+          {b.collectedData && Object.keys(b.collectedData).length > 0 && (
+            <Text style={[styles.notesText, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
+              📝 {Object.entries(b.collectedData).map(([k, v]) => `${k}: ${v}`).join(' · ')}
+            </Text>
+          )}
+          {b.status === 'CONFIRMED' && (
+            <>
+              <View style={[styles.divider, { backgroundColor: theme.colors.outlineVariant }]} />
+              <View style={styles.actionsRow}>
+                <Button mode="contained-tonal" compact icon="check"
+                  onPress={() => handleBookingAction(b, 'complete')}
+                  style={[styles.actionBtn, { backgroundColor: '#E8F5E9' }]} textColor="#2E7D32">
+                  Done
+                </Button>
+                <Button mode="contained-tonal" compact icon="account-cancel"
+                  onPress={() => handleBookingAction(b, 'noshow')}
+                  style={[styles.actionBtn, { backgroundColor: '#FFF3E0' }]} textColor="#E65100">
+                  No Show
+                </Button>
+                <IconButton icon="close-circle-outline" size={20} iconColor="#B71C1C"
+                  onPress={() => handleBookingAction(b, 'cancel')} />
+              </View>
+            </>
+          )}
+        </View>
       </View>
-      {data.length === 0 ? (
-        <Text variant="bodySmall" style={styles.emptyText}>{emptyText}</Text>
-      ) : (
-        data.map(renderApptCard)
-      )}
-    </View>
-  );
+    ));
+  };
 
   // ── Lead selector ─────────────────────────────────────────────────────────
 
@@ -351,137 +438,70 @@ export default function BookingScreen({ navigation, route }: any) {
 
   // ── Main render ───────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Summary bar */}
-        <View style={styles.summaryBar}>
-          <View style={styles.summaryItem}>
-            <Text variant="headlineSmall" style={[styles.summaryNum, { color: theme.colors.primary }]}>
-              {todayAppts.length}
-            </Text>
-            <Text variant="labelSmall" style={styles.summaryLabel}>Today</Text>
-          </View>
-          <View style={[styles.summaryDivider, { backgroundColor: theme.colors.outlineVariant }]} />
-          <View style={styles.summaryItem}>
-            <Text variant="headlineSmall" style={[styles.summaryNum, { color: '#1565C0' }]}>
-              {upcomingAppts.length}
-            </Text>
-            <Text variant="labelSmall" style={styles.summaryLabel}>Upcoming</Text>
-          </View>
-          <View style={[styles.summaryDivider, { backgroundColor: theme.colors.outlineVariant }]} />
-          <View style={styles.summaryItem}>
-            <Text variant="headlineSmall" style={[styles.summaryNum, { color: '#666' }]}>
-              {bookings.length}
-            </Text>
-            <Text variant="labelSmall" style={styles.summaryLabel}>Bookings</Text>
-          </View>
-        </View>
+      <ScreenHeader title="Meetings" onBack={() => navigation.goBack()} />
+      
+      {/* Pill Navigation */}
+      <View style={styles.pillContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: tokens.spacing.md }}>
+          <TouchableOpacity 
+            style={[styles.pill, activeTab === 'today' && { backgroundColor: tokens.colors.primary }]}
+            onPress={() => setActiveTab('today')}
+          >
+            <Text style={[styles.pillText, activeTab === 'today' && { color: '#fff', fontWeight: 'bold' }]}>Today ({todayAppts.length})</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.pill, activeTab === 'upcoming' && { backgroundColor: tokens.colors.primary }]}
+            onPress={() => setActiveTab('upcoming')}
+          >
+            <Text style={[styles.pillText, activeTab === 'upcoming' && { color: '#fff', fontWeight: 'bold' }]}>Upcoming ({upcomingAppts.length})</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.pill, activeTab === 'bookings' && { backgroundColor: tokens.colors.primary }]}
+            onPress={() => setActiveTab('bookings')}
+          >
+            <Text style={[styles.pillText, activeTab === 'bookings' && { color: '#fff', fontWeight: 'bold' }]}>Bookings ({bookings.length})</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
 
-        {activeTab === 'appointments' ? (
-          <>
-            {renderSection('Today', 'today-outline', todayAppts, 'No appointments today 🎉')}
-            {renderSection('Upcoming', 'calendar-outline', upcomingAppts, 'No upcoming appointments')}
-            {renderSection('Past & Completed', 'time-outline', pastAppts, 'No past appointments')}
-          </>
-        ) : (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="bookmark-outline" size={16} color={theme.colors.primary} />
-              <Text variant="titleSmall" style={[styles.sectionLabel, { color: theme.colors.primary }]}>
-                All Bookings
-              </Text>
-              <Chip compact style={styles.countChip}>{bookings.length}</Chip>
-            </View>
-            {bookings.length === 0 ? (
-              <Text variant="bodySmall" style={styles.emptyText}>No bookings yet</Text>
-            ) : (
-              bookings.map((b) => (
-                <Card key={b.id} style={styles.apptCard} elevation={1}>
-                  <Card.Content style={styles.cardContent}>
-                    <View style={styles.cardRow}>
-                      <View style={[styles.statusDot, { backgroundColor:
-                        b.status === 'CONFIRMED' ? '#1565C0' :
-                        b.status === 'COMPLETED' ? '#2E7D32' : '#B71C1C'
-                      }]} />
-                      <View style={{ flex: 1, marginLeft: 10 }}>
-                        <Text variant="titleSmall" style={styles.apptTitle}>{b.service}</Text>
-                        {b.preferredSlot && (
-                          <Text variant="bodySmall" style={styles.apptMeta}>🕐 {b.preferredSlot}</Text>
-                        )}
-                      </View>
-                      <Chip compact style={[styles.statusChip, { backgroundColor:
-                        b.status === 'CONFIRMED' ? '#E3F2FD' :
-                        b.status === 'COMPLETED' ? '#E8F5E9' : '#FFEBEE'
-                      }]} textStyle={{ color:
-                        b.status === 'CONFIRMED' ? '#1565C0' :
-                        b.status === 'COMPLETED' ? '#2E7D32' : '#B71C1C',
-                        fontSize: 10, fontWeight: '700'
-                      }}>
-                        {b.status}
-                      </Chip>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.contactRow}
-                      onPress={() => navigation.navigate('ContactProfile', { contactId: b.contactId })}
-                    >
-                      <Avatar.Text size={28}
-                        label={b.contactName?.split(' ').map((n: string) => n[0]).join('') || '?'}
-                        style={{ backgroundColor: theme.colors.primaryContainer }}
-                        labelStyle={{ color: theme.colors.primary, fontSize: 11 }}
-                      />
-                      <Text variant="labelSmall" style={[styles.contactName, { color: theme.colors.primary }]}>
-                        {b.contactName}
-                      </Text>
-                    </TouchableOpacity>
-                    {b.collectedData && Object.keys(b.collectedData).length > 0 && (
-                      <Text variant="bodySmall" style={styles.notesText} numberOfLines={2}>
-                        📝 {Object.entries(b.collectedData).map(([k, v]) => `${k}: ${v}`).join(' · ')}
-                      </Text>
-                    )}
-                    {b.status === 'CONFIRMED' && (
-                      <>
-                        <Divider style={{ marginVertical: 8 }} />
-                        <View style={styles.actionsRow}>
-                          <Button mode="contained-tonal" compact icon="check"
-                            onPress={() => handleBookingAction(b, 'complete')}
-                            style={[styles.actionBtn, { backgroundColor: '#E8F5E9' }]} textColor="#2E7D32">
-                            Done
-                          </Button>
-                          <Button mode="contained-tonal" compact icon="account-cancel"
-                            onPress={() => handleBookingAction(b, 'noshow')}
-                            style={[styles.actionBtn, { backgroundColor: '#FFF3E0' }]} textColor="#E65100">
-                            No Show
-                          </Button>
-                          <IconButton icon="close-circle-outline" size={20} iconColor="#B71C1C"
-                            onPress={() => handleBookingAction(b, 'cancel')} />
-                        </View>
-                      </>
-                    )}
-                  </Card.Content>
-                </Card>
-              ))
-            )}
-          </View>
-        )}
-      </ScrollView>
+      {loading ? (
+        <BookingSkeleton />
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+          showsVerticalScrollIndicator={false}
+        >
+          {activeTab === 'today' && (
+            <>
+              {todayAppts.length === 0 ? (
+                <EmptyState title="No Appointments Today" description="Your schedule is clear for today! 🎉" icon={<Ionicons name="today-outline" size={48} color={theme.colors.onSurfaceVariant} />} />
+              ) : (
+                todayAppts.map(renderApptCard)
+              )}
+            </>
+          )}
 
-      {/* FAB */}
+          {activeTab === 'upcoming' && (
+            <>
+              {upcomingAppts.length === 0 ? (
+                <EmptyState title="No Upcoming Appointments" description="Nothing scheduled for the future." icon={<Ionicons name="calendar-outline" size={48} color={theme.colors.onSurfaceVariant} />} />
+              ) : (
+                upcomingAppts.map(renderApptCard)
+              )}
+            </>
+          )}
+
+          {activeTab === 'bookings' && renderBookings()}
+        </ScrollView>
+      )}
+
+      {/* Premium FAB */}
       <FAB
-        icon="plus"
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        icon="calendar-plus"
+        style={[styles.fab, { backgroundColor: tokens.colors.primary }]}
         color="#fff"
         onPress={() => setShowBookingDialog(true)}
         label="Book Meeting"
@@ -498,7 +518,7 @@ export default function BookingScreen({ navigation, route }: any) {
           <Dialog.ScrollArea style={{ maxHeight: 480 }}>
             <ScrollView>
               {/* Contact selector */}
-              <Text variant="labelMedium" style={styles.fieldLabel}>Select Contact *</Text>
+              <Text style={styles.fieldLabel}>Select Contact *</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -531,7 +551,7 @@ export default function BookingScreen({ navigation, route }: any) {
               />
 
               {/* Date & Time pickers */}
-              <Text variant="labelMedium" style={styles.fieldLabel}>Date & Time *</Text>
+              <Text style={styles.fieldLabel}>Date & Time *</Text>
               <View style={styles.dateTimeRow}>
                 <Button
                   mode="outlined"
@@ -619,7 +639,7 @@ export default function BookingScreen({ navigation, route }: any) {
             {actionType === 'noshow'   && '⚠️ Mark as No Show?'}
           </Dialog.Title>
           <Dialog.Content>
-            <Text variant="bodyMedium">
+            <Text>
               {actionType === 'complete' &&
                 `"${actionAppt?.title}" will be marked as completed.`}
               {actionType === 'cancel' &&
@@ -650,55 +670,58 @@ export default function BookingScreen({ navigation, route }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  pillContainer: {
+    paddingVertical: tokens.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+  },
+  pill: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    marginRight: 10,
+  },
+  pillText: {
+    fontSize: tokens.typography.bodyMedium.fontSize,
+    color: '#666',
+  },
   scrollContent: { padding: 16, paddingBottom: 100 },
 
-  summaryBar: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 2,
+  apptCard: {
+    borderRadius: tokens.borderRadius.xl,
+    borderWidth: 1,
+    marginBottom: 16,
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
+    elevation: 2,
   },
-  summaryItem: { flex: 1, alignItems: 'center' },
-  summaryNum: { fontWeight: 'bold', fontSize: 28 },
-  summaryLabel: { color: '#888', marginTop: 2 },
-  summaryDivider: { width: 1, marginHorizontal: 12 },
-
-  section: { marginBottom: 24 },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 6,
-  },
-  sectionLabel: { fontWeight: '700', flex: 1 },
-  countChip: { height: 24, backgroundColor: 'rgba(0,0,0,0.06)' },
-  emptyText: { color: '#999', textAlign: 'center', paddingVertical: 16 },
-
-  apptCard: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    marginBottom: 10,
-  },
-  cardContent: { padding: 14 },
+  cardContent: { padding: 16 },
   cardRow: { flexDirection: 'row', alignItems: 'flex-start' },
   statusDot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
-  apptTitle: { fontWeight: '700', fontSize: 14 },
-  apptMeta: { color: '#888', marginTop: 2 },
-  statusChip: { marginLeft: 8 },
+  apptTitle: { fontWeight: '700', fontSize: 16, marginBottom: 2 },
+  apptMeta: { fontSize: 13 },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
 
   contactRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
-    gap: 8,
+    marginTop: 16,
+    backgroundColor: 'rgba(0,0,0,0.02)',
+    padding: 10,
+    borderRadius: 12,
+    gap: 12,
   },
-  contactName: { fontWeight: '600', textDecorationLine: 'underline' },
-  notesText: { color: '#666', marginTop: 8, fontStyle: 'italic' },
+  contactName: { fontWeight: '600', fontSize: 14 },
+  notesText: { fontSize: 13, marginTop: 12, fontStyle: 'italic' },
+  divider: { height: 1, marginVertical: 12 },
 
   actionsRow: {
     flexDirection: 'row',
@@ -714,18 +737,9 @@ const styles = StyleSheet.create({
     bottom: 24,
     borderRadius: 28,
   },
-  tabRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
-  },
-  tabBtn: {
-    flex: 1,
-    borderRadius: 20,
-  },
 
   dialog: { borderRadius: 20 },
-  fieldLabel: { marginBottom: 8, marginTop: 4, color: '#555' },
+  fieldLabel: { marginBottom: 8, marginTop: 4, color: '#555', fontSize: 12, fontWeight: '600' },
   input: { marginBottom: 12 },
   leadChip: { marginRight: 8, height: 36 },
   dateTimeRow: { flexDirection: 'row', marginBottom: 12 },

@@ -11,6 +11,7 @@ import AiKnowledgeBaseView from './settings/AiKnowledgeBaseView';
 import BusinessServicesScreen from './BusinessServicesScreen';
 import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
+import FlowCTAButtonsView from './settings/FlowCTAButtonsView';
 import SupportCategoriesView from './settings/SupportCategoriesView';
 import SystemHealthView from './settings/SystemHealthView';
 import FlowFieldsView from './settings/FlowFieldsView';
@@ -69,6 +70,11 @@ const SettingsScreen = () => {
   const [showSupportFormButton, setShowSupportFormButton] = useState(true);
   const [customSubMenusJson, setCustomSubMenusJson] = useState('[]');
   const [customMessagesJson, setCustomMessagesJson] = useState('[]');
+  const [flowCancelMenuJson, setFlowCancelMenuJson] = useState('');
+  const [flowCompletionMenuJson, setFlowCompletionMenuJson] = useState('');
+  const [aiResponseMenuJson, setAiResponseMenuJson] = useState('');
+  const [guardrailMessageAbuse, setGuardrailMessageAbuse] = useState('');
+  const [guardrailMessageGibberish, setGuardrailMessageGibberish] = useState('');
   
   // ===== UI STATE =====
   const [accountProfile, setAccountProfile] = useState({
@@ -167,6 +173,11 @@ const SettingsScreen = () => {
         setShowSupportFormButton(response.data.showSupportFormButton !== false);
         setCustomSubMenusJson(response.data.customSubMenusJson || '[]');
         setCustomMessagesJson(response.data.customMessagesJson || '[]');
+        setFlowCancelMenuJson(response.data.flowCancelMenuJson || '');
+        setFlowCompletionMenuJson(response.data.flowCompletionMenuJson || '');
+        setAiResponseMenuJson(response.data.aiResponseMenuJson || '');
+        setGuardrailMessageAbuse(response.data.guardrailMessageAbuse || '');
+        setGuardrailMessageGibberish(response.data.guardrailMessageGibberish || '');
 
         // Pre-fill visual form
         if (existingJson) {
@@ -232,7 +243,12 @@ const SettingsScreen = () => {
         showSosButton,
         showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson,
+        aiResponseMenuJson,
+        guardrailMessageAbuse,
+        guardrailMessageGibberish
       });
       setSnackbarMsg('Meta credentials saved successfully!');
       setSnackbarVisible(true);
@@ -269,7 +285,9 @@ const SettingsScreen = () => {
         showSosButton,
         showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson
       });
       setInteractiveMenuJson(newJson);
       setSnackbarMsg('Menu saved successfully!');
@@ -305,7 +323,9 @@ const SettingsScreen = () => {
         showSosButton,
         showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson
       });
       setSnackbarMsg('Greetings updated successfully!');
       setSnackbarVisible(true);
@@ -523,6 +543,52 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'flow_cta_buttons') {
+      return (
+        <FlowCTAButtonsView
+          flowCancelMenuJson={flowCancelMenuJson}
+          flowCompletionMenuJson={flowCompletionMenuJson}
+          aiResponseMenuJson={aiResponseMenuJson}
+          customSubMenusJson={customSubMenusJson}
+          customMessagesJson={customMessagesJson}
+          guardrailMessageAbuse={guardrailMessageAbuse}
+          guardrailMessageGibberish={guardrailMessageGibberish}
+          setFlowCancelMenuJson={setFlowCancelMenuJson}
+          setFlowCompletionMenuJson={setFlowCompletionMenuJson}
+          setAiResponseMenuJson={setAiResponseMenuJson}
+          setGuardrailMessageAbuse={setGuardrailMessageAbuse}
+          setGuardrailMessageGibberish={setGuardrailMessageGibberish}
+          onSave={async (cancelJson, completionJson, aiResponseJson, guardrailMsgAbuse, guardrailMsgGibberish) => {
+            setFlowCancelMenuJson(cancelJson);
+            setFlowCompletionMenuJson(completionJson);
+            setAiResponseMenuJson(aiResponseJson);
+            setGuardrailMessageAbuse(guardrailMsgAbuse);
+            setGuardrailMessageGibberish(guardrailMsgGibberish);
+            try {
+              setLoading(true);
+              await whatsappApi.saveConfig({
+                phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
+                interactiveMenuJson, welcomeMessage, returningMessage,
+                showAboutContact, reviewUrl, offerText, sosNote,
+                thirdButtonType, showTrustButton, showOfferButton, showSosButton,
+                customSubMenusJson,
+                customMessagesJson,
+                flowCancelMenuJson: cancelJson,
+                flowCompletionMenuJson: completionJson,
+                aiResponseMenuJson: aiResponseJson,
+                guardrailMessageAbuse: guardrailMsgAbuse,
+                guardrailMessageGibberish: guardrailMsgGibberish
+              });
+              setSnackbarMsg('Flow CTA Buttons & Guardrail Message saved!');
+              setSnackbarVisible(true);
+            } catch (e) {} finally { setLoading(false); }
+          }}
+          onBack={() => setActiveView(null)}
+          loading={loading}
+        />
+      );
+    }
+
     if (activeView === 'meta') {
       return (
         <MetaIntegrationView
@@ -679,6 +745,13 @@ const SettingsScreen = () => {
             title="Quick Responses"
             description="Direct text & image replies"
             onPress={() => setActiveView('messages')}
+            divider
+          />
+          <SettingsItem
+            icon={<MessageSquare size={20} color="#075E54" />}
+            title="Flow CTA Buttons"
+            description="Buttons for cancel & complete"
+            onPress={() => setActiveView('flow_cta_buttons')}
           />
         </SettingsSection>
 

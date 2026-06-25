@@ -171,7 +171,7 @@ export default function LeadDetailScreen({ route, navigation }: any) {
     try {
       setLoading(true);
       const res = await crmApi.getLeads();
-      const found = res.data.find((l: any) => l.id === leadId);
+      const found = res.data.content.find((l: any) => l.id === leadId);
       setLead(found ?? null);
       await fetchEnquiries();
     } catch (e) {

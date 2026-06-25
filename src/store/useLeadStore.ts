@@ -19,6 +19,7 @@ export interface Lead {
   time: string;
   status: LeadStatus;
   enquiries?: Enquiry[];
+  ownerName?: string; // Phase 3: Display assigned agent name
   // Deal / Payment fields
   dealValue?: number;
   paymentStatus?: 'NONE' | 'PENDING' | 'PARTIAL' | 'PAID';

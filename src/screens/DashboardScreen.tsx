@@ -337,7 +337,7 @@ export default function DashboardScreen({ navigation }: any) {
   if (loading) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <ScreenHeader title={`👋 ${greeting}`} onBack={() => navigation.goBack()} />
+        <ScreenHeader title={`👋 ${greeting}`} />
         <DashboardSkeleton />
       </SafeAreaView>
     );
@@ -400,7 +400,6 @@ export default function DashboardScreen({ navigation }: any) {
       <Animated.View style={[{ flex: 1, opacity: fadeAnim }]}>
         <ScreenHeader 
           title={`👋 ${greeting}`}
-          onBack={() => navigation.goBack()}
           rightAction={rightAction}
         />
         <ScrollView

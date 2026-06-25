@@ -250,6 +250,51 @@ The project includes comprehensive documentation for a major component architect
 
 ## 🏗️ Architecture
 
+### Detailed System Design
+
+```mermaid
+graph TD
+    subgraph CRMLite React Native App
+        subgraph UI Layer
+            Nav[🧭 React Navigation]
+            Screens[📱 Screens & Views]
+            Components[🧩 UI Components]
+            Nav --> Screens
+            Screens --> Components
+        end
+        
+        subgraph State Management - Zustand
+            AuthStore[Auth Store]
+            LeadStore[Lead Store]
+            ChatStore[Chat Store]
+            OtherStores[Other Stores...]
+        end
+
+        subgraph Network & Services
+            Axios[🌐 Axios REST Client]
+            WSClient[🔌 WebSocket Client]
+        end
+
+        Screens <-->|Read/Write State| AuthStore
+        Screens <-->|Read/Write State| LeadStore
+        Screens <-->|Read/Write State| ChatStore
+        Screens <-->|Read/Write State| OtherStores
+
+        AuthStore <--> Axios
+        LeadStore <--> Axios
+        OtherStores <--> Axios
+        ChatStore <--> WSClient
+    end
+
+    subgraph Backend Services
+        API[⚙️ Spring Boot REST API]
+        WSServer[🔌 WebSocket Server]
+    end
+
+    Axios <-->|REST over HTTPS| API
+    WSClient <-->|Real-time Data| WSServer
+```
+
 ### Component Organization
 
 The application is organized into three component categories:

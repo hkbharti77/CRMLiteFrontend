@@ -287,6 +287,13 @@ export default function BookingScreen({ navigation, route }: any) {
             </View>
           </View>
 
+          {/* Owner Badge */}
+          {appt.ownerName && (
+            <View style={styles.ownerBadge}>
+              <Text style={styles.ownerText}>Agent: {appt.ownerName}</Text>
+            </View>
+          )}
+
           {/* Contact row */}
           <TouchableOpacity
             style={styles.contactRow}
@@ -390,6 +397,13 @@ export default function BookingScreen({ navigation, route }: any) {
               }}>{b.status}</Text>
             </View>
           </View>
+
+          {/* Owner Badge */}
+          {b.ownerName && (
+            <View style={styles.ownerBadge}>
+              <Text style={styles.ownerText}>Agent: {b.ownerName}</Text>
+            </View>
+          )}
           <TouchableOpacity
             style={styles.contactRow}
             onPress={() => navigation.navigate('ContactProfile', { contactId: b.contactId })}
@@ -743,4 +757,17 @@ const styles = StyleSheet.create({
   input: { marginBottom: 12 },
   leadChip: { marginRight: 8, height: 36 },
   dateTimeRow: { flexDirection: 'row', marginBottom: 12 },
+  ownerBadge: {
+    marginTop: tokens.spacing.xs,
+    backgroundColor: 'rgba(0,0,0,0.04)',
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: tokens.borderRadius.sm,
+    alignSelf: 'flex-start',
+  },
+  ownerText: {
+    fontSize: tokens.typography.labelSmall.fontSize,
+    color: '#666',
+    fontWeight: '500',
+  },
 });

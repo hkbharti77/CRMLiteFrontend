@@ -361,9 +361,9 @@ const FlowCTAButtonsView: React.FC<FlowCTAButtonsViewProps> = ({
 
       <ScrollView style={sharedStyles.tabContent} contentContainerStyle={{ paddingBottom: 100 }}>
         
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>AI Fallback / Guardrail Messages</Text>
-          <Text style={styles.sectionDesc}>These messages are sent inside the Main Menu when the AI blocks abusive or gibberish text.</Text>
+        <View style={[sharedStyles.modernCard, { padding: 20, marginBottom: 20 }]}>
+          <Text style={typography.sectionTitle}>AI Fallback / Guardrail Messages</Text>
+          <Text style={[typography.description, { marginBottom: 16 }]}>These messages are sent inside the Main Menu when the AI blocks abusive or gibberish text.</Text>
           <TextInput
             mode="outlined"
             label="Abuse Fallback Message"
@@ -371,7 +371,7 @@ const FlowCTAButtonsView: React.FC<FlowCTAButtonsViewProps> = ({
             onChangeText={setGuardrailMessageAbuse}
             multiline
             numberOfLines={2}
-            style={styles.textInput}
+            style={[sharedStyles.input, { marginBottom: 16 }]}
             outlineColor={colors.border}
             activeOutlineColor={colors.primary}
             placeholder="E.g., We do not tolerate abusive language."
@@ -383,7 +383,7 @@ const FlowCTAButtonsView: React.FC<FlowCTAButtonsViewProps> = ({
             onChangeText={setGuardrailMessageGibberish}
             multiline
             numberOfLines={2}
-            style={[styles.textInput, { marginTop: 10 }]}
+            style={sharedStyles.input}
             outlineColor={colors.border}
             activeOutlineColor={colors.primary}
             placeholder="E.g., We couldn't process your request. Please select an option."

@@ -71,7 +71,7 @@ export const authApi = {
 export const crmApi = {
   getContacts: () => api.get('/contacts'),
   getContactById: (id: string) => api.get(`/contacts/${id}`),
-  getLeads: () => api.get('/leads'),
+  getLeads: (page = 0, size = 50, status?: string) => api.get(`/leads/paged?page=${page}&size=${size}${status ? `&status=${status}` : ''}`),
   updateLeadStatus: (leadId: string, status: string) => api.patch(`/leads/${leadId}/status?status=${status}`),
   updateContactTags: (contactId: string, tags: string[]) => api.patch(`/contacts/${contactId}/tags`, tags),
   // Enquiry CRUD
@@ -232,6 +232,10 @@ export const userApi = {
     forceShowAppointment: flowType === 'appointment',
     forceShowBooking: flowType === 'booking',
   }),
+  getTenantStaff: () => api.get('/users/tenant-staff'),
+  createStaffUser: (data: { email: string, displayName: string, role: string, phone?: string }) => api.post('/users/staff', data),
+  deleteStaffUser: (staffId: string) => api.delete(`/users/staff/${staffId}`),
+  updateStaffStatus: (staffId: string, status: string, reason?: string) => api.patch(`/users/staff/${staffId}/status?status=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ''}`),
   // Security Suite
   getSecurityDashboard: () => api.get('/users/me/security-dashboard'),
   getSessions: () => api.get('/users/me/sessions'),
@@ -444,6 +448,13 @@ export const monitoringApi = {
   getHealth: () => api.get(`${SERVER_HOST}/actuator/health`),
   getMetrics: () => api.get(`${SERVER_HOST}/actuator/metrics`),
   getMetricDetails: (name: string) => api.get(`${SERVER_HOST}/actuator/metrics/${name}`),
+};
+
+export const billingApi = {
+  getSubscriptionStatus: () => api.get('/billing/subscription'),
+  initiateCheckout: (data: { planId: string; billingCycle: string; gateway: string }) =>
+    api.post('/billing/checkout', data),
+  getTransactions: () => api.get('/billing/transactions'),
 };
 
 export default api;

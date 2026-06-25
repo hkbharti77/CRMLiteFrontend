@@ -15,6 +15,7 @@ export interface LeadCardProps {
     lastContact?: string;
     phone?: string;
     email?: string;
+    ownerName?: string;
   };
   onPress?: () => void;
   onCall?: () => void;
@@ -49,6 +50,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             <Text style={[styles.lastContact, { color: tokens.colors.textTertiary }]}>
               Last Contact: {lead.lastContact}
             </Text>
+          )}
+          {lead.ownerName && (
+            <View style={styles.ownerBadge}>
+              <Text style={styles.ownerText}>Assigned: {lead.ownerName}</Text>
+            </View>
           )}
         </View>
 
@@ -115,5 +121,18 @@ const styles = StyleSheet.create({
     marginLeft: tokens.spacing.xs,
     fontSize: tokens.typography.labelMedium.fontSize,
     fontWeight: tokens.typography.labelMedium.fontWeight as any,
+  },
+  ownerBadge: {
+    marginTop: tokens.spacing.xs,
+    backgroundColor: tokens.colors.surfaceHover,
+    paddingHorizontal: tokens.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: tokens.borderRadius.sm,
+    alignSelf: 'flex-start',
+  },
+  ownerText: {
+    fontSize: tokens.typography.labelSmall.fontSize,
+    color: tokens.colors.textSecondary,
+    fontWeight: '500',
   },
 });

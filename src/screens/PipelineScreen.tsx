@@ -134,7 +134,7 @@ export default function PipelineScreen({ navigation }: any) {
   const fetchLeads = async () => {
     try {
       const response = await crmApi.getLeads();
-      const mappedLeads: Lead[] = response.data.map((item: any) => ({
+      const mappedLeads: Lead[] = response.data.content.map((item: any) => ({
         id: item.id,
         contactId: item.contact?.id,
         name: item.contact?.name || 'Unknown',
@@ -153,6 +153,7 @@ export default function PipelineScreen({ navigation }: any) {
         currency: item.currency,
         isNew: item.isNew ?? false,
         createdAtHuman: item.createdAtHuman ?? '',
+        ownerName: item.ownerName,
       }));
       setLeads(mappedLeads);
     } catch (error) {
@@ -172,6 +173,7 @@ export default function PipelineScreen({ navigation }: any) {
           status: lead.status,
           value: lead.dealValue,
           lastContact: lead.time,
+          ownerName: lead.ownerName,
         }}
         onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id, leadName: lead.name })}
         style={styles.leadCard}

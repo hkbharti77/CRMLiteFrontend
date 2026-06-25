@@ -106,10 +106,13 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
     setSaving(true);
     try {
       const updatedFields = fields.map((f, index) => ({ ...f, order: index }));
-      await Promise.all([
-        flowConfigApi.saveFlowFields(updatedFields, activeFlowType),
+      const savePromises: Promise<any>[] = [
         flowConfigApi.saveFlowGreeting(greetingMessage, activeFlowType)
-      ]);
+      ];
+      if (updatedFields.length > 0) {
+        savePromises.push(flowConfigApi.saveFlowFields(updatedFields, activeFlowType));
+      }
+      await Promise.all(savePromises);
       setFields(updatedFields);
       Alert.alert("Success", "Flow fields and greeting saved successfully!");
     } catch (error) {
@@ -226,9 +229,24 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
             </Button>
           </View>
 
-          {fields.map((field, index) => (
-            <View key={field.key} style={[styles.fieldSlot, !field.enabled && styles.fieldDisabled]}>
-              <View style={styles.fieldHeader}>
+          {fields.length === 0 ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text style={[typography.description, { marginBottom: 12, textAlign: 'center' }]}>
+                No flow fields loaded.
+              </Text>
+              <Button
+                mode="contained"
+                buttonColor={colors.primary}
+                onPress={() => fetchFields(activeFlowType)}
+                style={{ borderRadius: 8 }}
+              >
+                Reload Fields
+              </Button>
+            </View>
+          ) : (
+            fields.map((field, index) => (
+              <View key={field.key} style={[styles.fieldSlot, !field.enabled && styles.fieldDisabled]}>
+                <View style={styles.fieldHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
                   <Text style={styles.fieldKeyBadge}>{field.key}</Text>
                   <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 8 }}>
@@ -327,7 +345,7 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
                 </View>
               )}
             </View>
-          ))}
+          )))}
           
           {fields.length > 0 && (
              <Button

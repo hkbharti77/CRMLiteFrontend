@@ -147,14 +147,11 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
     setLoading(true);
     try {
       const updatedFields = fields.map((f, index) => ({ ...f, order: index }));
-      const savePromises: Promise<any>[] = [
-        supportFormConfigApi.updateConfig(config),
-        flowConfigApi.saveFlowGreeting(whatsappGreeting, 'support')
-      ];
+      await supportFormConfigApi.updateConfig(config);
+      await flowConfigApi.saveFlowGreeting(whatsappGreeting, 'support');
       if (updatedFields.length > 0) {
-        savePromises.push(flowConfigApi.saveFlowFields(updatedFields, 'support'));
+        await flowConfigApi.saveFlowFields(updatedFields, 'support');
       }
-      await Promise.all(savePromises);
       setFields(updatedFields);
       Alert.alert('Success', 'Support configuration saved successfully!');
     } catch (error: any) {

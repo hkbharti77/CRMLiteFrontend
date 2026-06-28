@@ -330,6 +330,8 @@ export default function ContactProfileScreen({ route, navigation }: any) {
     );
   }
 
+  const isWebContact = contact.waId?.startsWith('web:');
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <Surface style={styles.header} elevation={1}>
@@ -466,38 +468,50 @@ export default function ContactProfileScreen({ route, navigation }: any) {
           </View>
         )}
 
-        <View style={styles.actionRow}>
-          <IconButton 
-            icon="whatsapp" 
-            mode="contained" 
-            containerColor="#25D366" 
-            iconColor="#fff" 
-            onPress={() => Linking.openURL(`whatsapp://send?phone=${contact.phone}`)}
-          />
-          <IconButton 
-            icon="phone" 
-            mode="contained" 
-            containerColor={theme.colors.primary} 
-            iconColor="#fff" 
-            onPress={() => Linking.openURL(`tel:${contact.phone}`)}
-          />
-          <IconButton 
-            icon="message-text" 
-            mode="contained" 
-            containerColor={theme.colors.secondary} 
-            iconColor="#fff" 
-            onPress={() => navigation.navigate('ChatRoom', { chatId: contact.id, name: contact.name })}
-          />
-        </View>
+        {!isWebContact ? (
+          <View style={styles.actionRow}>
+            <IconButton 
+              icon="whatsapp" 
+              mode="contained" 
+              containerColor="#25D366" 
+              iconColor="#fff" 
+              onPress={() => Linking.openURL(`whatsapp://send?phone=${contact.phone}`)}
+            />
+            <IconButton 
+              icon="phone" 
+              mode="contained" 
+              containerColor={theme.colors.primary} 
+              iconColor="#fff" 
+              onPress={() => Linking.openURL(`tel:${contact.phone}`)}
+            />
+            <IconButton 
+              icon="message-text" 
+              mode="contained" 
+              containerColor={theme.colors.secondary} 
+              iconColor="#fff" 
+              onPress={() => navigation.navigate('ChatRoom', { chatId: contact.id, name: contact.name })}
+            />
+          </View>
+        ) : (
+          <View style={styles.actionRow}>
+            <IconButton 
+              icon="email" 
+              mode="contained" 
+              containerColor={theme.colors.primary} 
+              iconColor="#fff" 
+              onPress={() => Linking.openURL(`mailto:${contact.waId.replace('web:', '')}`)}
+            />
+          </View>
+        )}
       </Surface>
 
       <View style={styles.section}>
         <Text variant="titleMedium" style={styles.sectionTitle}>Contact Information</Text>
         <Card style={styles.infoCard} elevation={0}>
           <List.Item
-            title="WhatsApp ID"
+            title={isWebContact ? "Web / Email ID" : "WhatsApp ID"}
             description={contact.waId}
-            left={props => <List.Icon {...props} icon="whatsapp" />}
+            left={props => <List.Icon {...props} icon={isWebContact ? "web" : "whatsapp"} />}
           />
           <Divider horizontalInset />
           <View style={{ padding: 16 }}>

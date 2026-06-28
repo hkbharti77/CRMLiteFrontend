@@ -158,10 +158,11 @@ export const onboardingApi = {
 
 export const appointmentApi = {
   book: (data: {
-    contactId: string;
+    contactId?: string | null;
     appointmentDateTime: string;
     title: string;
     meetingLink?: string;
+    generateMeetLink?: boolean;
   }) => api.post('/appointments', data),
   getAll: () => api.get('/appointments'),
   getToday: () => api.get('/appointments/today'),
@@ -170,6 +171,14 @@ export const appointmentApi = {
   complete: (id: string) => api.patch(`/appointments/${id}/complete`),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
   noShow: (id: string) => api.patch(`/appointments/${id}/noshow`),
+  generateMeetLink: (id: string, durationMinutes?: number) => 
+    api.post(`/appointments/${id}/generate-meet-link`, null, { params: { durationMinutes } }),
+};
+
+export const integrationApi = {
+  getGoogleAuthUrl: () => api.get('/integrations/google/auth-url'),
+  getGoogleStatus: () => api.get('/integrations/google/status'),
+  disconnectGoogle: () => api.delete('/integrations/google/disconnect'),
 };
 
 export const bookingApi = {
@@ -407,6 +416,14 @@ export const ticketApi = {
     api.post(`/tickets/${id}/comments`, { message, internal }),
   delete: (id: string) => api.delete(`/tickets/${id}`),
 };
+
+export interface Contact {
+  id: string;
+  waId?: string;
+  displayId?: string;
+  name?: string;
+  email?: string;
+}
 
 export const customEmailApi = {
   send: (data: {

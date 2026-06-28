@@ -13,6 +13,7 @@ export interface Booking {
   createdAt: string;
   updatedAt?: string;
   ownerName?: string;
+  source?: string;
 }
 
 interface BookingState {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type LeadStatus = 'INTERESTED' | 'FOLLOW_UP' | 'BOOKED' | 'CLOSED_WON' | 'CLOSED_LOST';
+export type LeadStatus = 'NEW' | 'INTERESTED' | 'FOLLOW_UP' | 'BOOKED' | 'CLOSED_WON' | 'CLOSED_LOST';
 
 export interface Enquiry {
   id: string;
@@ -8,16 +8,33 @@ export interface Enquiry {
   message: string;
   source: string;
   status: 'OPEN' | 'RESOLVED' | 'FOLLOW_UP' | string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  city?: string;
+  country?: string;
+  requirement?: string;
+  budget?: string;
+  age?: string;
+  gender?: string;
+  address?: string;
+  pincode?: string;
+  preferredDate?: string;
+  additionalDetails?: Record<string, string>;
   createdAt: string;
 }
 
 export interface Lead {
   id: string;
+  leadNumber?: string;
   contactId: string;
   name: string;
   lastMessage: string;
   time: string;
   status: LeadStatus;
+  email?: string;
+  phone?: string;
   enquiries?: Enquiry[];
   ownerName?: string; // Phase 3: Display assigned agent name
   // Deal / Payment fields
@@ -28,6 +45,7 @@ export interface Lead {
   // Freshness fields
   isNew?: boolean;
   createdAtHuman?: string;
+  source?: string;
 }
 
 interface LeadState {

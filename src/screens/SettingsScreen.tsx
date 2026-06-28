@@ -18,6 +18,7 @@ import FlowFieldsView from './settings/FlowFieldsView';
 import StaffManagementView from './settings/StaffManagementView';
 import BillingScreen from './settings/BillingScreen';
 import SubscriptionUpgradeScreen from './settings/SubscriptionUpgradeScreen';
+import GoogleIntegrationView from './settings/GoogleIntegrationView';
 import { 
   Settings, 
   Search, 
@@ -394,7 +395,7 @@ const SettingsScreen = () => {
             ...validItems.map((item, index) => ({
                id: item.isCatalog ? "view_services" : 
                    item.customListId ? item.customListId : `item_${index}`,
-               title: item.title.substring(0, 25).trim(),
+               title: item.title.substring(0, 24).trim(),
                description: (menuType === 'list' && item.desc) ? item.desc.substring(0, 72).trim() : undefined
             }))
           ]
@@ -485,6 +486,12 @@ const SettingsScreen = () => {
     if (activeView === 'security') {
       return (
         <SecurityDashboard onBack={() => setActiveView(null)} />
+      );
+    }
+
+    if (activeView === 'google') {
+      return (
+        <GoogleIntegrationView onBack={() => setActiveView(null)} />
       );
     }
     
@@ -716,6 +723,13 @@ const SettingsScreen = () => {
             title="Security & Privacy"
             description="Password and authentication"
             onPress={() => setActiveView('security')}
+            divider
+          />
+          <SettingsItem
+            icon={<Globe size={20} color="#075E54" />}
+            title="Google Calendar & Meet"
+            description="Link Google account for online meetings"
+            onPress={() => setActiveView('google')}
             divider={accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN'}
           />
           {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (

@@ -106,13 +106,10 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
     setSaving(true);
     try {
       const updatedFields = fields.map((f, index) => ({ ...f, order: index }));
-      const savePromises: Promise<any>[] = [
-        flowConfigApi.saveFlowGreeting(greetingMessage, activeFlowType)
-      ];
+      await flowConfigApi.saveFlowGreeting(greetingMessage, activeFlowType);
       if (updatedFields.length > 0) {
-        savePromises.push(flowConfigApi.saveFlowFields(updatedFields, activeFlowType));
+        await flowConfigApi.saveFlowFields(updatedFields, activeFlowType);
       }
-      await Promise.all(savePromises);
       setFields(updatedFields);
       Alert.alert("Success", "Flow fields and greeting saved successfully!");
     } catch (error) {

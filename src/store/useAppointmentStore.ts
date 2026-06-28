@@ -14,6 +14,7 @@ export interface Appointment {
   createdAt: string;
   updatedAt?: string;
   ownerName?: string;
+  source?: string;
 }
 
 interface AppointmentState {

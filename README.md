@@ -522,3 +522,6 @@ See [BEST_PRACTICES.md](./BEST_PRACTICES.md) for contribution guidelines.
 **Happy Coding! 🚀**
 
 </div>
+
+### Recent Updates
+- Updated Contact Picker to search and display Human-Readable Contact IDs.

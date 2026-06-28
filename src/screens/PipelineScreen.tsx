@@ -1,10 +1,9 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, ScrollView, FlatList, Dimensions, TouchableOpacity } from 'react-native';
-import { Text, useTheme, SegmentedButtons } from 'react-native-paper';
+import { Text, useTheme, SegmentedButtons, Portal, Dialog, Button } from 'react-native-paper';
 import { useLeadStore, Lead, LeadStatus } from '../store/useLeadStore';
 import { crmApi } from '../services/api';
 import { tokens } from '../theme/tokens';
-import { AppChip as Chip } from '@components/global/Badge/AppChip';
 import { LeadCard } from '@components/leads/LeadCard';
 import { Phone, Mail, Building } from 'lucide-react-native';
 import { AppCard } from '@components/global/Card/AppCard';
@@ -13,10 +12,11 @@ import { AppAvatar } from '@components/global/Avatar/AppAvatar';
 const { width } = Dimensions.get('window');
 const COLUMN_WIDTH = width * 0.8;
 
-const ALL_STATUSES: LeadStatus[] = ['INTERESTED', 'FOLLOW_UP', 'BOOKED', 'CLOSED_WON', 'CLOSED_LOST'];
+const ALL_STATUSES: LeadStatus[] = ['NEW', 'INTERESTED', 'FOLLOW_UP', 'BOOKED', 'CLOSED_WON', 'CLOSED_LOST'];
 
 const STAGES: { filterIds: LeadStatus[]; label: string; color: string }[] = [
   { filterIds: ALL_STATUSES,                  label: '?? All Leads', color: '#333333' },
+  { filterIds: ['NEW'],                       label: 'New',          color: '#2196F3' },
   { filterIds: ['INTERESTED'],                label: 'Interested',   color: '#FFC107' },
   { filterIds: ['FOLLOW_UP'],                 label: 'Follow Up',    color: '#FF9800' },
   { filterIds: ['BOOKED'],                    label: '?? Booked',    color: '#9C27B0' },
@@ -130,14 +130,22 @@ export default function PipelineScreen({ navigation }: any) {
   const theme = useTheme();
   const { leads, setLeads } = useLeadStore();
   const [viewMode, setViewMode] = React.useState<'lead' | 'contact'>('lead');
+  const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
+  const [showLeadDialog, setShowLeadDialog] = React.useState(false);
 
   const fetchLeads = async () => {
     try {
       const response = await crmApi.getLeads();
       const mappedLeads: Lead[] = response.data.content.map((item: any) => ({
         id: item.id,
+        leadNumber: item.leadNumber,
         contactId: item.contact?.id,
         name: item.contact?.name || 'Unknown',
+        email: item.contact?.email,
+        phone: item.contact?.phone,
+        source: (item.enquiries && item.enquiries.length > 0) 
+          ? item.enquiries[item.enquiries.length - 1].source 
+          : (item.contact?.source || 'whatsapp'),
         lastMessage: item.dealLabel ||
           (item.enquiries?.length > 0
             ? item.enquiries[item.enquiries.length - 1].message
@@ -169,11 +177,14 @@ export default function PipelineScreen({ navigation }: any) {
         key={lead.id}
         lead={{
           id: lead.id,
-          name: lead.name,
+          name: lead.leadNumber ? `${lead.leadNumber} - ${lead.name}` : lead.name,
           status: lead.status,
           value: lead.dealValue,
           lastContact: lead.time,
           ownerName: lead.ownerName,
+          source: lead.source,
+          email: lead.email,
+          phone: lead.phone,
         }}
         onPress={() => navigation.navigate('LeadDetail', { leadId: lead.id, leadName: lead.name })}
         style={styles.leadCard}
@@ -284,6 +295,35 @@ export default function PipelineScreen({ navigation }: any) {
           {STAGES.map(renderColumn)}
         </ScrollView>
       )}
+
+      <Portal>
+        <Dialog visible={showLeadDialog} onDismiss={() => { setShowLeadDialog(false); setSelectedLead(null); }} style={{ borderRadius: 12 }}>
+          <Dialog.Title>{selectedLead?.name} - Details</Dialog.Title>
+          <Dialog.ScrollArea style={{ maxHeight: 400, paddingVertical: 10 }}>
+            <ScrollView>
+              {selectedLead?.enquiries && selectedLead.enquiries.length > 0 ? (
+                selectedLead.enquiries.map((enq: any, idx: number) => (
+                  <View key={idx} style={{ marginBottom: 16, backgroundColor: theme.dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)', padding: 12, borderRadius: 8 }}>
+                    <Text style={{ fontSize: 12, color: theme.colors.primary, fontWeight: 'bold' }}>{enq.type}</Text>
+                    <Text style={{ color: theme.colors.onSurface, marginTop: 4 }}>{enq.message}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{ fontStyle: 'italic', color: tokens.colors.textSecondary }}>No enquiries available.</Text>
+              )}
+            </ScrollView>
+          </Dialog.ScrollArea>
+          <Dialog.Actions>
+            <Button onPress={() => { setShowLeadDialog(false); setSelectedLead(null); }}>Close</Button>
+            <Button mode="contained" onPress={() => {
+              const lead = selectedLead;
+              setShowLeadDialog(false);
+              setSelectedLead(null);
+              if (lead) navigation.navigate('LeadDetail', { leadId: lead.id, leadName: lead.name });
+            }}>Full Profile</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </View>
   );
 }

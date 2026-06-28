@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import { Phone, Mail } from 'lucide-react-native';
+import { Phone, Mail, MessageCircle, Globe } from 'lucide-react-native';
 import { tokens } from '@theme/tokens';
 import { AppCard } from '@components/global/Card/AppCard';
 import { StatusBadge } from '@components/global/Badge/StatusBadge';
@@ -16,6 +16,7 @@ export interface LeadCardProps {
     phone?: string;
     email?: string;
     ownerName?: string;
+    source?: string;
   };
   onPress?: () => void;
   onCall?: () => void;
@@ -36,7 +37,16 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     <TouchableOpacity onPress={onPress} disabled={!onPress} activeOpacity={0.7}>
       <AppCard style={[styles.container, style]} elevation="sm">
         <View style={styles.header}>
-          <Text style={[styles.name, { color: theme.colors.onSurface }]}>{lead.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: tokens.spacing.sm }}>
+            {lead.source === 'web-widget' ? (
+              <Globe size={18} color={theme.colors.primary} style={{ marginRight: 6 }} />
+            ) : (
+              <MessageCircle size={18} color="#25D366" style={{ marginRight: 6 }} />
+            )}
+            <Text style={[styles.name, { color: theme.colors.onSurface }]} numberOfLines={1}>
+              {lead.name}
+            </Text>
+          </View>
           <StatusBadge status={lead.status} size="small" />
         </View>
 
@@ -92,8 +102,6 @@ const styles = StyleSheet.create({
   name: {
     fontSize: tokens.typography.titleMedium.fontSize,
     fontWeight: tokens.typography.titleMedium.fontWeight as any,
-    flex: 1,
-    marginRight: tokens.spacing.sm,
   },
   details: {
     marginBottom: tokens.spacing.md,

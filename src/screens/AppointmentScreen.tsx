@@ -147,6 +147,7 @@ export default function AppointmentScreen({ navigation, route }: any) {
   const [actionAppt, setActionAppt] = useState<Appointment | null>(null);
   const [actionType, setActionType] = useState<'complete' | 'cancel' | 'noshow' | null>(null);
   const [showActionDialog, setShowActionDialog] = useState(false);
+  const [generatingMeetId, setGeneratingMeetId] = useState<string | null>(null);
 
   // Meet Duration dialog
   const [showMeetDurationDialog, setShowMeetDurationDialog] = useState(false);

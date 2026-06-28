@@ -232,6 +232,8 @@ export const userApi = {
     latitude?: number;
     longitude?: number;
     logoUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
     forceShowBooking?: boolean | null;
     forceShowLeads?: boolean | null;
     forceShowAppointment?: boolean | null;

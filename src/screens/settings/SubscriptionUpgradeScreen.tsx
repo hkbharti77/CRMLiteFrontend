@@ -22,7 +22,12 @@ export default function SubscriptionUpgradeScreen({ onBack, currentPlanId = 'FRE
       try {
         const res = await billingApi.getSubscriptionStatus();
         if (res.data?.planId) {
-          setCurrentPlan(res.data.planId);
+          const status = res.data.status;
+          if (status === 'ACTIVE' || status === 'FREE_TRIAL') {
+            setCurrentPlan(res.data.planId);
+          } else {
+            setCurrentPlan('FREE'); // If expired/inactive, treat as FREE so they can buy any plan
+          }
         }
       } catch (e) {
         console.error("Error fetching current plan:", e);
@@ -57,18 +62,37 @@ export default function SubscriptionUpgradeScreen({ onBack, currentPlanId = 'FRE
       isPopular: false,
     },
     {
+      id: 'MIN',
+      name: 'Starter Menu-Bot',
+      priceMonthly: 999,
+      priceYearly: 9990,
+      features: [
+        '3 Employee Seats included',
+        '2,500 Leads storage',
+        '500 Bookings & Appts',
+        '500 Support Tickets',
+        '3,000 Emails / month',
+        '✓ WhatsApp API Integration (Meta charges separate)',
+        '✕ AI Bot (Menu-based only)',
+        '✕ Custom Chatbot Branding',
+      ],
+      color: '#3B82F6',
+      isPopular: false,
+    },
+    {
       id: 'PRO',
       name: 'Scale Professional',
       priceMonthly: 2999,
       priceYearly: 28790, // ~20% off
       features: [
         '10 Employee Seats included',
-        'Unlimited Leads storage',
-        'Unlimited Bookings & Appts',
-        'Unlimited Support Tickets',
-        '25,000 Emails / month',
-        '✓ WhatsApp API Integration',
-        '✓ Custom Chatbot Branding',
+        '25,000 Leads storage',
+        '25,000 Bookings & Appts',
+        '25,000 Support Tickets',
+        '15,000 Emails / month',
+        '✓ WhatsApp API Integration (Meta charges separate)',
+        '✓ AI RAG-based Bot',
+        '✓ Custom Chatbot Colors',
       ],
       color: '#0F766E', // primary teal
       isPopular: true,
@@ -84,9 +108,10 @@ export default function SubscriptionUpgradeScreen({ onBack, currentPlanId = 'FRE
         'Unlimited Bookings & Appts',
         'Unlimited Support Tickets',
         'Unlimited Emails / month',
-        '✓ WhatsApp API Integration',
-        '✓ Custom Chatbot Branding',
+        '✓ WhatsApp API Integration (Meta charges separate)',
+        '✓ AI RAG-based Bot',
         '✓ Dedicated Account Manager',
+        '✓ Full Custom Branding (Logo & Colors)',
       ],
       color: '#7C3AED', // premium purple
       isPopular: false,
@@ -230,7 +255,17 @@ export default function SubscriptionUpgradeScreen({ onBack, currentPlanId = 'FRE
 
         {/* ===== PRICING CARDS ===== */}
         {plans.map((plan) => {
+          const planRanks: Record<string, number> = {
+            'FREE': 0,
+            'MIN': 1,
+            'PRO': 2,
+            'ENTERPRISE': 3
+          };
+          const currentRank = planRanks[currentPlan] || 0;
+          const thisPlanRank = planRanks[plan.id] || 0;
+          
           const isCurrent = plan.id === currentPlan;
+          const isDowngrade = thisPlanRank < currentRank;
           const displayPrice = billingCycle === 'YEARLY' ? plan.priceYearly : plan.priceMonthly;
           const periodSuffix = billingCycle === 'YEARLY' ? '/ year' : '/ month';
           const calculatedMonthlyPrice = billingCycle === 'YEARLY' ? Math.round(plan.priceYearly / 12) : plan.priceMonthly;
@@ -294,14 +329,14 @@ export default function SubscriptionUpgradeScreen({ onBack, currentPlanId = 'FRE
               <TouchableOpacity 
                 style={[
                   styles.selectBtn, 
-                  { backgroundColor: isCurrent ? '#F1F5F9' : plan.color },
-                  isCurrent && styles.disabledSelectBtn
+                  { backgroundColor: (isCurrent || isDowngrade) ? '#F1F5F9' : plan.color },
+                  (isCurrent || isDowngrade) && styles.disabledSelectBtn
                 ]}
                 onPress={() => handlePlanSelect(plan)}
-                disabled={isCurrent}
+                disabled={isCurrent || isDowngrade}
               >
-                <Text style={[styles.selectBtnText, { color: isCurrent ? '#94A3B8' : '#fff' }]}>
-                  {isCurrent ? 'Current Plan' : 'Select Plan'}
+                <Text style={[styles.selectBtnText, { color: (isCurrent || isDowngrade) ? '#94A3B8' : '#fff' }]}>
+                  {isCurrent ? 'Current Plan' : isDowngrade ? 'Unavailable (Downgrade)' : 'Select Plan'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -324,6 +359,17 @@ export default function SubscriptionUpgradeScreen({ onBack, currentPlanId = 'FRE
             <Text style={styles.dialogDescription}>
               Choose a billing gateway to upgrade your plan to <Text style={{ fontWeight: '700' }}>{selectedPlan?.name}</Text>:
             </Text>
+            
+            {currentPlan !== 'FREE' && (
+              <View style={{ backgroundColor: '#F0FDFA', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: '#CCFBF1' }}>
+                <Text style={{ color: '#0F766E', fontSize: 13, fontWeight: '700' }}>
+                  🎉 Upgrade Discount
+                </Text>
+                <Text style={{ color: '#0F766E', fontSize: 12, marginTop: 4 }}>
+                  The unused balance from your current active plan will be automatically deducted from your final checkout amount!
+                </Text>
+              </View>
+            )}
             
             <TouchableOpacity style={styles.gatewayOption} onPress={() => handleCheckout('RAZORPAY')}>
               <View style={styles.gatewayIconContainer}>

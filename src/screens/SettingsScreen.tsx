@@ -19,6 +19,7 @@ import StaffManagementView from './settings/StaffManagementView';
 import BillingScreen from './settings/BillingScreen';
 import SubscriptionUpgradeScreen from './settings/SubscriptionUpgradeScreen';
 import GoogleIntegrationView from './settings/GoogleIntegrationView';
+import CustomBrandingView from './settings/CustomBrandingView';
 import { 
   Settings, 
   Search, 
@@ -40,7 +41,8 @@ import {
   Smartphone,
   Lock,
   Globe,
-  CreditCard
+  CreditCard,
+  PaintBucket
 } from 'lucide-react-native';
 
 import { AppAvatar } from '@components/global/Avatar/AppAvatar';
@@ -95,7 +97,10 @@ const SettingsScreen = () => {
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
     logoUrl: '',
+    primaryColor: '',
+    secondaryColor: '',
     role: '' as string,
+    planType: '' as string,
     forceShowBooking: null as boolean | null,
     forceShowAppointment: null as boolean | null,
     forceShowLeads: null as boolean | null
@@ -149,7 +154,10 @@ const SettingsScreen = () => {
           latitude: response.data.latitude || undefined,
           longitude: response.data.longitude || undefined,
           logoUrl: response.data.logoUrl || '',
+          primaryColor: response.data.primaryColor || '',
+          secondaryColor: response.data.secondaryColor || '',
           role: response.data.role || '',
+          planType: response.data.planType || '',
           forceShowBooking: response.data.forceShowBooking ?? null,
           forceShowAppointment: response.data.forceShowAppointment ?? null,
           forceShowLeads: response.data.forceShowLeads ?? null
@@ -494,6 +502,38 @@ const SettingsScreen = () => {
         <GoogleIntegrationView onBack={() => setActiveView(null)} />
       );
     }
+
+    if (activeView === 'branding') {
+      return (
+        <CustomBrandingView 
+          accountProfile={accountProfile} 
+          setAccountProfile={setAccountProfile} 
+          handleSaveProfile={handleSaveProfile}
+          loading={loading}
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
+    
+    if (activeView === 'meta') {
+      return (
+        <MetaIntegrationView
+          phoneNumberId={phoneNumberId}
+          setPhoneNumberId={setPhoneNumberId}
+          wabaId={wabaId}
+          setWabaId={setWabaId}
+          accessToken={accessToken}
+          setAccessToken={setAccessToken}
+          verifyToken={verifyToken}
+          setVerifyToken={setVerifyToken}
+          appSecret={appSecret}
+          setAppSecret={setAppSecret}
+          handleSaveMeta={handleSaveMeta}
+          loading={loading}
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
     
     if (activeView === 'buttons') {
       return (
@@ -753,6 +793,13 @@ const SettingsScreen = () => {
 
         {/* ===== APPEARANCE SECTION ===== */}
         <SettingsSection title="Appearance">
+          <SettingsItem
+            icon={<PaintBucket size={20} color="#075E54" />}
+            title="Custom Branding"
+            description="Bot logo and colors"
+            onPress={() => setActiveView('branding')}
+            divider
+          />
           <ToggleItem
             icon={<Moon size={20} color="#075E54" />}
             title="Dark Mode"

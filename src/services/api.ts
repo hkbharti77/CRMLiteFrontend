@@ -71,7 +71,7 @@ export const authApi = {
 export const crmApi = {
   getContacts: () => api.get('/contacts'),
   getContactById: (id: string) => api.get(`/contacts/${id}`),
-  getLeads: () => api.get('/leads'),
+  getLeads: (page = 0, size = 50, status?: string) => api.get(`/leads/paged?page=${page}&size=${size}${status ? `&status=${status}` : ''}`),
   updateLeadStatus: (leadId: string, status: string) => api.patch(`/leads/${leadId}/status?status=${status}`),
   updateContactTags: (contactId: string, tags: string[]) => api.patch(`/contacts/${contactId}/tags`, tags),
   // Enquiry CRUD
@@ -97,6 +97,12 @@ export const crmApi = {
   getRevenueReport: () => api.get('/leads/revenue'),
 };
 
+export const menuBuilderApi = {
+  getMenuCards: () => api.get('/tenant/menu-builder'),
+  saveMenuCards: (cards: any[]) => api.post('/tenant/menu-builder', cards),
+  resetMenuCards: () => api.delete('/tenant/menu-builder'),
+};
+
 export const whatsappApi = {
   getConfig: () => api.get('/whatsapp-config'),
   getFeatureLabels: () => api.get('/whatsapp-config/feature-labels'),
@@ -120,9 +126,14 @@ export const whatsappApi = {
     showSosButton?: boolean;
     customSubMenusJson?: string;
     customMessagesJson?: string;
+    flowCancelMenuJson?: string;
+    flowCompletionMenuJson?: string;
+    aiResponseMenuJson?: string;
+    guardrailMessageAbuse?: string;
+    guardrailMessageGibberish?: string;
   }) =>
     api.post('/whatsapp-config', config),
-  uploadMedia: (file: any) => {
+  uploadMedia: async (file: any) => {
     const formData = new FormData();
     if (Platform.OS === 'web' && file.file) {
       formData.append('file', file.file);
@@ -153,10 +164,11 @@ export const onboardingApi = {
 
 export const appointmentApi = {
   book: (data: {
-    contactId: string;
+    contactId?: string | null;
     appointmentDateTime: string;
     title: string;
     meetingLink?: string;
+    generateMeetLink?: boolean;
   }) => api.post('/appointments', data),
   getAll: () => api.get('/appointments'),
   getToday: () => api.get('/appointments/today'),
@@ -165,6 +177,14 @@ export const appointmentApi = {
   complete: (id: string) => api.patch(`/appointments/${id}/complete`),
   cancel: (id: string) => api.patch(`/appointments/${id}/cancel`),
   noShow: (id: string) => api.patch(`/appointments/${id}/noshow`),
+  generateMeetLink: (id: string, durationMinutes?: number) => 
+    api.post(`/appointments/${id}/generate-meet-link`, null, { params: { durationMinutes } }),
+};
+
+export const integrationApi = {
+  getGoogleAuthUrl: () => api.get('/integrations/google/auth-url'),
+  getGoogleStatus: () => api.get('/integrations/google/status'),
+  disconnectGoogle: () => api.delete('/integrations/google/disconnect'),
 };
 
 export const bookingApi = {
@@ -200,6 +220,11 @@ export const activityApi = {
   getOwnerFeed: () => api.get('/activity-logs/feed'),
 };
 
+export const dashboardApi = {
+  getAggregate: () => api.get('/dashboard/aggregate'),
+  exportReport: (format: 'csv' | 'pdf') => api.get(`/dashboard/export?format=${format}`, { responseType: 'blob' }),
+};
+
 export const userApi = {
   getProfile: () => api.get('/users/me'),
   updateProfile: (data: {
@@ -213,6 +238,8 @@ export const userApi = {
     latitude?: number;
     longitude?: number;
     logoUrl?: string;
+    primaryColor?: string;
+    secondaryColor?: string;
     forceShowBooking?: boolean | null;
     forceShowLeads?: boolean | null;
     forceShowAppointment?: boolean | null;
@@ -222,6 +249,10 @@ export const userApi = {
     forceShowAppointment: flowType === 'appointment',
     forceShowBooking: flowType === 'booking',
   }),
+  getTenantStaff: () => api.get('/users/tenant-staff'),
+  createStaffUser: (data: { email: string, displayName: string, role: string, phone?: string }) => api.post('/users/staff', data),
+  deleteStaffUser: (staffId: string) => api.delete(`/users/staff/${staffId}`),
+  updateStaffStatus: (staffId: string, status: string, reason?: string) => api.patch(`/users/staff/${staffId}/status?status=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ''}`),
   // Security Suite
   getSecurityDashboard: () => api.get('/users/me/security-dashboard'),
   getSessions: () => api.get('/users/me/sessions'),
@@ -321,6 +352,8 @@ export const flowConfigApi = {
   getTriggerLabels: () => api.get('/flow-config/trigger-labels'),
   getFlowFields: (flowType?: string) => api.get(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`),
   saveFlowFields: (fields: any[], flowType?: string) => api.post(`/flow-config/fields${flowType ? `?flowType=${flowType}` : ''}`, fields),
+  getFlowGreeting: (flowType?: string) => api.get(`/flow-config/greeting${flowType ? `?flowType=${flowType}` : ''}`),
+  saveFlowGreeting: (greetingMessage: string, flowType?: string) => api.post(`/flow-config/greeting${flowType ? `?flowType=${flowType}` : ''}`, { greetingMessage }),
 };
 
 export const ragApi = {
@@ -392,6 +425,14 @@ export const ticketApi = {
   delete: (id: string) => api.delete(`/tickets/${id}`),
 };
 
+export interface Contact {
+  id: string;
+  waId?: string;
+  displayId?: string;
+  name?: string;
+  email?: string;
+}
+
 export const customEmailApi = {
   send: (data: {
     subject: string;
@@ -432,6 +473,13 @@ export const monitoringApi = {
   getHealth: () => api.get(`${SERVER_HOST}/actuator/health`),
   getMetrics: () => api.get(`${SERVER_HOST}/actuator/metrics`),
   getMetricDetails: (name: string) => api.get(`${SERVER_HOST}/actuator/metrics/${name}`),
+};
+
+export const billingApi = {
+  getSubscriptionStatus: () => api.get('/billing/subscription'),
+  initiateCheckout: (data: { planId: string; billingCycle: string; gateway: string }) =>
+    api.post('/billing/checkout', data),
+  getTransactions: () => api.get('/billing/transactions'),
 };
 
 export default api;

@@ -119,9 +119,11 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 {accountProfile.displayName?.charAt(0).toUpperCase() || 'H'}
               </Text>
             </View>
-            <TouchableOpacity style={styles.changePhotoButton}>
-              <Text style={styles.changePhotoText}>Change Photo</Text>
-            </TouchableOpacity>
+            {accountProfile.role === 'OWNER' && (
+              <TouchableOpacity style={styles.changePhotoButton}>
+                <Text style={styles.changePhotoText}>Change Photo</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.profileInfo}>
@@ -129,7 +131,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             <Text style={styles.profileEmail}>{accountProfile.email || 'Email not set'}</Text>
             <View style={styles.badgeContainer}>
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>Admin</Text>
+                <Text style={styles.badgeText}>{accountProfile.role || 'OWNER'}</Text>
               </View>
             </View>
           </View>
@@ -160,7 +162,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             label="Business Name"
             value={accountProfile.businessName}
             onChangeText={(v) => handleFieldChange('businessName', v)}
-            editable={isEditing}
+            editable={isEditing && accountProfile.role === 'OWNER'}
             placeholder="Your business name"
           />
 
@@ -170,7 +172,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               value={accountProfile.businessType}
               placeholder="Select category"
               isOpen={showCategoryDropdown}
-              onPress={() => isEditing && setShowCategoryDropdown(!showCategoryDropdown)}
+              onPress={() => isEditing && accountProfile.role === 'OWNER' && setShowCategoryDropdown(!showCategoryDropdown)}
               onClose={() => setShowCategoryDropdown(false)}
               options={Object.keys(categories)}
               onSelect={(cat) => {
@@ -180,7 +182,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 setShowSubTypeDropdown(true);
               }}
               loading={categoriesLoading}
-              disabled={!isEditing}
+              disabled={!isEditing || accountProfile.role !== 'OWNER'}
             />
           </View>
 
@@ -191,14 +193,14 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 value={accountProfile.businessSubType}
                 placeholder="Select sub category"
                 isOpen={showSubTypeDropdown}
-                onPress={() => isEditing && setShowSubTypeDropdown(!showSubTypeDropdown)}
+                onPress={() => isEditing && accountProfile.role === 'OWNER' && setShowSubTypeDropdown(!showSubTypeDropdown)}
                 onClose={() => setShowSubTypeDropdown(false)}
                 options={categories[accountProfile.businessType] || []}
                 onSelect={(subType) => {
                   handleFieldChange('businessSubType', subType);
                   setShowSubTypeDropdown(false);
                 }}
-                disabled={!isEditing}
+                disabled={!isEditing || accountProfile.role !== 'OWNER'}
               />
             </View>
           )}
@@ -212,12 +214,12 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             label="Google Maps Link"
             value={mapsUrl}
             onChangeText={setMapsUrl}
-            editable={isEditing}
+            editable={isEditing && accountProfile.role === 'OWNER'}
             placeholder="https://www.google.com/maps/..."
             icon={<MapPin size={18} color="#0F766E" />}
           />
 
-          {isEditing && (
+          {isEditing && accountProfile.role === 'OWNER' && (
             <TouchableOpacity 
               style={[styles.extractButton, !mapsUrl && styles.extractButtonDisabled]}
               onPress={parseMapsUrl}
@@ -235,7 +237,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 const num = parseFloat(v);
                 handleFieldChange('latitude', isNaN(num) ? null : num);
               }}
-              editable={isEditing}
+              editable={isEditing && accountProfile.role === 'OWNER'}
               placeholder="0.0000"
               keyboardType="decimal-pad"
               containerStyle={{ flex: 1, marginRight: 8 }}
@@ -247,7 +249,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 const num = parseFloat(v);
                 handleFieldChange('longitude', isNaN(num) ? null : num);
               }}
-              editable={isEditing}
+              editable={isEditing && accountProfile.role === 'OWNER'}
               placeholder="0.0000"
               keyboardType="decimal-pad"
               containerStyle={{ flex: 1, marginLeft: 8 }}
@@ -268,12 +270,12 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               label=""
               value={accountProfile.aboutUs}
               onChangeText={(v) => handleFieldChange('aboutUs', v.slice(0, 500))}
-              editable={isEditing}
+              editable={isEditing && accountProfile.role === 'OWNER'}
               placeholder="Tell your customers about your business, values, and services..."
               mode="outlined"
               multiline
               numberOfLines={5}
-              style={[styles.aboutInput, !isEditing && styles.inputDisabled]}
+              style={[styles.aboutInput, !(isEditing && accountProfile.role === 'OWNER') && styles.inputDisabled]}
               contentStyle={styles.aboutContent}
             />
           </View>
@@ -289,18 +291,9 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               <Text style={styles.switchDescription}>Manage customer inquiries and sales pipeline</Text>
             </View>
             <Switch
-              value={flowType === 'LEAD' ? true : (accountProfile.forceShowLeads ?? false)}
-              disabled={flowType === 'LEAD'}
-              onValueChange={async (val) => {
-                const updates: any = { forceShowLeads: val };
-                if (val) {
-                  if (flowType !== 'APPOINTMENT') updates.forceShowAppointment = false;
-                  if (flowType !== 'BOOKING') updates.forceShowBooking = false;
-                }
-                const newProfile = { ...accountProfile, ...updates };
-                setAccountProfile(newProfile);
-                try { await handleSaveProfile(newProfile); } catch (e) {}
-              }}
+              value={true}
+              disabled={true}
+              onValueChange={() => {}}
               color="#0F766E"
             />
           </View>
@@ -312,11 +305,10 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             </View>
             <Switch
               value={flowType === 'APPOINTMENT' ? true : (accountProfile.forceShowAppointment ?? false)}
-              disabled={flowType === 'APPOINTMENT'}
+              disabled={accountProfile.role !== 'OWNER' || flowType === 'APPOINTMENT'}
               onValueChange={async (val) => {
                 const updates: any = { forceShowAppointment: val };
                 if (val) {
-                  if (flowType !== 'LEAD') updates.forceShowLeads = false;
                   if (flowType !== 'BOOKING') updates.forceShowBooking = false;
                 }
                 const newProfile = { ...accountProfile, ...updates };
@@ -334,11 +326,10 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             </View>
             <Switch
               value={flowType === 'BOOKING' ? true : (accountProfile.forceShowBooking ?? false)}
-              disabled={flowType === 'BOOKING'}
+              disabled={accountProfile.role !== 'OWNER' || flowType === 'BOOKING'}
               onValueChange={async (val) => {
                 const updates: any = { forceShowBooking: val };
                 if (val) {
-                  if (flowType !== 'LEAD') updates.forceShowLeads = false;
                   if (flowType !== 'APPOINTMENT') updates.forceShowAppointment = false;
                 }
                 const newProfile = { ...accountProfile, ...updates };

@@ -13,8 +13,18 @@ import {
   Icon,
 } from 'react-native-paper';
 import { ChevronLeft } from 'lucide-react-native';
-import { supportFormConfigApi } from '../../services/api';
+import { supportFormConfigApi, flowConfigApi } from '../../services/api';
 import { colors, typography, sharedStyles } from '../../theme';
+
+interface FlowFieldConfig {
+  key: string;
+  enabled: boolean;
+  required: boolean;
+  order: number;
+  label: string;
+  fieldType: string;
+  options: string[];
+}
 
 interface SupportFormConfig {
   id?: string;
@@ -56,7 +66,33 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
   });
   const [categoryTemplates, setCategoryTemplates] = useState<Record<string, string[]>>({});
   const [newCategoryText, setNewCategoryText] = useState('');
+  const [whatsappGreeting, setWhatsappGreeting] = useState('');
   const [activeAccordion, setActiveAccordion] = useState<string | number | undefined>('basic');
+  const [fields, setFields] = useState<FlowFieldConfig[]>([]);
+
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    const newFields = [...fields];
+    const temp = newFields[index - 1];
+    newFields[index - 1] = newFields[index];
+    newFields[index] = temp;
+    setFields(newFields);
+  };
+
+  const moveDown = (index: number) => {
+    if (index === fields.length - 1) return;
+    const newFields = [...fields];
+    const temp = newFields[index + 1];
+    newFields[index + 1] = newFields[index];
+    newFields[index] = temp;
+    setFields(newFields);
+  };
+
+  const updateField = (index: number, updates: Partial<FlowFieldConfig>) => {
+    const newFields = [...fields];
+    newFields[index] = { ...newFields[index], ...updates };
+    setFields(newFields);
+  };
 
   useEffect(() => {
     fetchConfig();
@@ -65,8 +101,26 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
 
   const fetchConfig = async () => {
     try {
-      const response = await supportFormConfigApi.getConfig();
-      if (response.data) setConfig(response.data);
+      const [res, greetingRes, fieldsRes] = await Promise.all([
+        supportFormConfigApi.getConfig().catch((err) => {
+          console.error("Error fetching support config:", err);
+          return { data: null };
+        }),
+        flowConfigApi.getFlowGreeting('support').catch((err) => {
+          console.error("Error fetching support greeting:", err);
+          return { data: { greetingMessage: '' } };
+        }),
+        flowConfigApi.getFlowFields('support').catch((err) => {
+          console.error("Error fetching support fields:", err);
+          return { data: [] };
+        })
+      ]);
+      if (res.data) setConfig(res.data);
+      if (greetingRes.data?.greetingMessage) setWhatsappGreeting(greetingRes.data.greetingMessage);
+      if (fieldsRes.data) {
+        const sorted = (fieldsRes.data || []).sort((a: FlowFieldConfig, b: FlowFieldConfig) => a.order - b.order);
+        setFields(sorted);
+      }
     } catch (error: any) {
       if (error.response?.status !== 404) {
         Alert.alert('Error', 'Failed to load configuration');
@@ -92,7 +146,13 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
     }
     setLoading(true);
     try {
+      const updatedFields = fields.map((f, index) => ({ ...f, order: index }));
       await supportFormConfigApi.updateConfig(config);
+      await flowConfigApi.saveFlowGreeting(whatsappGreeting, 'support');
+      if (updatedFields.length > 0) {
+        await flowConfigApi.saveFlowFields(updatedFields, 'support');
+      }
+      setFields(updatedFields);
       Alert.alert('Success', 'Support configuration saved successfully!');
     } catch (error: any) {
       Alert.alert('Error', error.response?.data?.message || 'Failed to save configuration');
@@ -116,6 +176,21 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
               const response = await supportFormConfigApi.resetConfig();
               if (response.data) {
                 setConfig(response.data);
+                const [greetingRes, fieldsRes] = await Promise.all([
+                  flowConfigApi.getFlowGreeting('support').catch((err) => {
+                    console.error("Error resetting support greeting:", err);
+                    return { data: { greetingMessage: '' } };
+                  }),
+                  flowConfigApi.getFlowFields('support').catch((err) => {
+                    console.error("Error resetting support fields:", err);
+                    return { data: [] };
+                  })
+                ]);
+                if (greetingRes.data?.greetingMessage) setWhatsappGreeting(greetingRes.data.greetingMessage);
+                if (fieldsRes.data) {
+                  const sorted = (fieldsRes.data || []).sort((a: FlowFieldConfig, b: FlowFieldConfig) => a.order - b.order);
+                  setFields(sorted);
+                }
                 Alert.alert('Success', 'Configuration reset to defaults');
               }
             } catch (error) {
@@ -241,12 +316,26 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
                   value={config.formDescription}
                   onChangeText={(text) => setConfig((prev) => ({ ...prev, formDescription: text }))}
                   mode="outlined"
-                  multiline
-                  numberOfLines={3}
                   style={sharedStyles.input}
+                  multiline
+                  numberOfLines={2}
                   outlineColor={colors.border}
                   activeOutlineColor={colors.primary}
                 />
+                <TextInput
+                  label="WhatsApp Intro/Greeting Message (Optional)"
+                  value={whatsappGreeting}
+                  onChangeText={setWhatsappGreeting}
+                  mode="outlined"
+                  style={sharedStyles.input}
+                  multiline
+                  numberOfLines={3}
+                  outlineColor={colors.border}
+                  activeOutlineColor={colors.primary}
+                />
+                <Text style={{ fontSize: 12, color: colors.muted, marginBottom: 12, marginTop: -8 }}>
+                  This message will be sent to the user right before the first question of the WhatsApp support flow.
+                </Text>
                 <TextInput
                   label="Success Message"
                   value={config.successMessage}
@@ -366,6 +455,143 @@ const SupportCategoriesView: React.FC<SupportCategoriesViewProps> = ({ onBack })
                 <Text style={[typography.metaText, { marginTop: 8 }]}>
                   Maximum 10 categories allowed.
                 </Text>
+              </View>
+            </List.Accordion>
+          </View>
+
+          {/* WhatsApp Flow Fields */}
+          <View style={[sharedStyles.modernCard, { marginBottom: 8 }]}>
+            <List.Accordion
+              title="WhatsApp Flow Fields"
+              id="whatsapp-fields"
+              left={(props) => <List.Icon {...props} icon="whatsapp" color={colors.primary} />}
+              titleStyle={[typography.cardTitle, { color: colors.text }]}
+              style={{ backgroundColor: colors.card }}
+            >
+              <View style={styles.cardContent}>
+                <Text style={[typography.cardTitle, { marginBottom: 4 }]}>Customize Support Chat Flow</Text>
+                <Text style={[typography.description, { marginBottom: 16 }]}>
+                  Enable, reorder, and rename the questions asked during WhatsApp support conversation.
+                </Text>
+
+                {fields.length === 0 ? (
+                  <View style={{ padding: 16, alignItems: 'center' }}>
+                    <Text style={[typography.description, { marginBottom: 12, textAlign: 'center' }]}>
+                      No WhatsApp flow fields loaded.
+                    </Text>
+                    <Button
+                      mode="contained"
+                      buttonColor={colors.primary}
+                      onPress={fetchConfig}
+                      loading={fetching}
+                      style={{ borderRadius: 8 }}
+                    >
+                      Reload Fields
+                    </Button>
+                  </View>
+                ) : (
+                  fields.map((field, index) => (
+                    <View key={field.key} style={[styles.fieldSlot, !field.enabled && styles.fieldDisabled]}>
+                      <View style={styles.fieldHeader}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                        <Text style={styles.fieldKeyBadge}>{field.key}</Text>
+                        <Text style={{ fontSize: 12, color: colors.muted, marginLeft: 8 }}>
+                          {field.fieldType}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 12, color: field.enabled ? colors.primary : colors.muted, marginRight: 6, fontWeight: 'bold' }}>
+                          {field.enabled ? 'ENABLED' : 'DISABLED'}
+                        </Text>
+                        <Switch
+                          value={field.enabled}
+                          onValueChange={(val) => updateField(index, { enabled: val })}
+                          color={colors.primary}
+                        />
+                      </View>
+                    </View>
+
+                    {field.enabled && (
+                      <View style={{ marginTop: 12 }}>
+                        <TextInput
+                          label="Question / Label"
+                          value={field.label}
+                          onChangeText={(val) => updateField(index, { label: val })}
+                          mode="outlined"
+                          style={[sharedStyles.input, { height: 44, marginBottom: 12 }]}
+                          outlineColor={colors.border}
+                          activeOutlineColor={colors.primary}
+                        />
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={{ fontSize: 13, marginRight: 8 }}>Required:</Text>
+                            <Switch
+                              value={field.required}
+                              onValueChange={(val) => updateField(index, { required: val })}
+                              color={colors.accent}
+                            />
+                          </View>
+                          <View style={{ flexDirection: 'row' }}>
+                            <IconButton
+                              icon="arrow-up"
+                              size={20}
+                              disabled={index === 0}
+                              onPress={() => moveUp(index)}
+                            />
+                            <IconButton
+                              icon="arrow-down"
+                              size={20}
+                              disabled={index === fields.length - 1}
+                              onPress={() => moveDown(index)}
+                            />
+                          </View>
+                        </View>
+
+                        {field.fieldType === 'DROPDOWN' && (
+                          <View style={{ marginTop: 16, padding: 12, backgroundColor: 'rgba(0,0,0,0.02)', borderRadius: 8 }}>
+                            <Text style={{ fontSize: 13, marginBottom: 8, fontWeight: 'bold', color: colors.text }}>Dropdown Options:</Text>
+                            {(field.options || []).map((opt, optIndex) => (
+                              <View key={optIndex} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+                                <TextInput
+                                  mode="outlined"
+                                  style={[sharedStyles.input, { flex: 1, height: 36, marginTop: 0, marginBottom: 0 }]}
+                                  value={opt}
+                                  onChangeText={(val) => {
+                                    const newOptions = [...(field.options || [])];
+                                    newOptions[optIndex] = val;
+                                    updateField(index, { options: newOptions });
+                                  }}
+                                />
+                                <IconButton
+                                  icon="close"
+                                  size={20}
+                                  iconColor={colors.accent}
+                                  onPress={() => {
+                                    const newOptions = [...(field.options || [])];
+                                    newOptions.splice(optIndex, 1);
+                                    updateField(index, { options: newOptions });
+                                  }}
+                                />
+                              </View>
+                            ))}
+                            <Button
+                              mode="text"
+                              icon="plus"
+                              textColor={colors.primary}
+                              onPress={() => {
+                                const newOptions = [...(field.options || []), "New Option"];
+                                updateField(index, { options: newOptions });
+                              }}
+                            >
+                              Add Option
+                            </Button>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </View>
+                )))}
               </View>
             </List.Accordion>
           </View>
@@ -522,6 +748,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
+  fieldSlot: {
+    marginBottom: 14,
+    padding: 14,
+    backgroundColor: colors.background,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  fieldDisabled: {
+    opacity: 0.7,
+    backgroundColor: '#f9f9f9',
+  },
+  fieldHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  fieldKeyBadge: {
+    fontWeight: 'bold',
+    color: '#fff',
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    fontSize: 11,
+    textTransform: 'uppercase'
+  }
 });
 
 export default SupportCategoriesView;

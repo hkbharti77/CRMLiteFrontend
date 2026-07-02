@@ -3,7 +3,6 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, useTheme, ActivityIndicator, Portal, Dialog, TextInput } from 'react-native-paper';
 import { crmApi } from '../services/api';
 import { tokens } from '../theme/tokens';
-import { ScreenHeader } from '@components/global/Header/ScreenHeader';
 import { StatusBadge } from '@components/global/Badge/StatusBadge';
 import { AppButton } from '@components/global/Button/AppButton';
 import { AppCard } from '@components/global/Card/AppCard';
@@ -171,7 +170,7 @@ export default function LeadDetailScreen({ route, navigation }: any) {
     try {
       setLoading(true);
       const res = await crmApi.getLeads();
-      const found = res.data.find((l: any) => l.id === leadId);
+      const found = res.data.content.find((l: any) => l.id === leadId);
       setLead(found ?? null);
       await fetchEnquiries();
     } catch (e) {
@@ -219,19 +218,28 @@ export default function LeadDetailScreen({ route, navigation }: any) {
     metrics.push({ label: 'Total Enquiries', value: enquiries.length });
   }
 
+  // Extract extra lead details from the latest enquiry that has them
+  let extractedDetails: any = null;
+  if (enquiries.length > 0) {
+    for (let i = enquiries.length - 1; i >= 0; i--) {
+      const enq = enquiries[i];
+      if (enq.name || enq.email || enq.phone || enq.requirement) {
+        extractedDetails = enq;
+        break;
+      }
+    }
+  }
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScreenHeader 
-        title="Lead Details" 
-        onBack={() => navigation.goBack()} 
-      />
-
       <View style={styles.content}>
         <LeadDetailHeader 
-          name={leadName ?? 'Lead'} 
-          company={`Lead #${shortId(leadId)}`}
+          name={lead?.contact?.name || extractedDetails?.name || leadName || 'Lead'} 
+          company={extractedDetails?.company || (lead?.leadNumber ? `Lead #${lead.leadNumber}` : `Lead #${shortId(leadId)}`)}
           onShare={() => {}}
         />
+
+
 
         <View style={styles.statusSection}>
           <Text style={[styles.sectionTitle, { color: tokens.colors.textPrimary }]}>Status</Text>
@@ -258,6 +266,80 @@ export default function LeadDetailScreen({ route, navigation }: any) {
             enquiries.map((enq, idx) => (
               <AppCard key={enq.id} style={styles.enquiryCard} elevation="sm">
                 <Text style={[styles.enqMessage, { color: tokens.colors.textPrimary }]}>{enq.message}</Text>
+                
+                {(enq.name || enq.email || enq.phone || enq.requirement || enq.company || enq.city || enq.budget || enq.age || enq.gender || enq.address || enq.pincode || enq.preferredDate || (enq.additionalDetails && Object.keys(enq.additionalDetails).length > 0)) && (
+                  <View style={{ marginTop: 12, padding: 12, backgroundColor: '#f5f5f5', borderRadius: 8, gap: 4 }}>
+                    {enq.name && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>👤 <Text style={{fontWeight: 'bold'}}>Name:</Text> {enq.name}</Text>}
+                    {enq.email && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>📧 <Text style={{fontWeight: 'bold'}}>Email:</Text> {enq.email}</Text>}
+                    {enq.phone && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>📱 <Text style={{fontWeight: 'bold'}}>Phone:</Text> {enq.phone}</Text>}
+                    {enq.company && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>🏢 <Text style={{fontWeight: 'bold'}}>Company:</Text> {enq.company}</Text>}
+                    {enq.budget && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>💰 <Text style={{fontWeight: 'bold'}}>Budget:</Text> {enq.budget}</Text>}
+                    {enq.city && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>📍 <Text style={{fontWeight: 'bold'}}>City:</Text> {enq.city}</Text>}
+                    {enq.age && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>🎂 <Text style={{fontWeight: 'bold'}}>Age:</Text> {enq.age}</Text>}
+                    {enq.gender && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>👤 <Text style={{fontWeight: 'bold'}}>Gender:</Text> {enq.gender}</Text>}
+                    {enq.address && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>📍 <Text style={{fontWeight: 'bold'}}>Address:</Text> {enq.address}</Text>}
+                    {enq.pincode && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>📮 <Text style={{fontWeight: 'bold'}}>Pincode:</Text> {enq.pincode}</Text>}
+                    {enq.preferredDate && <Text style={{ fontSize: 14, color: tokens.colors.textSecondary }}>📅 <Text style={{fontWeight: 'bold'}}>Preferred Date:</Text> {enq.preferredDate}</Text>}
+                    {(() => {
+                      if (!enq.requirement && !enq.additionalDetails) return null;
+                      
+                      let mainReq = '';
+                      let extraDetailsList: {k: string, v: string}[] = [];
+                      
+                      if (enq.additionalDetails && Object.keys(enq.additionalDetails).length > 0) {
+                        mainReq = (enq.requirement || '').split('Additional Details:\n')[0].trim();
+                        extraDetailsList = Object.entries(enq.additionalDetails).map(([k, v]) => ({ k, v }));
+                      } else if (enq.requirement) {
+                        const parts = enq.requirement.split('Additional Details:\n');
+                        mainReq = parts[0].trim();
+                        const extraStr = parts.length > 1 ? parts[1].trim() : '';
+                        if (extraStr) {
+                          extraStr.split('\n').forEach(line => {
+                            const colonIdx = line.indexOf(':');
+                            if (colonIdx !== -1) {
+                              extraDetailsList.push({
+                                k: line.substring(0, colonIdx).trim(),
+                                v: line.substring(colonIdx + 1).trim()
+                              });
+                            }
+                          });
+                        }
+                      }
+                      
+                      return (
+                        <View style={{ marginTop: 4 }}>
+                          {mainReq ? (
+                            <Text style={{ fontSize: 14, color: tokens.colors.textSecondary, marginBottom: extraDetailsList.length > 0 ? 8 : 0 }}>
+                              📝 <Text style={{fontWeight: 'bold'}}>Requirement:</Text> {mainReq}
+                            </Text>
+                          ) : null}
+                          
+                          {extraDetailsList.length > 0 ? (
+                            <View style={{ marginTop: 4 }}>
+                              <Text style={{ fontSize: 13, fontWeight: 'bold', color: tokens.colors.textSecondary, marginBottom: 8 }}>
+                                📋 Additional Details:
+                              </Text>
+                              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                                {extraDetailsList.map((detail, i: number) => {
+                                  const formattedKey = detail.k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                  return (
+                                    <View key={i} style={{ backgroundColor: theme.colors.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.primary + '30' }}>
+                                      <Text style={{ fontSize: 12, color: theme.colors.primary }}>
+                                        <Text style={{ fontWeight: 'bold' }}>{formattedKey}: </Text>
+                                        {detail.v}
+                                      </Text>
+                                    </View>
+                                  );
+                                })}
+                              </View>
+                            </View>
+                          ) : null}
+                        </View>
+                      );
+                    })()}
+                  </View>
+                )}
+
                 <AppDivider style={styles.divider} />
                 <View style={styles.enqMeta}>
                   <Text style={[styles.enqType, { color: theme.colors.primary }]}>{enq.type}</Text>

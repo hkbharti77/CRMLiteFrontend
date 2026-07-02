@@ -36,6 +36,8 @@ interface MenuButtonsViewProps {
   setShowOfferButton: (val: boolean) => void;
   showSosButton: boolean;
   setShowSosButton: (val: boolean) => void;
+  showSupportFormButton: boolean;
+  setShowSupportFormButton: (val: boolean) => void;
   customSubMenusJson: string;
   customMessagesJson: string;
 }
@@ -71,6 +73,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
   setShowOfferButton,
   showSosButton,
   setShowSosButton,
+  showSupportFormButton,
+  setShowSupportFormButton,
   customSubMenusJson,
   customMessagesJson
 }) => {
@@ -107,7 +111,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
     SOS: '🆘 Human Support',
     TRUST: '⭐ Trust & Reviews',
     OFFER: '🎁 Special Offer',
-    ABOUT: '📂 About & Contact'
+    ABOUT: '📂 About & Contact',
+    SUPPORT_FORM: '🎫 Get Support'
   });
 
   useEffect(() => {
@@ -151,6 +156,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
   if (showOfferButton && offerText) reservedFeatures.push(featureLabels.OFFER);
   if (showAboutContact) reservedFeatures.push(featureLabels.ABOUT);
   if (showSosButton) reservedFeatures.push(featureLabels.SOS);
+  if (showSupportFormButton) reservedFeatures.push(featureLabels.SUPPORT_FORM);
 
   const reservedCount = menuType === 'button' ? 1 : reservedFeatures.length;
   const maxManualSlots = (menuType === 'button' ? 1 : 9) - (menuType === 'list' ? reservedCount : 0);
@@ -370,6 +376,16 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               editable={isEditingFeatures && showSosButton}
               left={<TextInput.Icon icon="account-supervisor-circle" />}
             />
+
+            <View style={styles.featureHeader}>
+               <Text style={styles.featureTitle}>{featureLabels.SUPPORT_FORM}</Text>
+               <Switch 
+                 value={showSupportFormButton} 
+                 onValueChange={setShowSupportFormButton}
+                 color={colors.primary}
+                 disabled={!isEditingFeatures}
+               />
+            </View>
           </View>
 
           <Text style={[typography.label, { marginTop: 10 }]}>Main Menu: Choose 3rd Button</Text>
@@ -381,6 +397,7 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               { value: 'TRUST', label: 'Trust', disabled: !isEditingFeatures },
               { value: 'OFFER', label: 'Offer', disabled: !isEditingFeatures },
               { value: 'SOS', label: 'SOS', disabled: !isEditingFeatures },
+              { value: 'SUPPORT_FORM', label: 'Support Form', disabled: !isEditingFeatures },
             ]}
             style={{ marginBottom: 20 }}
           />

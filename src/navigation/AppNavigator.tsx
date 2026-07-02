@@ -17,6 +17,7 @@ import ContactProfileScreen from '../screens/ContactProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import BookingScreen from '../screens/BookingScreen';
+import AppointmentScreen from '../screens/AppointmentScreen';
 import TicketScreen from '../screens/TicketScreen';
 import CustomEmailScreen from '../screens/CustomEmailScreen';
 
@@ -66,9 +67,9 @@ function MainNavigator() {
   const isAppointmentNiche = flowType === 'APPOINTMENT';
   const isBookingNiche = flowType === 'BOOKING';
 
-  const shouldShowLeads = forceShowLeads !== null ? forceShowLeads : isLeadNiche;
-  const shouldShowAppointments = forceShowAppointment !== null ? forceShowAppointment : isAppointmentNiche;
-  const shouldShowBooking = forceShowBooking !== null ? forceShowBooking : isBookingNiche;
+  const shouldShowLeads = true; // Lead is mandatory
+  const shouldShowAppointments = isAppointmentNiche || forceShowAppointment === true;
+  const shouldShowBooking = isBookingNiche || forceShowBooking === true;
   
   return (
     <Tab.Navigator
@@ -106,7 +107,7 @@ function MainNavigator() {
         <Tab.Screen name="Pipeline" component={PipelineScreen} />
       )}
       {shouldShowAppointments && (
-        <Tab.Screen name="Appointments" component={BookingScreen} />
+        <Tab.Screen name="Appointments" component={AppointmentScreen} />
       )}
       {shouldShowBooking && (
         <Tab.Screen name="Booking" component={BookingScreen} />

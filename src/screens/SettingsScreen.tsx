@@ -11,15 +11,23 @@ import AiKnowledgeBaseView from './settings/AiKnowledgeBaseView';
 import BusinessServicesScreen from './BusinessServicesScreen';
 import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
+import FlowCTAButtonsView from './settings/FlowCTAButtonsView';
 import SupportCategoriesView from './settings/SupportCategoriesView';
 import SystemHealthView from './settings/SystemHealthView';
 import FlowFieldsView from './settings/FlowFieldsView';
+import StaffManagementView from './settings/StaffManagementView';
+import BillingScreen from './settings/BillingScreen';
+import SubscriptionUpgradeScreen from './settings/SubscriptionUpgradeScreen';
+import GoogleIntegrationView from './settings/GoogleIntegrationView';
+import CustomBrandingView from './settings/CustomBrandingView';
+import CustomMenuCardsView from './settings/CustomMenuCardsView';
 import { 
   Settings, 
   Search, 
   ChevronRight, 
   LogOut, 
   User, 
+  Users,
   Shield, 
   MessageSquare, 
   Moon, 
@@ -33,7 +41,9 @@ import {
   Menu,
   Smartphone,
   Lock,
-  Globe
+  Globe,
+  CreditCard,
+  PaintBucket
 } from 'lucide-react-native';
 
 import { AppAvatar } from '@components/global/Avatar/AppAvatar';
@@ -66,8 +76,14 @@ const SettingsScreen = () => {
   const [showTrustButton, setShowTrustButton] = useState(true);
   const [showOfferButton, setShowOfferButton] = useState(true);
   const [showSosButton, setShowSosButton] = useState(true);
+  const [showSupportFormButton, setShowSupportFormButton] = useState(true);
   const [customSubMenusJson, setCustomSubMenusJson] = useState('[]');
   const [customMessagesJson, setCustomMessagesJson] = useState('[]');
+  const [flowCancelMenuJson, setFlowCancelMenuJson] = useState('');
+  const [flowCompletionMenuJson, setFlowCompletionMenuJson] = useState('');
+  const [aiResponseMenuJson, setAiResponseMenuJson] = useState('');
+  const [guardrailMessageAbuse, setGuardrailMessageAbuse] = useState('');
+  const [guardrailMessageGibberish, setGuardrailMessageGibberish] = useState('');
   
   // ===== UI STATE =====
   const [accountProfile, setAccountProfile] = useState({
@@ -81,7 +97,14 @@ const SettingsScreen = () => {
     aboutUs: '',
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
-    logoUrl: ''
+    logoUrl: '',
+    primaryColor: '',
+    secondaryColor: '',
+    role: '' as string,
+    planType: '' as string,
+    forceShowBooking: null as boolean | null,
+    forceShowAppointment: null as boolean | null,
+    forceShowLeads: null as boolean | null
   });
   const [activeView, setActiveView] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,7 +154,14 @@ const SettingsScreen = () => {
           aboutUs: response.data.aboutUs || '',
           latitude: response.data.latitude || undefined,
           longitude: response.data.longitude || undefined,
-          logoUrl: response.data.logoUrl || ''
+          logoUrl: response.data.logoUrl || '',
+          primaryColor: response.data.primaryColor || '',
+          secondaryColor: response.data.secondaryColor || '',
+          role: response.data.role || '',
+          planType: response.data.planType || '',
+          forceShowBooking: response.data.forceShowBooking ?? null,
+          forceShowAppointment: response.data.forceShowAppointment ?? null,
+          forceShowLeads: response.data.forceShowLeads ?? null
         });
       }
     } catch (error) {
@@ -163,8 +193,14 @@ const SettingsScreen = () => {
         setShowTrustButton(response.data.showTrustButton !== false);
         setShowOfferButton(response.data.showOfferButton !== false);
         setShowSosButton(response.data.showSosButton !== false);
+        setShowSupportFormButton(response.data.showSupportFormButton !== false);
         setCustomSubMenusJson(response.data.customSubMenusJson || '[]');
         setCustomMessagesJson(response.data.customMessagesJson || '[]');
+        setFlowCancelMenuJson(response.data.flowCancelMenuJson || '');
+        setFlowCompletionMenuJson(response.data.flowCompletionMenuJson || '');
+        setAiResponseMenuJson(response.data.aiResponseMenuJson || '');
+        setGuardrailMessageAbuse(response.data.guardrailMessageAbuse || '');
+        setGuardrailMessageGibberish(response.data.guardrailMessageGibberish || '');
 
         // Pre-fill visual form
         if (existingJson) {
@@ -228,8 +264,14 @@ const SettingsScreen = () => {
         showTrustButton,
         showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson,
+        aiResponseMenuJson,
+        guardrailMessageAbuse,
+        guardrailMessageGibberish
       });
       setSnackbarMsg('Meta credentials saved successfully!');
       setSnackbarVisible(true);
@@ -264,8 +306,11 @@ const SettingsScreen = () => {
         showTrustButton,
         showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson
       });
       setInteractiveMenuJson(newJson);
       setSnackbarMsg('Menu saved successfully!');
@@ -299,8 +344,11 @@ const SettingsScreen = () => {
         showTrustButton,
         showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson
       });
       setSnackbarMsg('Greetings updated successfully!');
       setSnackbarVisible(true);
@@ -356,7 +404,7 @@ const SettingsScreen = () => {
             ...validItems.map((item, index) => ({
                id: item.isCatalog ? "view_services" : 
                    item.customListId ? item.customListId : `item_${index}`,
-               title: item.title.substring(0, 25).trim(),
+               title: item.title.substring(0, 24).trim(),
                description: (menuType === 'list' && item.desc) ? item.desc.substring(0, 72).trim() : undefined
             }))
           ]
@@ -449,6 +497,44 @@ const SettingsScreen = () => {
         <SecurityDashboard onBack={() => setActiveView(null)} />
       );
     }
+
+    if (activeView === 'google') {
+      return (
+        <GoogleIntegrationView onBack={() => setActiveView(null)} />
+      );
+    }
+
+    if (activeView === 'branding') {
+      return (
+        <CustomBrandingView 
+          accountProfile={accountProfile} 
+          setAccountProfile={setAccountProfile} 
+          handleSaveProfile={handleSaveProfile}
+          loading={loading}
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
+    
+    if (activeView === 'meta') {
+      return (
+        <MetaIntegrationView
+          phoneNumberId={phoneNumberId}
+          setPhoneNumberId={setPhoneNumberId}
+          wabaId={wabaId}
+          setWabaId={setWabaId}
+          accessToken={accessToken}
+          setAccessToken={setAccessToken}
+          verifyToken={verifyToken}
+          setVerifyToken={setVerifyToken}
+          appSecret={appSecret}
+          setAppSecret={setAppSecret}
+          handleSaveMeta={handleSaveMeta}
+          loading={loading}
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
     
     if (activeView === 'buttons') {
       return (
@@ -483,6 +569,8 @@ const SettingsScreen = () => {
           setShowOfferButton={setShowOfferButton}
           showSosButton={showSosButton}
           setShowSosButton={setShowSosButton}
+          showSupportFormButton={showSupportFormButton}
+          setShowSupportFormButton={setShowSupportFormButton}
           customSubMenusJson={customSubMenusJson}
           customMessagesJson={customMessagesJson}
         />
@@ -512,6 +600,56 @@ const SettingsScreen = () => {
             setActiveView(null);
           }}
           onBack={() => setActiveView(null)}
+        />
+      );
+    }
+
+    if (activeView === 'menu_builder') {
+      return <CustomMenuCardsView onBack={() => setActiveView(null)} />;
+    }
+
+    if (activeView === 'flow_cta_buttons') {
+      return (
+        <FlowCTAButtonsView
+          flowCancelMenuJson={flowCancelMenuJson}
+          flowCompletionMenuJson={flowCompletionMenuJson}
+          aiResponseMenuJson={aiResponseMenuJson}
+          customSubMenusJson={customSubMenusJson}
+          customMessagesJson={customMessagesJson}
+          guardrailMessageAbuse={guardrailMessageAbuse}
+          guardrailMessageGibberish={guardrailMessageGibberish}
+          setFlowCancelMenuJson={setFlowCancelMenuJson}
+          setFlowCompletionMenuJson={setFlowCompletionMenuJson}
+          setAiResponseMenuJson={setAiResponseMenuJson}
+          setGuardrailMessageAbuse={setGuardrailMessageAbuse}
+          setGuardrailMessageGibberish={setGuardrailMessageGibberish}
+          onSave={async (cancelJson, completionJson, aiResponseJson, guardrailMsgAbuse, guardrailMsgGibberish) => {
+            setFlowCancelMenuJson(cancelJson);
+            setFlowCompletionMenuJson(completionJson);
+            setAiResponseMenuJson(aiResponseJson);
+            setGuardrailMessageAbuse(guardrailMsgAbuse);
+            setGuardrailMessageGibberish(guardrailMsgGibberish);
+            try {
+              setLoading(true);
+              await whatsappApi.saveConfig({
+                phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
+                interactiveMenuJson, welcomeMessage, returningMessage,
+                showAboutContact, reviewUrl, offerText, sosNote,
+                thirdButtonType, showTrustButton, showOfferButton, showSosButton,
+                customSubMenusJson,
+                customMessagesJson,
+                flowCancelMenuJson: cancelJson,
+                flowCompletionMenuJson: completionJson,
+                aiResponseMenuJson: aiResponseJson,
+                guardrailMessageAbuse: guardrailMsgAbuse,
+                guardrailMessageGibberish: guardrailMsgGibberish
+              });
+              setSnackbarMsg('Flow CTA Buttons & Guardrail Message saved!');
+              setSnackbarVisible(true);
+            } catch (e) {} finally { setLoading(false); }
+          }}
+          onBack={() => setActiveView(null)}
+          loading={loading}
         />
       );
     }
@@ -579,6 +717,33 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'staff') {
+      return (
+        <StaffManagementView onBack={() => setActiveView(null)} />
+      );
+    }
+
+    if (activeView === 'billing') {
+      return (
+        <BillingScreen 
+          onBack={() => setActiveView(null)}
+          onUpgrade={() => setActiveView('upgrade')}
+        />
+      );
+    }
+
+    if (activeView === 'upgrade') {
+      return (
+        <SubscriptionUpgradeScreen 
+          onBack={() => setActiveView('billing')}
+          onSuccess={() => {
+            fetchProfile();
+            setActiveView('billing');
+          }}
+        />
+      );
+    }
+
     // ===== MAIN SETTINGS HOME =====
     return (
       <View style={styles.mainContainer}>
@@ -605,10 +770,41 @@ const SettingsScreen = () => {
             onPress={() => setActiveView('security')}
             divider
           />
+          <SettingsItem
+            icon={<Globe size={20} color="#075E54" />}
+            title="Google Calendar & Meet"
+            description="Link Google account for online meetings"
+            onPress={() => setActiveView('google')}
+            divider={accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN'}
+          />
+          {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (
+            <SettingsItem
+              icon={<Users size={20} color="#075E54" />}
+              title="Staff Management"
+              description="Invite and manage employees"
+              onPress={() => setActiveView('staff')}
+              divider={accountProfile.role === 'OWNER'}
+            />
+          )}
+          {accountProfile.role === 'OWNER' && (
+            <SettingsItem
+              icon={<CreditCard size={20} color="#075E54" />}
+              title="Subscription & Billing"
+              description="Manage limits and pricing plans"
+              onPress={() => setActiveView('billing')}
+            />
+          )}
         </SettingsSection>
 
         {/* ===== APPEARANCE SECTION ===== */}
         <SettingsSection title="Appearance">
+          <SettingsItem
+            icon={<PaintBucket size={20} color="#075E54" />}
+            title="Custom Branding"
+            description="Bot logo and colors"
+            onPress={() => setActiveView('branding')}
+            divider
+          />
           <ToggleItem
             icon={<Moon size={20} color="#075E54" />}
             title="Dark Mode"
@@ -631,76 +827,96 @@ const SettingsScreen = () => {
         </SettingsSection>
 
         {/* ===== CONFIGURATION SECTION ===== */}
-        <SettingsSection title="Configuration">
-          <SettingsItem
-            icon={<Globe size={20} color="#075E54" />}
-            title="Meta Integration"
-            description="WhatsApp API credentials"
-            onPress={() => setActiveView('meta')}
-            divider
-          />
-          <SettingsItem
-            icon={<Menu size={20} color="#075E54" />}
-            title="Menu & Buttons"
-            description="Customize UI buttons"
-            onPress={() => setActiveView('buttons')}
-            divider
-          />
-          <SettingsItem
-            icon={<ShoppingBag size={20} color="#075E54" />}
-            title="Products & Services"
-            description="Manage your catalog"
-            onPress={() => setActiveView('services')}
-            divider
-          />
-          <SettingsItem
-            icon={<FileText size={20} color="#075E54" />}
-            title="Form Fields"
-            description="Customize WhatsApp form fields"
-            onPress={() => setActiveView('flow_fields')}
-            divider
-          />
-          <SettingsItem
-            icon={<Menu size={20} color="#075E54" />}
-            title="Custom Sub-Menus"
-            description="Create custom lists"
-            onPress={() => setActiveView('custom_menus')}
-            divider
-          />
-          <SettingsItem
-            icon={<MessageSquare size={20} color="#075E54" />}
-            title="Quick Responses"
-            description="Direct text & image replies"
-            onPress={() => setActiveView('messages')}
-          />
-        </SettingsSection>
+        {accountProfile.role === 'OWNER' && (
+          <SettingsSection title="Configuration">
+            <SettingsItem
+              icon={<Globe size={20} color="#075E54" />}
+              title="Meta Integration"
+              description="WhatsApp API credentials"
+              onPress={() => setActiveView('meta')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Menu & Buttons"
+              description="Customize UI buttons"
+              onPress={() => setActiveView('buttons')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Menu Builder"
+              description="Customize the main sidebar cards"
+              onPress={() => setActiveView('menu_builder')}
+              divider
+            />
+            <SettingsItem
+              icon={<ShoppingBag size={20} color="#075E54" />}
+              title="Products & Services"
+              description="Manage your catalog"
+              onPress={() => setActiveView('services')}
+              divider
+            />
+            <SettingsItem
+              icon={<FileText size={20} color="#075E54" />}
+              title="Form Fields"
+              description="Customize WhatsApp form fields"
+              onPress={() => setActiveView('flow_fields')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Custom Sub-Menus"
+              description="Create custom lists"
+              onPress={() => setActiveView('custom_menus')}
+              divider
+            />
+            <SettingsItem
+              icon={<MessageSquare size={20} color="#075E54" />}
+              title="Quick Responses"
+              description="Direct text & image replies"
+              onPress={() => setActiveView('messages')}
+              divider
+            />
+            <SettingsItem
+              icon={<MessageSquare size={20} color="#075E54" />}
+              title="Flow CTA Buttons"
+              description="Buttons for cancel & complete"
+              onPress={() => setActiveView('flow_cta_buttons')}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== AI & KNOWLEDGE SECTION ===== */}
-        <SettingsSection title="AI & Knowledge">
-          <SettingsItem
-            icon={<Brain size={20} color="#075E54" />}
-            title="Knowledge Base"
-            description="Train your RAG bot"
-            onPress={() => setActiveView('knowledge_base')}
-            divider
-          />
-          <SettingsItem
-            icon={<HelpCircle size={20} color="#075E54" />}
-            title="Support Categories"
-            description="WhatsApp support requests"
-            onPress={() => setActiveView('support_categories')}
-          />
-        </SettingsSection>
+        {accountProfile.role === 'OWNER' && (
+          <SettingsSection title="AI & Knowledge">
+            <SettingsItem
+              icon={<Brain size={20} color="#075E54" />}
+              title="Knowledge Base"
+              description="Train your RAG bot"
+              onPress={() => setActiveView('knowledge_base')}
+              divider
+            />
+            <SettingsItem
+              icon={<HelpCircle size={20} color="#075E54" />}
+              title="Support Categories"
+              description="WhatsApp support requests"
+              onPress={() => setActiveView('support_categories')}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== SYSTEM SECTION ===== */}
-        <SettingsSection title="System">
-          <SettingsItem
-            icon={<Zap size={20} color="#075E54" />}
-            title="System Health"
-            description="Backend telemetry & status"
-            onPress={() => setActiveView('system_health')}
-          />
-        </SettingsSection>
+        {accountProfile.role === 'OWNER' && (
+          <SettingsSection title="System">
+            <SettingsItem
+              icon={<Zap size={20} color="#075E54" />}
+              title="System Health"
+              description="Backend telemetry & status"
+              onPress={() => setActiveView('system_health')}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== SUPPORT SECTION ===== */}
         <SettingsSection title="Support & Help">

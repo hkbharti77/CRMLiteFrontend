@@ -36,6 +36,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { useWebSocketStore } from '../store/useWebSocketStore';
 import { spacing, borderRadius, shadows } from '../theme';
 import { Mail, Lock, Loader } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -59,8 +60,7 @@ export default function LoginScreen() {
   const { setToken } = useAuthStore();
   const { connect } = useWebSocketStore();
   const theme = useTheme();
-
-  // ===== STATE =====
+  const navigation = useNavigation<any>();
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [step, setStep] = useState<AuthStep>('email');
@@ -75,6 +75,10 @@ export default function LoginScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+
+  // Local form card transitions (avoids full page reload/refresh effect)
+  const formFadeAnim = useRef(new Animated.Value(1)).current;
+  const formSlideAnim = useRef(new Animated.Value(0)).current;
 
   // ===== EFFECTS =====
   useEffect(() => {
@@ -105,32 +109,31 @@ export default function LoginScreen() {
   const triggerStepTransition = (newStep: AuthStep) => {
     Animated.sequence([
       Animated.parallel([
-        Animated.timing(fadeAnim, {
+        Animated.timing(formFadeAnim, {
           toValue: 0,
-          duration: 200,
+          duration: 150,
           useNativeDriver: true,
         }),
-        Animated.timing(slideAnim, {
-          toValue: -30,
-          duration: 200,
+        Animated.timing(formSlideAnim, {
+          toValue: -15,
+          duration: 150,
           useNativeDriver: true,
         }),
       ]),
-      Animated.delay(100),
     ]).start(() => {
       setStep(newStep);
-      fadeAnim.setValue(0);
-      slideAnim.setValue(30);
+      formFadeAnim.setValue(0);
+      formSlideAnim.setValue(15);
 
       Animated.parallel([
-        Animated.timing(slideAnim, {
+        Animated.timing(formSlideAnim, {
           toValue: 0,
-          duration: 500,
+          duration: 300,
           useNativeDriver: true,
         }),
-        Animated.timing(fadeAnim, {
+        Animated.timing(formFadeAnim, {
           toValue: 1,
-          duration: 600,
+          duration: 300,
           useNativeDriver: true,
         }),
       ]).start();
@@ -288,31 +291,39 @@ export default function LoginScreen() {
             )}
 
             {/* Step Content */}
-            {step === 'email' ? (
-              <EmailForm
-                email={email}
-                setEmail={setEmail}
-                emailFocused={emailFocused}
-                setEmailFocused={setEmailFocused}
-                loading={loading}
-                onSendOtp={handleSendOtp}
-                hasError={error.type === 'email_error'}
-                theme={theme}
-              />
-            ) : (
-              <OtpForm
-                email={email}
-                otp={otp}
-                setOtp={setOtp}
-                otpFocused={otpFocused}
-                setOtpFocused={setOtpFocused}
-                loading={loading}
-                onVerifyOtp={handleVerifyOtp}
-                onChangeEmail={handleChangeEmail}
-                hasError={error.type === 'otp_error'}
-                theme={theme}
-              />
-            )}
+            <Animated.View
+              style={{
+                opacity: formFadeAnim,
+                transform: [{ translateY: formSlideAnim }],
+              }}
+            >
+              {step === 'email' ? (
+                <EmailForm
+                  email={email}
+                  setEmail={setEmail}
+                  emailFocused={emailFocused}
+                  setEmailFocused={setEmailFocused}
+                  loading={loading}
+                  onSendOtp={handleSendOtp}
+                  hasError={error.type === 'email_error'}
+                  theme={theme}
+                  navigation={navigation}
+                />
+              ) : (
+                <OtpForm
+                  email={email}
+                  otp={otp}
+                  setOtp={setOtp}
+                  otpFocused={otpFocused}
+                  setOtpFocused={setOtpFocused}
+                  loading={loading}
+                  onVerifyOtp={handleVerifyOtp}
+                  onChangeEmail={handleChangeEmail}
+                  hasError={error.type === 'otp_error'}
+                  theme={theme}
+                />
+              )}
+            </Animated.View>
           </View>
 
           {/* ===== FOOTER ===== */}
@@ -392,6 +403,7 @@ interface EmailFormProps {
   onSendOtp: () => void;
   hasError: boolean;
   theme: any;
+  navigation: any;
 }
 
 function EmailForm({
@@ -403,6 +415,7 @@ function EmailForm({
   onSendOtp,
   hasError,
   theme,
+  navigation,
 }: EmailFormProps) {
   return (
     <>
@@ -420,6 +433,8 @@ function EmailForm({
           icon="mail"
           hasError={hasError}
           theme={theme}
+          onSubmitEditing={onSendOtp}
+          returnKeyType="send"
         />
       </View>
 
@@ -508,6 +523,8 @@ function OtpForm({
           hasError={hasError}
           theme={theme}
           maxLength={6}
+          onSubmitEditing={onVerifyOtp}
+          returnKeyType="done"
         />
       </View>
 
@@ -552,6 +569,8 @@ interface FloatingLabelInputProps {
   hasError: boolean;
   theme: any;
   maxLength?: number;
+  onSubmitEditing?: () => void;
+  returnKeyType?: 'next' | 'go' | 'done' | 'send';
 }
 
 function FloatingLabelInput({
@@ -567,6 +586,8 @@ function FloatingLabelInput({
   hasError,
   theme,
   maxLength,
+  onSubmitEditing,
+  returnKeyType,
 }: FloatingLabelInputProps) {
   const hasValue = value.length > 0;
 
@@ -647,6 +668,8 @@ function FloatingLabelInput({
             mode="flat"
             maxLength={maxLength}
             autoCapitalize="none"
+            onSubmitEditing={onSubmitEditing}
+            returnKeyType={returnKeyType}
           />
         </View>
       </View>

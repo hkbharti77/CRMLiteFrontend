@@ -67,7 +67,7 @@ function MainNavigator() {
   const isAppointmentNiche = flowType === 'APPOINTMENT';
   const isBookingNiche = flowType === 'BOOKING';
 
-  const shouldShowLeads = isLeadNiche || forceShowLeads === true;
+  const shouldShowLeads = true; // Lead is mandatory
   const shouldShowAppointments = isAppointmentNiche || forceShowAppointment === true;
   const shouldShowBooking = isBookingNiche || forceShowBooking === true;
   

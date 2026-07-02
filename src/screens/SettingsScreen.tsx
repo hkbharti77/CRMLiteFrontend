@@ -20,6 +20,7 @@ import BillingScreen from './settings/BillingScreen';
 import SubscriptionUpgradeScreen from './settings/SubscriptionUpgradeScreen';
 import GoogleIntegrationView from './settings/GoogleIntegrationView';
 import CustomBrandingView from './settings/CustomBrandingView';
+import CustomMenuCardsView from './settings/CustomMenuCardsView';
 import { 
   Settings, 
   Search, 
@@ -603,6 +604,10 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'menu_builder') {
+      return <CustomMenuCardsView onBack={() => setActiveView(null)} />;
+    }
+
     if (activeView === 'flow_cta_buttons') {
       return (
         <FlowCTAButtonsView
@@ -836,6 +841,13 @@ const SettingsScreen = () => {
               title="Menu & Buttons"
               description="Customize UI buttons"
               onPress={() => setActiveView('buttons')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Menu Builder"
+              description="Customize the main sidebar cards"
+              onPress={() => setActiveView('menu_builder')}
               divider
             />
             <SettingsItem

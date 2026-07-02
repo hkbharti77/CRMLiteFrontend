@@ -291,18 +291,9 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               <Text style={styles.switchDescription}>Manage customer inquiries and sales pipeline</Text>
             </View>
             <Switch
-              value={flowType === 'LEAD' ? true : (accountProfile.forceShowLeads ?? false)}
-              disabled={accountProfile.role !== 'OWNER' || flowType === 'LEAD'}
-              onValueChange={async (val) => {
-                const updates: any = { forceShowLeads: val };
-                if (val) {
-                  if (flowType !== 'APPOINTMENT') updates.forceShowAppointment = false;
-                  if (flowType !== 'BOOKING') updates.forceShowBooking = false;
-                }
-                const newProfile = { ...accountProfile, ...updates };
-                setAccountProfile(newProfile);
-                try { await handleSaveProfile(newProfile); } catch (e) {}
-              }}
+              value={true}
+              disabled={true}
+              onValueChange={() => {}}
               color="#0F766E"
             />
           </View>
@@ -318,7 +309,6 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               onValueChange={async (val) => {
                 const updates: any = { forceShowAppointment: val };
                 if (val) {
-                  if (flowType !== 'LEAD') updates.forceShowLeads = false;
                   if (flowType !== 'BOOKING') updates.forceShowBooking = false;
                 }
                 const newProfile = { ...accountProfile, ...updates };
@@ -340,7 +330,6 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               onValueChange={async (val) => {
                 const updates: any = { forceShowBooking: val };
                 if (val) {
-                  if (flowType !== 'LEAD') updates.forceShowLeads = false;
                   if (flowType !== 'APPOINTMENT') updates.forceShowAppointment = false;
                 }
                 const newProfile = { ...accountProfile, ...updates };

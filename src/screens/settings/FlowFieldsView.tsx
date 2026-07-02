@@ -43,7 +43,7 @@ const FlowFieldsView: React.FC<FlowFieldsViewProps> = ({ onBack, flowType: initi
       const user = res.data;
       
       const flows = [];
-      if (baseFlowType === 'LEAD' || user.forceShowLeads) flows.push({ value: 'lead', label: 'Lead Collection' });
+      flows.push({ value: 'lead', label: 'Lead Collection' });
       if (baseFlowType === 'APPOINTMENT' || user.forceShowAppointment) flows.push({ value: 'appointment', label: 'Appointment' });
       if (baseFlowType === 'BOOKING' || user.forceShowBooking) flows.push({ value: 'booking', label: 'Booking' });
       

@@ -97,6 +97,12 @@ export const crmApi = {
   getRevenueReport: () => api.get('/leads/revenue'),
 };
 
+export const menuBuilderApi = {
+  getMenuCards: () => api.get('/tenant/menu-builder'),
+  saveMenuCards: (cards: any[]) => api.post('/tenant/menu-builder', cards),
+  resetMenuCards: () => api.delete('/tenant/menu-builder'),
+};
+
 export const whatsappApi = {
   getConfig: () => api.get('/whatsapp-config'),
   getFeatureLabels: () => api.get('/whatsapp-config/feature-labels'),

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { Text, TextInput, Button, Card, Title, ActivityIndicator, Portal, Dialog, IconButton, Menu, Provider } from 'react-native-paper';
 import { ChevronLeft, Plus, Trash2, GripVertical, ChevronUp, ChevronDown } from 'lucide-react-native';
 import { menuBuilderApi } from '../../services/api';
@@ -31,6 +31,7 @@ const ICONS = ['briefcase', 'home', 'calendar', 'info', 'shopping-cart', 'tag', 
 
 const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => {
   const [cards, setCards] = useState<MenuCard[]>([]);
+  const [isCustom, setIsCustom] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState<{ index: number; visible: boolean } | null>(null);
@@ -44,7 +45,8 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
     try {
       setLoading(true);
       const res = await menuBuilderApi.getMenuCards();
-      setCards(res.data || []);
+      setCards(res.data?.cards || []);
+      setIsCustom(res.data?.isCustom || false);
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to load custom menu cards.');
@@ -93,8 +95,8 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
             try {
               setSaving(true);
               await menuBuilderApi.resetMenuCards();
-              setCards([]);
-              Alert.alert('Reset', 'Using default niche menu cards now.');
+              await fetchCards();
+              Alert.alert('Reset', 'Reverted back to default template.');
             } catch (e) {
               console.error(e);
               Alert.alert('Error', 'Failed to reset.');
@@ -161,12 +163,12 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
   }
 
   return (
-    <Provider>
+    <>
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack} style={styles.backButton}>
-            <ChevronLeft size={24} color={colors.textDark} />
+            <ChevronLeft size={24} color={colors.textPrimary} />
             <Text style={styles.backText}>Back to Settings</Text>
           </TouchableOpacity>
         </View>
@@ -177,12 +179,16 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
             Customize the buttons shown in the chat widget sidebar. If you leave this empty, the widget will automatically show default buttons based on your business type.
           </Text>
 
-          {cards.length === 0 ? (
+          {!isCustom && (
             <View style={styles.emptyState}>
-              <Text style={{ textAlign: 'center', marginBottom: 16 }}>You are currently using default menu cards.</Text>
+              <Text style={{ textAlign: 'center', color: colors.textSecondary }}>
+                You are currently previewing the default menu cards for your business type. 
+                Edit them below and click Save to create a custom menu!
+              </Text>
             </View>
-          ) : (
-            cards.map((card, index) => (
+          )}
+
+          {cards.map((card, index) => (
               <Card key={index.toString()} style={styles.card}>
                 <Card.Content>
                   <View style={styles.cardHeader}>
@@ -261,6 +267,7 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
                             setShowIconMenu(null);
                           }} 
                           title={i}
+                          leadingIcon={i}
                         />
                       ))}
                     </Menu>
@@ -288,8 +295,7 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
 
                 </Card.Content>
               </Card>
-            ))
-          )}
+            ))}
 
           <Button 
             mode="outlined" 
@@ -310,7 +316,7 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
             >
               Save Menu
             </Button>
-            {cards.length > 0 && (
+            {isCustom && (
               <Button 
                 mode="text" 
                 textColor="red"
@@ -326,14 +332,14 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
-    </Provider>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.backgroundLight,
+    backgroundColor: colors.background,
   },
   header: {
     padding: 16,
@@ -348,7 +354,7 @@ const styles = StyleSheet.create({
   backText: {
     marginLeft: 8,
     fontSize: 16,
-    color: colors.textDark,
+    color: colors.textPrimary,
   },
   scrollContent: {
     padding: 16,
@@ -356,12 +362,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.textDark,
+    color: colors.textPrimary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: colors.textLight,
+    color: colors.textSecondary,
     marginBottom: 24,
   },
   emptyState: {
@@ -404,7 +410,7 @@ const styles = StyleSheet.create({
   label: {
     width: 90,
     fontSize: 14,
-    color: colors.textDark,
+    color: colors.textPrimary,
     fontWeight: '500',
   },
   addButton: {

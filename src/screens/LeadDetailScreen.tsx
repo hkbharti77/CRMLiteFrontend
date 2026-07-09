@@ -156,6 +156,19 @@ export default function LeadDetailScreen({ route, navigation }: any) {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [rescoring, setRescoring] = useState(false);
+
+  const handleRescore = async () => {
+    setRescoring(true);
+    try {
+      await crmApi.rescoreLead(leadId);
+      await fetchLeadDetails();
+    } catch (e) {
+      console.error('Error rescoring lead:', e);
+    } finally {
+      setRescoring(false);
+    }
+  };
 
   const fetchEnquiries = async () => {
     try {
@@ -211,6 +224,15 @@ export default function LeadDetailScreen({ route, navigation }: any) {
   }
 
   const metrics = [];
+  if (lead?.score !== undefined && lead?.score !== null) {
+    let emoji = '❄️';
+    if (lead.score >= 80) emoji = '🔥';
+    else if (lead.score >= 50) emoji = '⭐';
+    metrics.push({ label: 'Lead Score', value: `${emoji} ${lead.score}` });
+  }
+  if (lead?.interestCategory) {
+    metrics.push({ label: 'Interest', value: lead.interestCategory });
+  }
   if (lead?.dealValue) {
     metrics.push({ label: 'Deal Value', value: `₹` + Number(lead.dealValue).toLocaleString('en-IN') });
   }
@@ -246,11 +268,17 @@ export default function LeadDetailScreen({ route, navigation }: any) {
           <StatusBadge status={lead?.status || 'NEW'} size="medium" />
         </View>
 
-        {metrics.length > 0 && (
-          <View style={styles.metricsSection}>
-             <LeadMetrics metrics={metrics} />
-          </View>
-        )}
+        <View style={styles.metricsSection}>
+          {metrics.length > 0 && <LeadMetrics metrics={metrics} />}
+          <AppButton 
+            onPress={handleRescore} 
+            disabled={rescoring}
+            variant="secondary"
+            style={{ marginTop: metrics.length > 0 ? tokens.spacing.md : 0 }}
+          >
+            {rescoring ? 'Re-scoring...' : 'Re-score Lead'}
+          </AppButton>
+        </View>
 
         <View style={styles.enquiriesSection}>
           <View style={styles.enquiriesHeader}>

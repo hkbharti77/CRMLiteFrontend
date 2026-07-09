@@ -46,6 +46,7 @@ export interface Lead {
   isNew?: boolean;
   createdAtHuman?: string;
   source?: string;
+  score?: number;
 }
 
 interface LeadState {

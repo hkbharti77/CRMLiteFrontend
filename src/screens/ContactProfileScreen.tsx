@@ -3,8 +3,11 @@ import { View, StyleSheet, ScrollView, Linking, Modal } from 'react-native';
 import { Text, Avatar, Surface, useTheme, Button, IconButton, List, Divider, Card, Chip } from 'react-native-paper';
 import { useLeadStore } from '../store/useLeadStore';
 import { crmApi, appointmentApi, bookingApi, activityApi } from '../services/api';
-import { ActivityIndicator, Portal, Dialog, TextInput, Snackbar, Menu } from 'react-native-paper';
+import { ActivityIndicator, Portal, Dialog, Snackbar, Menu } from 'react-native-paper';
 import { useActivityLogStore, getActivityConfig, ActivityLogEntry } from '../store/useActivityLogStore';
+import { AppButton } from '@components/global/Button/AppButton';
+import { AppInput } from '@components/global/Input/AppInput';
+import { tokens } from '@theme/tokens';
 
 export default function ContactProfileScreen({ route, navigation }: any) {
   const { contactId } = route.params;
@@ -915,48 +918,42 @@ export default function ContactProfileScreen({ route, navigation }: any) {
 
       <Portal>
         {/* ── Add Enquiry Dialog ───────────────────────────────────── */}
-        <Dialog visible={showEnquiryDialog} onDismiss={() => setShowEnquiryDialog(false)}>
+        <Dialog visible={showEnquiryDialog} onDismiss={() => setShowEnquiryDialog(false)} style={{ borderRadius: tokens.borderRadius.xl, backgroundColor: theme.colors.surface }}>
           <Dialog.Title>📋 Add Enquiry</Dialog.Title>
           <Dialog.Content>
-            <TextInput
+            <AppInput
               label="Enquiry / Note"
               value={enquiryMsg}
               onChangeText={setEnquiryMsg}
-              mode="outlined"
               multiline
               numberOfLines={4}
               placeholder="What did the customer ask or enquire about?"
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowEnquiryDialog(false)}>Cancel</Button>
-            <Button mode="contained" onPress={handleAddEnquiry} loading={saving}
+            <AppButton variant="text" onPress={() => setShowEnquiryDialog(false)}>Cancel</AppButton>
+            <AppButton variant="primary" onPress={handleAddEnquiry} loading={saving}
               disabled={!enquiryMsg.trim() || saving}>
               Add
-            </Button>
+            </AppButton>
           </Dialog.Actions>
         </Dialog>
 
         {/* ── Deal Dialog ──────────────────────────────────────────────── */}
-        <Dialog visible={showDealDialog} onDismiss={() => setShowDealDialog(false)}>
+        <Dialog visible={showDealDialog} onDismiss={() => setShowDealDialog(false)} style={{ borderRadius: tokens.borderRadius.xl, backgroundColor: theme.colors.surface }}>
           <Dialog.Title>💰 Edit Deal Info</Dialog.Title>
           <Dialog.Content>
-            <TextInput
+            <AppInput
               label="Deal Name (optional)"
               value={dealLabel}
               onChangeText={setDealLabel}
-              mode="outlined"
               placeholder="e.g. Website Design Package"
-              style={{ marginBottom: 12 }}
             />
-            <TextInput
+            <AppInput
               label="Deal Amount (₹)"
               value={dealValue}
               onChangeText={setDealValue}
-              mode="outlined"
               keyboardType="numeric"
-              left={<TextInput.Affix text="₹" />}
-              style={{ marginBottom: 12 }}
             />
             <Text variant="labelMedium" style={{ marginBottom: 8, color: '#555' }}>
               Payment Status
@@ -965,8 +962,8 @@ export default function ContactProfileScreen({ route, navigation }: any) {
               visible={showDealStatusMenu}
               onDismiss={() => setShowDealStatusMenu(false)}
               anchor={
-                <Button
-                  mode="outlined"
+                <AppButton
+                  variant="outline"
                   onPress={() => setShowDealStatusMenu(true)}
                   icon="chevron-down"
                   contentStyle={{ flexDirection: 'row-reverse' }}
@@ -974,7 +971,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
                   {dealStatus === 'PAID' ? '✅ Paid' :
                    dealStatus === 'PARTIAL' ? '⚠️ Partial' :
                    dealStatus === 'PENDING' ? '🔴 Pending' : 'No Status'}
-                </Button>
+                </AppButton>
               }
             >
               <Menu.Item onPress={() => { setDealStatus('NONE');    setShowDealStatusMenu(false); }} title="No Status" />
@@ -984,53 +981,51 @@ export default function ContactProfileScreen({ route, navigation }: any) {
             </Menu>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowDealDialog(false)}>Cancel</Button>
-            <Button mode="contained" onPress={handleUpdateDeal} loading={saving}>
+            <AppButton variant="text" onPress={() => setShowDealDialog(false)}>Cancel</AppButton>
+            <AppButton variant="primary" onPress={handleUpdateDeal} loading={saving}>
               Save
-            </Button>
+            </AppButton>
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showAddReminder} onDismiss={() => setShowAddReminder(false)}>
+        <Dialog visible={showAddReminder} onDismiss={() => setShowAddReminder(false)} style={{ borderRadius: tokens.borderRadius.xl, backgroundColor: theme.colors.surface }}>
           <Dialog.Title>Set Reminder</Dialog.Title>
           <Dialog.Content>
-            <TextInput
+            <AppInput
               label="What needs to be done?"
               value={newReminderMsg}
               onChangeText={setNewReminderMsg}
-              mode="outlined"
-              style={{ marginBottom: 12 }}
             />
-            <Text variant="bodySmall" style={{ color: '#666' }}>
+            <Text variant="bodySmall" style={{ color: '#666', marginTop: 8 }}>
               Reminder will be set for tomorrow.
             </Text>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowAddReminder(false)}>Cancel</Button>
-            <Button 
+            <AppButton variant="text" onPress={() => setShowAddReminder(false)}>Cancel</AppButton>
+            <AppButton 
+              variant="primary"
               onPress={handleCreateReminder} 
               loading={saving} 
               disabled={!newReminderMsg.trim()}
             >
               Save
-            </Button>
+            </AppButton>
           </Dialog.Actions>
         </Dialog>
 
-        <Dialog visible={showTagsDialog} onDismiss={() => setShowTagsDialog(false)}>
+        <Dialog visible={showTagsDialog} onDismiss={() => setShowTagsDialog(false)} style={{ borderRadius: tokens.borderRadius.xl, backgroundColor: theme.colors.surface }}>
           <Dialog.Title>Edit Tags</Dialog.Title>
           <Dialog.Content>
-            <TextInput
+            <AppInput
               label="Tags (comma separated)"
               value={editedTags}
               onChangeText={setEditedTags}
-              mode="outlined"
               placeholder="e.g. VIP, HotLead, FollowUp"
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setShowTagsDialog(false)}>Cancel</Button>
-            <Button onPress={handleUpdateTags} loading={saving}>Save</Button>
+            <AppButton variant="text" onPress={() => setShowTagsDialog(false)}>Cancel</AppButton>
+            <AppButton variant="primary" onPress={handleUpdateTags} loading={saving}>Save</AppButton>
           </Dialog.Actions>
         </Dialog>
 
@@ -1038,7 +1033,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
         <Dialog
           visible={showCompareModal}
           onDismiss={() => setShowCompareModal(false)}
-          style={{ maxHeight: '85%' }}
+          style={{ maxHeight: '85%', borderRadius: tokens.borderRadius.xl, backgroundColor: theme.colors.surface }}
         >
           <Dialog.Title>📊 Compare Leads</Dialog.Title>
           <Dialog.ScrollArea style={{ maxHeight: 420 }}>
@@ -1096,7 +1091,7 @@ export default function ContactProfileScreen({ route, navigation }: any) {
             </ScrollView>
           </Dialog.ScrollArea>
           <Dialog.Actions>
-            <Button onPress={() => setShowCompareModal(false)}>Close</Button>
+            <AppButton variant="primary" onPress={() => setShowCompareModal(false)}>Close</AppButton>
           </Dialog.Actions>
         </Dialog>
       </Portal>

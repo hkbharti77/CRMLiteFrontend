@@ -21,6 +21,7 @@ import SubscriptionUpgradeScreen from './settings/SubscriptionUpgradeScreen';
 import GoogleIntegrationView from './settings/GoogleIntegrationView';
 import CustomBrandingView from './settings/CustomBrandingView';
 import CustomMenuCardsView from './settings/CustomMenuCardsView';
+import EmailTemplatesView from './settings/EmailTemplatesView';
 import { 
   Settings, 
   Search, 
@@ -43,7 +44,8 @@ import {
   Lock,
   Globe,
   CreditCard,
-  PaintBucket
+  PaintBucket,
+  Mail
 } from 'lucide-react-native';
 
 import { AppAvatar } from '@components/global/Avatar/AppAvatar';
@@ -699,6 +701,12 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'email_templates') {
+      return (
+        <EmailTemplatesView onBack={() => setActiveView(null)} />
+      );
+    }
+
     if (activeView === 'support_categories') {
       return (
         <SupportCategoriesView onBack={() => setActiveView(null)} />
@@ -869,6 +877,13 @@ const SettingsScreen = () => {
               title="Custom Sub-Menus"
               description="Create custom lists"
               onPress={() => setActiveView('custom_menus')}
+              divider
+            />
+            <SettingsItem
+              icon={<Mail size={20} color="#075E54" />}
+              title="Email Templates"
+              description="Automated lead follow-ups"
+              onPress={() => setActiveView('email_templates')}
               divider
             />
             <SettingsItem

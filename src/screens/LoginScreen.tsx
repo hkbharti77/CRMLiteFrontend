@@ -91,17 +91,17 @@ export default function LoginScreen() {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 500,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   };
@@ -112,12 +112,12 @@ export default function LoginScreen() {
         Animated.timing(formFadeAnim, {
           toValue: 0,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(formSlideAnim, {
           toValue: -15,
           duration: 150,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]),
     ]).start(() => {
@@ -129,12 +129,12 @@ export default function LoginScreen() {
         Animated.timing(formSlideAnim, {
           toValue: 0,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
         Animated.timing(formFadeAnim, {
           toValue: 1,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: Platform.OS !== 'web',
         }),
       ]).start();
     });
@@ -286,7 +286,7 @@ export default function LoginScreen() {
             ]}
           >
             {/* Error Banner */}
-            {error.message && (
+            {!!error.message && (
               <ErrorBanner message={error.message} theme={theme} />
             )}
 
@@ -911,7 +911,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     paddingHorizontal: 0,
     paddingVertical: 8,
-    height: 'auto',
     backgroundColor: 'transparent',
   },
   floatingLabel: {

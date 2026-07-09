@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, ScrollView, RefreshControl, Animated, TouchableOpacity, SafeAreaView, Dimensions } from 'react-native';
+import {
+  View, StyleSheet, ScrollView, RefreshControl,
+  Animated, TouchableOpacity, SafeAreaView, Platform,
+} from 'react-native';
 import { Text, useTheme, Menu, ActivityIndicator } from 'react-native-paper';
-import { ArrowRight, Users, AlertCircle, Calendar, CheckCircle, Inbox, Download, MoreVertical } from 'lucide-react-native';
+import {
+  ArrowRight, Users, AlertCircle, Calendar, CheckCircle,
+  Inbox, Download, MoreVertical, Clock, Video,
+} from 'lucide-react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useAuthStore } from '../store/useAuthStore';
@@ -10,12 +16,86 @@ import { tokens } from '../theme/tokens';
 import { spacing } from '../theme';
 import { ScreenHeader } from '@components/global/Header/ScreenHeader';
 import { EmptyState } from '@components/global/EmptyState/EmptyState';
-import { AppCard } from '@components/global/Card/AppCard';
-import { AppointmentCard } from '@components/booking/AppointmentCard';
 
-const { width } = Dimensions.get('window');
+// ─── Types ───────────────────────────────────────────────────────────────────
 
-// ── SKELETON LOADER ─────────────────────────────────────────────────────────
+interface DashboardMeeting {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  dateTime: string;
+  contactName: string;
+  status: string;
+  meetingLink?: string;
+  isBooking: boolean;
+}
+
+interface ActivityLog {
+  id: string;
+  activityType: string;
+  summary: string;
+  contactName: string;
+  entityType: string;
+  source: string;
+  createdAt: string;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatTime(iso: string): string {
+  try {
+    // iso can be "14:30:00" or "2026-07-08T14:30:00"
+    const date = iso.includes('T') ? new Date(iso) : new Date(`1970-01-01T${iso}`);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return iso;
+  }
+}
+
+function formatRelativeTime(isoDateTime: string): string {
+  try {
+    const now = new Date();
+    const then = new Date(isoDateTime);
+    const diffMs = now.getTime() - then.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  } catch {
+    return '';
+  }
+}
+
+function activityTypeLabel(activityType: string): string {
+  const map: Record<string, string> = {
+    LEAD_CREATED: 'New Lead',
+    LEAD_STATUS_CHANGED: 'Lead Updated',
+    LEAD_ENQUIRY_ADDED: 'Enquiry Added',
+    BOOKING_CONFIRMED: 'Booking Confirmed',
+    BOOKING_CANCELLED: 'Booking Cancelled',
+    BOOKING_COMPLETED: 'Booking Completed',
+    BOOKING_NO_SHOW: 'No Show',
+    APPOINTMENT_SCHEDULED: 'Appointment Scheduled',
+    APPOINTMENT_CANCELLED: 'Appointment Cancelled',
+    APPOINTMENT_COMPLETED: 'Appointment Completed',
+    APPOINTMENT_NO_SHOW: 'Appt No Show',
+  };
+  return map[activityType] ?? activityType.replace(/_/g, ' ');
+}
+
+function activityTypeColor(activityType: string): string {
+  if (activityType.includes('CREATED') || activityType.includes('CONFIRMED') || activityType.includes('SCHEDULED')) return '#10B981';
+  if (activityType.includes('CANCELLED') || activityType.includes('NO_SHOW')) return '#EF4444';
+  if (activityType.includes('COMPLETED')) return '#0EA5E9';
+  return tokens.colors.primary;
+}
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
 const DashboardSkeleton = () => {
   const theme = useTheme();
   const anim = useRef(new Animated.Value(0.3)).current;
@@ -24,55 +104,59 @@ const DashboardSkeleton = () => {
     Animated.loop(
       Animated.sequence([
         Animated.timing(anim, { toValue: 1, duration: 1000, useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0.3, duration: 1000, useNativeDriver: true })
+        Animated.timing(anim, { toValue: 0.3, duration: 1000, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
-  const skeletonColor = theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+  const bg = theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
+  const box = (w: string | number, h: number, mb = 0) => (
+    <View style={{ width: w as any, height: h, backgroundColor: bg, borderRadius: tokens.borderRadius.lg, marginBottom: mb }} />
+  );
 
   return (
     <View style={{ padding: tokens.spacing.lg }}>
       <Animated.View style={{ opacity: anim }}>
-        {/* KPI Row 1 */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: tokens.spacing.md }}>
-          <View style={{ width: '48%', height: 90, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg }} />
-          <View style={{ width: '48%', height: 90, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg }} />
+          {box('48%', 90)} {box('48%', 90)}
         </View>
-        {/* KPI Row 2 */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: tokens.spacing.xl }}>
-          <View style={{ width: '48%', height: 90, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg }} />
-          <View style={{ width: '48%', height: 90, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg }} />
+          {box('48%', 90)} {box('48%', 90)}
         </View>
-        {/* Chart Skeleton */}
-        <View style={{ height: 200, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.lg, marginBottom: tokens.spacing.xl }} />
-        {/* List Skeleton */}
-        <View style={{ height: 60, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.md, marginBottom: tokens.spacing.md }} />
-        <View style={{ height: 60, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.md, marginBottom: tokens.spacing.md }} />
-        <View style={{ height: 60, backgroundColor: skeletonColor, borderRadius: tokens.borderRadius.md }} />
+        {box('100%', 200, tokens.spacing.xl)}
+        {box('100%', 60, tokens.spacing.md)}
+        {box('100%', 60, tokens.spacing.md)}
+        {box('100%', 60)}
       </Animated.View>
     </View>
   );
 };
 
-// ── COMPONENTS ─────────────────────────────────────────────────────────────
+// ─── KPI Card ────────────────────────────────────────────────────────────────
 
-export const KPICard = ({ title, value, icon, bgOpacity = '10', color = tokens.colors.primary }) => {
+interface KPICardProps {
+  title: string;
+  value: number | string;
+  icon: React.ReactNode;
+  color?: string;
+}
+
+export const KPICard: React.FC<KPICardProps> = ({
+  title, value, icon, color = tokens.colors.primary,
+}) => {
   const theme = useTheme();
   return (
     <View style={[
-      kpiStyles.container, 
-      { 
+      kpiStyles.container,
+      {
         backgroundColor: theme.dark ? 'rgba(255,255,255,0.03)' : tokens.colors.surface,
         borderColor: theme.dark ? 'rgba(255,255,255,0.05)' : tokens.colors.borderLight,
         borderWidth: 1,
-      }
+      },
     ]}>
       <View style={kpiStyles.header}>
         <Text style={[kpiStyles.title, { color: tokens.colors.textSecondary }]}>{title}</Text>
-        <View style={[kpiStyles.iconContainer, { backgroundColor: `${color}20` }]}>
-          {icon}
-        </View>
+        <View style={[kpiStyles.iconContainer, { backgroundColor: `${color}20` }]}>{icon}</View>
       </View>
       <View style={kpiStyles.content}>
         <Text style={[kpiStyles.value, { color: theme.colors.onSurface }]}>{value}</Text>
@@ -99,26 +183,21 @@ const kpiStyles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: tokens.spacing.sm,
   },
-  title: {
-    fontSize: tokens.typography.labelMedium.fontSize,
-    fontWeight: '600',
-  },
-  iconContainer: {
-    padding: 8,
-    borderRadius: 12,
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  value: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
+  title: { fontSize: tokens.typography.labelMedium.fontSize, fontWeight: '600' },
+  iconContainer: { padding: 8, borderRadius: 12 },
+  content: { flexDirection: 'row', alignItems: 'baseline' },
+  value: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
 });
 
-export const PipelineStage = ({ stageName, count, color }) => {
+// ─── Pipeline Stage ───────────────────────────────────────────────────────────
+
+interface PipelineStageProps {
+  stageName: string;
+  count: number;
+  color: string;
+}
+
+export const PipelineStage: React.FC<PipelineStageProps> = ({ stageName, count, color }) => {
   const theme = useTheme();
   return (
     <View style={pipelineStyles.container}>
@@ -140,44 +219,25 @@ const pipelineStyles = StyleSheet.create({
     borderRadius: tokens.borderRadius.lg,
     backgroundColor: 'rgba(0,0,0,0.02)',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    marginRight: tokens.spacing.sm,
-  },
-  stageName: {
-    fontSize: tokens.typography.bodyLarge.fontSize,
-    fontWeight: '600',
-  },
-  count: {
-    fontSize: tokens.typography.bodyLarge.fontSize,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  labelContainer: { flexDirection: 'row', alignItems: 'center' },
+  dot: { width: 12, height: 12, borderRadius: 6, marginRight: tokens.spacing.sm },
+  stageName: { fontSize: tokens.typography.bodyLarge.fontSize, fontWeight: '600' },
+  count: { fontSize: tokens.typography.bodyLarge.fontSize },
 });
+
+// ─── Revenue Chart ────────────────────────────────────────────────────────────
 
 export const SimulatedRevenueChart = () => {
   const theme = useTheme();
-  // Simulated chart data visually
   return (
-    <View style={[
-      chartStyles.container, 
-      { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }
-    ]}>
+    <View style={[chartStyles.container, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
       <Text style={[chartStyles.title, { color: theme.colors.onSurface }]}>Revenue Overview</Text>
       <View style={chartStyles.chartArea}>
         {[40, 70, 45, 90, 60, 100].map((h, i) => (
           <View key={i} style={chartStyles.barContainer}>
-            <View style={[chartStyles.bar, { height: `${h}%`, backgroundColor: tokens.colors.primary }]} />
-            <Text style={{ fontSize: 10, color: theme.colors.onSurfaceVariant, marginTop: 4 }}>M{i+1}</Text>
+            <View style={[chartStyles.bar, { height: `${h}%` as any, backgroundColor: tokens.colors.primary }]} />
+            <Text style={{ fontSize: 10, color: theme.colors.onSurfaceVariant, marginTop: 4 }}>M{i + 1}</Text>
           </View>
         ))}
       </View>
@@ -197,11 +257,7 @@ const chartStyles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 3,
   },
-  title: {
-    fontSize: tokens.typography.titleMedium.fontSize,
-    fontWeight: 'bold',
-    marginBottom: tokens.spacing.lg,
-  },
+  title: { fontSize: tokens.typography.titleMedium.fontSize, fontWeight: 'bold', marginBottom: tokens.spacing.lg },
   chartArea: {
     height: 160,
     flexDirection: 'row',
@@ -209,39 +265,112 @@ const chartStyles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: tokens.spacing.sm,
   },
-  barContainer: {
-    alignItems: 'center',
-    width: 30,
-    height: '100%',
-    justifyContent: 'flex-end',
-  },
-  bar: {
-    width: '100%',
-    borderRadius: 4,
-  },
+  barContainer: { alignItems: 'center', width: 30, height: '100%', justifyContent: 'flex-end' },
+  bar: { width: '100%', borderRadius: 4 },
 });
 
-export const ActivityItem = ({ activity }) => {
+// ─── Meeting Card ─────────────────────────────────────────────────────────────
+
+interface MeetingCardProps {
+  meeting: DashboardMeeting;
+}
+
+const MeetingCard: React.FC<MeetingCardProps> = ({ meeting }) => {
   const theme = useTheme();
   return (
-    <View style={[activityStyles.container, { borderBottomColor: theme.colors.outlineVariant }]}>
-      <View style={[activityStyles.avatar, { backgroundColor: `${tokens.colors.primary}15` }]}>
-        <Text style={{ color: tokens.colors.primary, fontWeight: 'bold' }}>
-          {activity.title ? activity.title.substring(0,2).toUpperCase() : '??'}
+    <View style={[meetingStyles.container, { borderBottomColor: theme.colors.outlineVariant }]}>
+      <View style={[meetingStyles.timeBox, { backgroundColor: `${tokens.colors.primary}15` }]}>
+        <Clock size={14} color={tokens.colors.primary} />
+        <Text style={[meetingStyles.timeText, { color: tokens.colors.primary }]}>
+          {formatTime(meeting.time)}
         </Text>
+      </View>
+      <View style={meetingStyles.info}>
+        <Text style={[meetingStyles.title, { color: theme.colors.onSurface }]} numberOfLines={1}>
+          {meeting.title}
+        </Text>
+        <Text style={[meetingStyles.contact, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
+          {meeting.contactName}
+        </Text>
+      </View>
+      {meeting.meetingLink ? (
+        <View style={[meetingStyles.badge, { backgroundColor: '#0EA5E915' }]}>
+          <Video size={12} color="#0EA5E9" />
+          <Text style={[meetingStyles.badgeText, { color: '#0EA5E9' }]}>Meet</Text>
+        </View>
+      ) : null}
+    </View>
+  );
+};
+
+const meetingStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: tokens.spacing.md,
+    paddingHorizontal: tokens.spacing.md,
+    borderBottomWidth: 1,
+    gap: tokens.spacing.sm,
+  },
+  timeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minWidth: 70,
+  },
+  timeText: { fontSize: 12, fontWeight: '700' },
+  info: { flex: 1 },
+  title: { fontSize: tokens.typography.bodyLarge.fontSize, fontWeight: '600', marginBottom: 2 },
+  contact: { fontSize: tokens.typography.bodyMedium.fontSize },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: { fontSize: 11, fontWeight: '600' },
+});
+
+// ─── Activity Item ────────────────────────────────────────────────────────────
+
+interface ActivityItemProps {
+  activity: ActivityLog;
+}
+
+export const ActivityItem: React.FC<ActivityItemProps> = ({ activity }) => {
+  const theme = useTheme();
+  const color = activityTypeColor(activity.activityType);
+  const label = activityTypeLabel(activity.activityType);
+  const initials = activity.contactName
+    ? activity.contactName.substring(0, 2).toUpperCase()
+    : (activity.summary ?? '??').substring(0, 2).toUpperCase();
+
+  return (
+    <View style={[activityStyles.container, { borderBottomColor: theme.colors.outlineVariant }]}>
+      <View style={[activityStyles.avatar, { backgroundColor: `${color}20` }]}>
+        <Text style={{ color, fontWeight: 'bold', fontSize: 13 }}>{initials}</Text>
       </View>
       <View style={activityStyles.content}>
-        <Text style={[activityStyles.title, { color: theme.colors.onSurface }]} numberOfLines={1}>
-          {activity.title}
+        <View style={activityStyles.row}>
+          <Text style={[activityStyles.badge, { backgroundColor: `${color}15`, color }]}>{label}</Text>
+        </View>
+        <Text style={[activityStyles.summary, { color: theme.colors.onSurface }]} numberOfLines={2}>
+          {activity.summary}
         </Text>
-        <Text style={[activityStyles.description, { color: theme.colors.onSurfaceVariant }]} numberOfLines={2}>
-          {activity.description}
-        </Text>
+        {activity.contactName ? (
+          <Text style={[activityStyles.contact, { color: theme.colors.onSurfaceVariant }]} numberOfLines={1}>
+            {activity.contactName}
+          </Text>
+        ) : null}
       </View>
-      <View style={{ alignItems: 'flex-end' }}>
-        <Text style={[activityStyles.time, { color: tokens.colors.textTertiary }]}>{activity.timestamp}</Text>
-        <MoreVertical size={16} color={tokens.colors.textTertiary} style={{ marginTop: 4 }} />
-      </View>
+      <Text style={[activityStyles.time, { color: tokens.colors.textTertiary }]}>
+        {formatRelativeTime(activity.createdAt)}
+      </Text>
     </View>
   );
 };
@@ -252,39 +381,38 @@ const activityStyles = StyleSheet.create({
     paddingVertical: tokens.spacing.md,
     paddingHorizontal: tokens.spacing.md,
     borderBottomWidth: 1,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: tokens.spacing.sm,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: tokens.spacing.md,
+    flexShrink: 0,
   },
-  content: {
-    flex: 1,
-    marginRight: tokens.spacing.sm,
+  content: { flex: 1 },
+  row: { flexDirection: 'row', alignItems: 'center', marginBottom: 3 },
+  badge: {
+    fontSize: 11,
+    fontWeight: '700',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
-  title: {
-    fontSize: tokens.typography.bodyLarge.fontSize,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  description: {
-    fontSize: tokens.typography.bodyMedium.fontSize,
-  },
-  time: {
-    fontSize: tokens.typography.labelSmall.fontSize,
-  },
+  summary: { fontSize: tokens.typography.bodyMedium.fontSize, marginBottom: 2, lineHeight: 18 },
+  contact: { fontSize: tokens.typography.labelSmall.fontSize },
+  time: { fontSize: tokens.typography.labelSmall.fontSize, flexShrink: 0, paddingTop: 2 },
 });
 
-// ── MAIN SCREEN ────────────────────────────────────────────────────────────
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function DashboardScreen({ navigation }: any) {
   const theme = useTheme();
   const { businessName, userToken } = useAuthStore();
-  
+
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -301,12 +429,9 @@ export default function DashboardScreen({ navigation }: any) {
 
   const updateGreeting = () => {
     const hour = new Date().getHours();
-    let timeGreeting = 'Good Evening';
-    if (hour < 12) timeGreeting = 'Good Morning';
-    else if (hour < 18) timeGreeting = 'Good Afternoon';
-    
-    const namePart = businessName ? `, ${businessName.split(' ')[0]}` : '';
-    setGreeting(`${timeGreeting}${namePart}`);
+    let g = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening';
+    const name = businessName ? `, ${businessName.split(' ')[0]}` : '';
+    setGreeting(`${g}${name}`);
   };
 
   const fetchData = async () => {
@@ -314,15 +439,10 @@ export default function DashboardScreen({ navigation }: any) {
     try {
       const res = await dashboardApi.getAggregate();
       setData(res.data);
-      
       fadeAnim.setValue(0);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }).start();
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
     } catch (error) {
-      console.error('Dashboard data fetch error:', error);
+      console.error('Dashboard fetch error:', error);
     } finally {
       setLoading(false);
     }
@@ -334,20 +454,11 @@ export default function DashboardScreen({ navigation }: any) {
     setRefreshing(false);
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <ScreenHeader title={`👋 ${greeting}`} />
-        <DashboardSkeleton />
-      </SafeAreaView>
-    );
-  }
-
   const handleDownload = async (format: 'csv' | 'pdf') => {
     try {
       setDownloading(true);
       const res = await dashboardApi.exportReport(format);
-      
+
       if (Platform.OS === 'web') {
         const url = window.URL.createObjectURL(new Blob([res.data]));
         const link = document.createElement('a');
@@ -362,10 +473,10 @@ export default function DashboardScreen({ navigation }: any) {
         fr.onload = async () => {
           const base64Data = (fr.result as string).split(',')[1];
           const fileUri = `${FileSystem.documentDirectory}dashboard_report.${format}`;
-          await FileSystem.writeAsStringAsync(fileUri, base64Data, { encoding: FileSystem.EncodingType.Base64 });
-          if (await Sharing.isAvailableAsync()) {
-            await Sharing.shareAsync(fileUri);
-          }
+          await FileSystem.writeAsStringAsync(fileUri, base64Data, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(fileUri);
         };
       }
     } catch (error) {
@@ -376,17 +487,24 @@ export default function DashboardScreen({ navigation }: any) {
     }
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <ScreenHeader title={`👋 ${greeting}`} />
+        <DashboardSkeleton />
+      </SafeAreaView>
+    );
+  }
+
   const rightAction = (
     <Menu
       visible={menuVisible}
       onDismiss={() => setMenuVisible(false)}
       anchor={
         <TouchableOpacity onPress={() => setMenuVisible(true)} disabled={downloading} style={{ padding: 8 }}>
-          {downloading ? (
-             <ActivityIndicator size={24} color={theme.colors.primary} />
-          ) : (
-             <Download size={24} color={theme.colors.onSurface} />
-          )}
+          {downloading
+            ? <ActivityIndicator size={24} color={theme.colors.primary} />
+            : <Download size={24} color={theme.colors.onSurface} />}
         </TouchableOpacity>
       }
     >
@@ -395,13 +513,14 @@ export default function DashboardScreen({ navigation }: any) {
     </Menu>
   );
 
+  const todayMeetings: DashboardMeeting[] = data?.todayMeetingsList ?? [];
+  const upcomingMeetings: DashboardMeeting[] = data?.upcomingMeetingsList ?? [];
+  const recentActivity: ActivityLog[] = data?.recentActivity ?? [];
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Animated.View style={[{ flex: 1, opacity: fadeAnim }]}>
-        <ScreenHeader 
-          title={`👋 ${greeting}`}
-          rightAction={rightAction}
-        />
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <ScreenHeader title={`👋 ${greeting}`} rightAction={rightAction} />
         <ScrollView
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
           contentContainerStyle={styles.scrollContent}
@@ -410,28 +529,69 @@ export default function DashboardScreen({ navigation }: any) {
           {/* KPIs */}
           <View style={styles.section}>
             <View style={styles.kpiRow}>
-              <KPICard title="Total Leads" value={data?.totalLeads || 0} icon={<Users size={22} color="#0EA5E9" />} color="#0EA5E9" />
-              <KPICard title="Open Tickets" value={data?.openTickets || 0} icon={<AlertCircle size={22} color="#EF4444" />} color="#EF4444" />
+              <KPICard title="Total Leads" value={data?.totalLeads ?? 0} icon={<Users size={22} color="#0EA5E9" />} color="#0EA5E9" />
+              <KPICard title="Open Tickets" value={data?.openTickets ?? 0} icon={<AlertCircle size={22} color="#EF4444" />} color="#EF4444" />
             </View>
             <View style={styles.kpiRow}>
-              <KPICard title="Today Meetings" value={data?.todayMeetings || 0} icon={<Calendar size={22} color="#A855F7" />} color="#A855F7" />
-              <KPICard title="Closed Leads" value={data?.closedLeads || 0} icon={<CheckCircle size={22} color="#10B981" />} color="#10B981" />
+              <KPICard title="Today Meetings" value={data?.todayMeetings ?? 0} icon={<Calendar size={22} color="#A855F7" />} color="#A855F7" />
+              <KPICard title="Closed Leads" value={data?.closedLeads ?? 0} icon={<CheckCircle size={22} color="#10B981" />} color="#10B981" />
             </View>
           </View>
 
-          {/* Premium Chart Simulation */}
+          {/* Revenue Chart */}
           <View style={styles.section}>
             <SimulatedRevenueChart />
           </View>
 
-          {/* Dynamic Pipeline */}
-          {data?.pipeline && data.pipeline.length > 0 && (
+          {/* Pipeline */}
+          {data?.pipeline?.length > 0 && (
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>Pipeline Progress</Text>
               <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, padding: tokens.spacing.sm }]}>
                 {data.pipeline.map((stage: any, idx: number) => (
-                   <PipelineStage key={idx} stageName={stage.stageName} count={stage.count} color={stage.color} />
+                  <PipelineStage key={idx} stageName={stage.stageName} count={stage.count} color={stage.color} />
                 ))}
+              </View>
+            </View>
+          )}
+
+          {/* Today's Meetings */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface, marginBottom: 0 }]}>
+                Today's Meetings
+              </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Appointments')}>
+                <ArrowRight size={20} color={theme.colors.primary} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+
+            {todayMeetings.length > 0 ? (
+              <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+                {todayMeetings.map((m) => <MeetingCard key={m.id} meeting={m} />)}
+              </View>
+            ) : (
+              <EmptyState
+                title="No meetings today"
+                description="Your schedule is clear for today."
+                icon={<Calendar size={40} color={theme.colors.onSurfaceVariant} />}
+              />
+            )}
+          </View>
+
+          {/* Upcoming Meetings */}
+          {upcomingMeetings.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onSurface, marginBottom: 0 }]}>
+                  Upcoming (Next 7 Days)
+                </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Appointments')}>
+                  <ArrowRight size={20} color={theme.colors.primary} strokeWidth={2.5} />
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+                {upcomingMeetings.map((m) => <MeetingCard key={m.id} meeting={m} />)}
               </View>
             </View>
           )}
@@ -439,20 +599,26 @@ export default function DashboardScreen({ navigation }: any) {
           {/* Recent Activity */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface, marginBottom: 0 }]}>Recent Activity</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface, marginBottom: 0 }]}>
+                Recent Activity
+              </Text>
               <TouchableOpacity onPress={() => navigation.navigate('ChatList')}>
                 <ArrowRight size={20} color={theme.colors.primary} strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
-            
-            {data?.recentActivity?.length > 0 ? (
+
+            {recentActivity.length > 0 ? (
               <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
-                {data.recentActivity.map((activity: any) => (
+                {recentActivity.map((activity) => (
                   <ActivityItem key={activity.id} activity={activity} />
                 ))}
               </View>
             ) : (
-              <EmptyState title="No recent activity" description="Your timeline is empty." icon={<Inbox size={48} color={theme.colors.onSurfaceVariant} />} />
+              <EmptyState
+                title="No recent activity"
+                description="Actions on leads, bookings, and appointments will appear here."
+                icon={<Inbox size={48} color={theme.colors.onSurfaceVariant} />}
+              />
             )}
           </View>
 
@@ -464,17 +630,9 @@ export default function DashboardScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: tokens.spacing.xl,
-    paddingTop: tokens.spacing.sm,
-  },
-  section: {
-    paddingHorizontal: tokens.spacing.lg,
-    marginBottom: tokens.spacing.xl,
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingBottom: tokens.spacing.xl, paddingTop: tokens.spacing.sm },
+  section: { paddingHorizontal: tokens.spacing.lg, marginBottom: tokens.spacing.xl },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -487,10 +645,7 @@ const styles = StyleSheet.create({
     marginBottom: tokens.spacing.sm,
     letterSpacing: -0.5,
   },
-  kpiRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  kpiRow: { flexDirection: 'row', justifyContent: 'space-between' },
   cardContainer: {
     borderRadius: tokens.borderRadius.xl,
     borderWidth: 1,

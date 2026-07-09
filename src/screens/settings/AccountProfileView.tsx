@@ -49,10 +49,10 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
 
   const parseMapsUrl = () => {
     if (!mapsUrl) return;
-    
+
     const coordPattern = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
     const match = mapsUrl.match(coordPattern);
-    
+
     if (match) {
       handleFieldChange('latitude', parseFloat(match[1]));
       handleFieldChange('longitude', parseFloat(match[2]));
@@ -95,7 +95,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -209,7 +209,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         {/* ===== BUSINESS LOCATION SECTION ===== */}
         <SectionCard title="Business Location" style={{ zIndex: 10, elevation: 10 }}>
           <Text style={styles.fieldHelper}>📍 These coordinates will be used to share your shop location on WhatsApp</Text>
-          
+
           <FormField
             label="Google Maps Link"
             value={mapsUrl}
@@ -220,7 +220,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           />
 
           {isEditing && accountProfile.role === 'OWNER' && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.extractButton, !mapsUrl && styles.extractButtonDisabled]}
               onPress={parseMapsUrl}
               disabled={!mapsUrl}
@@ -284,7 +284,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         {/* ===== APP MODULES SECTION ===== */}
         <SectionCard title="App Modules" icon="⚙️">
           <Text style={styles.embedHelper}>Enable or disable specific features based on your business needs.</Text>
-          
+
           <View style={styles.switchRow}>
             <View style={styles.switchLabelContainer}>
               <Text style={styles.switchLabel}>Leads & Pipeline Module</Text>
@@ -293,7 +293,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             <Switch
               value={true}
               disabled={true}
-              onValueChange={() => {}}
+              onValueChange={() => { }}
               color="#0F766E"
             />
           </View>
@@ -313,7 +313,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 }
                 const newProfile = { ...accountProfile, ...updates };
                 setAccountProfile(newProfile);
-                try { await handleSaveProfile(newProfile); } catch (e) {}
+                try { await handleSaveProfile(newProfile); } catch (e) { }
               }}
               color="#0F766E"
             />
@@ -334,7 +334,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
                 }
                 const newProfile = { ...accountProfile, ...updates };
                 setAccountProfile(newProfile);
-                try { await handleSaveProfile(newProfile); } catch (e) {}
+                try { await handleSaveProfile(newProfile); } catch (e) { }
               }}
               color="#0F766E"
             />
@@ -350,7 +350,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               <Text style={styles.businessIdLabel}>Business ID</Text>
               <Text style={styles.businessIdValue}>{userId || 'Loading...'}</Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.copyIconButton}
               onPress={() => userId && copyToClipboard(userId, 'businessId')}
             >
@@ -369,7 +369,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           <View style={styles.codeBlockContainer}>
             <View style={styles.codeBlockHeader}>
               <Text style={styles.codeBlockLabel}>Code Snippet</Text>
-              <TouchableOpacity 
+              <TouchableOpacity
                 onPress={() => copyToClipboard(embedCode, 'embedCode')}
                 style={styles.copyCodeButton}
               >
@@ -391,7 +391,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               <Eye size={18} color="#0F766E" />
               <Text style={styles.embedActionText}>Preview Widget</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.embedActionButton, styles.docsButton]}
               onPress={() => Alert.alert('Documentation', 'Visit our documentation for more details')}
             >
@@ -408,7 +408,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
       <View style={styles.stickyActionBar}>
         {isEditing ? (
           <View style={styles.actionBarContent}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.cancelButton]}
               onPress={() => {
                 setIsEditing(false);
@@ -417,7 +417,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             >
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.saveButton, loading && styles.saveButtonLoading]}
               onPress={handleSave}
               disabled={loading || !changes}
@@ -427,7 +427,7 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
             </TouchableOpacity>
           </View>
         ) : (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.editButton]}
             onPress={() => setIsEditing(true)}
           >

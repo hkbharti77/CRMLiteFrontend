@@ -254,8 +254,8 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
                       visible={showIconMenu?.index === index && showIconMenu?.visible}
                       onDismiss={() => setShowIconMenu(null)}
                       anchor={
-                        <Button mode="outlined" icon={card.icon} onPress={() => setShowIconMenu({ index, visible: true })}>
-                          {card.icon}
+                        <Button mode="outlined" icon={card.icon || 'pencil'} onPress={() => setShowIconMenu({ index, visible: true })}>
+                          {ICONS.includes(card.icon) ? card.icon : "Custom..."}
                         </Button>
                       }
                     >
@@ -269,8 +269,26 @@ const CustomMenuCardsView: React.FC<CustomMenuCardsViewProps> = ({ onBack }) => 
                           title={i}
                           leadingIcon={i}
                         />
-                      ))}
-                    </Menu>
+                        ))}
+                        <Menu.Item 
+                          title="Custom Icon..."
+                          leadingIcon="pencil"
+                          onPress={() => {
+                            updateCard(index, 'icon', 'star'); // placeholder to trigger text input
+                            setShowIconMenu(null);
+                          }} 
+                        />
+                      </Menu>
+                    {/* Show text input if using a custom icon */}
+                    {!ICONS.includes(card.icon) && (
+                      <TextInput
+                        label="Custom Icon Name (e.g. 'star', 'heart')"
+                        value={card.icon}
+                        onChangeText={text => updateCard(index, 'icon', text)}
+                        mode="outlined"
+                        style={[styles.input, { marginTop: 8 }]}
+                      />
+                    )}
                   </View>
 
                   {/* Payload field varies based on action type */}

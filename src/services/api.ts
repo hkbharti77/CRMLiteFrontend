@@ -95,6 +95,7 @@ export const crmApi = {
     dealLabel?: string;
   }) => api.patch(`/leads/${leadId}/deal`, data),
   getRevenueReport: () => api.get('/leads/revenue'),
+  rescoreLead: (leadId: string) => api.post(`/leads/${leadId}/rescore`),
 };
 
 export const menuBuilderApi = {
@@ -223,6 +224,57 @@ export const activityApi = {
 export const dashboardApi = {
   getAggregate: () => api.get('/dashboard/aggregate'),
   exportReport: (format: 'csv' | 'pdf') => api.get(`/dashboard/export?format=${format}`, { responseType: 'blob' }),
+};
+
+export const bulkLeadApi = {
+  /**
+   * Upload a CSV or XLSX file as a bulk lead import.
+   * Uses fetch (not axios) to avoid multipart boundary issues on React Native —
+   * same pattern as ragApi.uploadDocument.
+   */
+  uploadLeads: async (file: any, sendNotifications: boolean): Promise<{ data: any }> => {
+    const formData = new FormData();
+
+    if (Platform.OS === 'web' && file.file) {
+      formData.append('file', file.file);
+    } else {
+      formData.append('file', {
+        uri: file.uri,
+        name: file.name,
+        type: file.mimeType || 'application/octet-stream',
+      } as any);
+    }
+    formData.append('sendNotifications', String(sendNotifications));
+
+    const token = await AsyncStorage.getItem('userToken');
+    const response = await fetch(`${API_BASE_URL}/leads/bulk-upload`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        // DO NOT set Content-Type — fetch sets it automatically with the correct boundary
+      },
+      body: formData,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw { response: { status: response.status, data } };
+    }
+    return { data };
+  },
+
+  /** Download XLSX or CSV template file. */
+  downloadTemplate: (format: 'xlsx' | 'csv') =>
+    api.get(`/leads/bulk-upload/template?format=${format}`, { responseType: 'blob' }),
+
+  /** Get per-tenant extra required fields config. */
+  getValidationConfig: () =>
+    api.get('/leads/bulk-upload/validation-config'),
+
+  /** Update per-tenant extra required fields config (admin/owner only). */
+  updateValidationConfig: (config: { extraRequiredFields: string[] }) =>
+    api.put('/leads/bulk-upload/validation-config', config),
 };
 
 export const userApi = {
@@ -447,6 +499,16 @@ export const customEmailApi = {
   getHistory: (page = 0, size = 20) => api.get(`/custom-emails?page=${page}&size=${size}`),
   getById: (id: string) => api.get(`/custom-emails/${id}`),
   resend: (id: string) => api.post(`/custom-emails/${id}/resend`),
+};
+
+export const emailTemplateApi = {
+  getAll: () => api.get('/email-templates'),
+  getById: (id: string) => api.get(`/email-templates/${id}`),
+  create: (data: { name: string; subject: string; content: string; interestCategory?: string }) => 
+    api.post('/email-templates', data),
+  update: (id: string, data: { name: string; subject: string; content: string; interestCategory?: string }) => 
+    api.put(`/email-templates/${id}`, data),
+  delete: (id: string) => api.delete(`/email-templates/${id}`),
 };
 
 export const supportFormConfigApi = {

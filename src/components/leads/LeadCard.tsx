@@ -17,6 +17,8 @@ export interface LeadCardProps {
     email?: string;
     ownerName?: string;
     source?: string;
+    score?: number;
+    interestCategory?: string;
   };
   onPress?: () => void;
   onCall?: () => void;
@@ -33,6 +35,25 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 }) => {
   const theme = useTheme();
 
+  const renderScoreBadge = () => {
+    if (lead.score === undefined || lead.score === null) return null;
+    let color = '#9E9E9E';
+    let text = `❄️ ${lead.score}`;
+    if (lead.score >= 80) {
+      color = '#4CAF50';
+      text = `🔥 ${lead.score}`;
+    } else if (lead.score >= 50) {
+      color = '#FF9800';
+      text = `⭐ ${lead.score}`;
+    }
+    
+    return (
+      <View style={[styles.scoreBadge, { backgroundColor: color + '20' }]}>
+        <Text style={{ color, fontSize: 12, fontWeight: 'bold' }}>{text}</Text>
+      </View>
+    );
+  };
+
   return (
     <TouchableOpacity onPress={onPress} disabled={!onPress} activeOpacity={0.7}>
       <AppCard style={[styles.container, style]} elevation="sm">
@@ -47,7 +68,10 @@ export const LeadCard: React.FC<LeadCardProps> = ({
               {lead.name}
             </Text>
           </View>
-          <StatusBadge status={lead.status} size="small" />
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {renderScoreBadge()}
+            <StatusBadge status={lead.status} size="small" />
+          </View>
         </View>
 
         <View style={styles.details}>
@@ -65,6 +89,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({
             <View style={styles.ownerBadge}>
               <Text style={styles.ownerText}>Assigned: {lead.ownerName}</Text>
             </View>
+          )}
+          {lead.interestCategory && (
+            <Text style={[styles.lastContact, { color: tokens.colors.primary, marginTop: 4, fontWeight: '600' }]}>
+              Interest: {lead.interestCategory}
+            </Text>
           )}
         </View>
 
@@ -126,9 +155,15 @@ const styles = StyleSheet.create({
     marginRight: tokens.spacing.lg,
   },
   actionText: {
-    marginLeft: tokens.spacing.xs,
-    fontSize: tokens.typography.labelMedium.fontSize,
-    fontWeight: tokens.typography.labelMedium.fontWeight as any,
+    marginLeft: 6,
+    fontSize: tokens.typography.labelLarge.fontSize,
+    fontWeight: tokens.typography.labelLarge.fontWeight as any,
+  },
+  scoreBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginRight: 6,
   },
   ownerBadge: {
     marginTop: tokens.spacing.xs,

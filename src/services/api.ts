@@ -72,6 +72,10 @@ export const crmApi = {
   getContacts: () => api.get('/contacts'),
   getContactById: (id: string) => api.get(`/contacts/${id}`),
   getLeads: (page = 0, size = 50, status?: string) => api.get(`/leads/paged?page=${page}&size=${size}${status ? `&status=${status}` : ''}`),
+  exportLeads: (format: string, startDate?: string, endDate?: string) =>
+    api.get(`/leads/export?format=${format}${startDate ? `&startDate=${startDate}` : ''}${endDate ? `&endDate=${endDate}` : ''}`, {
+      responseType: 'blob',
+    }),
   updateLeadStatus: (leadId: string, status: string) => api.patch(`/leads/${leadId}/status?status=${status}`),
   updateContactTags: (contactId: string, tags: string[]) => api.patch(`/contacts/${contactId}/tags`, tags),
   // Enquiry CRUD
@@ -117,14 +121,11 @@ export const whatsappApi = {
     welcomeMessage?: string;
     returningMessage?: string;
     showAboutContact?: boolean;
-    reviewUrl?: string;
     portfolioUrl?: string;
-    offerText?: string;
     sosNote?: string;
     thirdButtonType?: string;
-    showTrustButton?: boolean;
-    showOfferButton?: boolean;
     showSosButton?: boolean;
+    showSupportFormButton?: boolean;
     customSubMenusJson?: string;
     customMessagesJson?: string;
     flowCancelMenuJson?: string;
@@ -499,14 +500,15 @@ export const customEmailApi = {
   getHistory: (page = 0, size = 20) => api.get(`/custom-emails?page=${page}&size=${size}`),
   getById: (id: string) => api.get(`/custom-emails/${id}`),
   resend: (id: string) => api.post(`/custom-emails/${id}/resend`),
+  generateAi: (prompt: string) => api.post('/custom-emails/generate-ai', { prompt }),
 };
 
 export const emailTemplateApi = {
   getAll: () => api.get('/email-templates'),
   getById: (id: string) => api.get(`/email-templates/${id}`),
-  create: (data: { name: string; subject: string; content: string; interestCategory?: string }) => 
+  create: (data: { name: string; subject: string; content: string; interestCategory?: string | null }) => 
     api.post('/email-templates', data),
-  update: (id: string, data: { name: string; subject: string; content: string; interestCategory?: string }) => 
+  update: (id: string, data: { name: string; subject: string; content: string; interestCategory?: string | null }) => 
     api.put(`/email-templates/${id}`, data),
   delete: (id: string) => api.delete(`/email-templates/${id}`),
 };

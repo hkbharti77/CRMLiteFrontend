@@ -291,9 +291,14 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
               <Text style={styles.switchDescription}>Manage customer inquiries and sales pipeline</Text>
             </View>
             <Switch
-              value={true}
-              disabled={true}
-              onValueChange={() => { }}
+              value={flowType === 'LEAD' ? true : (accountProfile.forceShowLeads ?? false)}
+              disabled={accountProfile.role !== 'OWNER' || flowType === 'LEAD'}
+              onValueChange={async (val) => {
+                const updates: any = { forceShowLeads: val };
+                const newProfile = { ...accountProfile, ...updates };
+                setAccountProfile(newProfile);
+                try { await handleSaveProfile(newProfile); } catch (e) { }
+              }}
               color="#0F766E"
             />
           </View>

@@ -7,6 +7,7 @@ import {
   Dimensions,
   TouchableOpacity,
   Linking,
+  Platform,
 } from 'react-native';
 import {
   Text,
@@ -15,13 +16,17 @@ import {
   Portal,
   Dialog,
   Button,
+  TextInput,
 } from 'react-native-paper';
 import { useLeadStore, Lead, LeadStatus } from '../store/useLeadStore';
-import { crmApi } from '../services/api';
+import { crmApi, API_BASE_URL } from '../services/api';
 import { tokens } from '../theme/tokens';
 import { LeadCard } from '@components/leads/LeadCard';
 import { BulkUploadModal } from '@components/leads';
-import { Phone, Mail, Building, ChevronRight, Upload } from 'lucide-react-native';
+import { Phone, Mail, Building, ChevronRight, Upload, Download } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppCard } from '@components/global/Card/AppCard';
 import { AppAvatar } from '@components/global/Avatar/AppAvatar';
 
@@ -31,12 +36,12 @@ const COLUMN_WIDTH = width * 0.8;
 const ALL_STATUSES: LeadStatus[] = ['NEW', 'INTERESTED', 'FOLLOW_UP', 'BOOKED', 'CLOSED_WON', 'CLOSED_LOST'];
 
 const STAGES: { filterIds: LeadStatus[]; label: string; color: string }[] = [
-  { filterIds: ALL_STATUSES,                  label: '?? All Leads', color: '#333333' },
-  { filterIds: ['NEW'],                       label: 'New',          color: '#2196F3' },
-  { filterIds: ['INTERESTED'],                label: 'Interested',   color: '#FFC107' },
-  { filterIds: ['FOLLOW_UP'],                 label: 'Follow Up',    color: '#FF9800' },
-  { filterIds: ['BOOKED'],                    label: '?? Booked',    color: '#9C27B0' },
-  { filterIds: ['CLOSED_WON', 'CLOSED_LOST'], label: 'Closed',       color: '#4CAF50' },
+  { filterIds: ALL_STATUSES, label: '?? All Leads', color: '#333333' },
+  { filterIds: ['NEW'], label: 'New', color: '#2196F3' },
+  { filterIds: ['INTERESTED'], label: 'Interested', color: '#FFC107' },
+  { filterIds: ['FOLLOW_UP'], label: 'Follow Up', color: '#FF9800' },
+  { filterIds: ['BOOKED'], label: '?? Booked', color: '#9C27B0' },
+  { filterIds: ['CLOSED_WON', 'CLOSED_LOST'], label: 'Closed', color: '#4CAF50' },
 ];
 
 // ── Status colour map ──────────────────────────────────────────────────────
@@ -151,10 +156,10 @@ const ContactLeadSummaryCard: React.FC<ContactLeadSummaryCardProps> = ({
   const theme = useTheme();
 
   const activeLeads = leads.filter(l => !['CLOSED_WON', 'CLOSED_LOST'].includes(l.status));
-  const wonLeads   = leads.filter(l => l.status === 'CLOSED_WON');
-  const totalDeal  = leads.reduce((sum, l) => sum + (l.dealValue ?? 0), 0);
+  const wonLeads = leads.filter(l => l.status === 'CLOSED_WON');
+  const totalDeal = leads.reduce((sum, l) => sum + (l.dealValue ?? 0), 0);
   const latestLead = leads[leads.length - 1];
-  const bestScore  = leads.reduce((max, l) => Math.max(max, l.score ?? 0), 0);
+  const bestScore = leads.reduce((max, l) => Math.max(max, l.score ?? 0), 0);
 
   const scoreEmoji = bestScore >= 80 ? '🔥' : bestScore >= 50 ? '⭐' : bestScore > 0 ? '❄️' : null;
 
@@ -516,6 +521,102 @@ export default function PipelineScreen({ navigation }: any) {
   const [selectedLead, setSelectedLead] = React.useState<Lead | null>(null);
   const [showLeadDialog, setShowLeadDialog] = React.useState(false);
   const [showBulkModal, setShowBulkModal] = React.useState(false);
+  const [showExportModal, setShowExportModal] = React.useState(false);
+  const [exportFormat, setExportFormat] = React.useState<'csv' | 'excel'>('csv');
+  const [exportStartDate, setExportStartDate] = React.useState('');
+  const [exportEndDate, setExportEndDate] = React.useState('');
+  const [exporting, setExporting] = React.useState(false);
+
+  useEffect(() => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    const formatDate = (date: Date) => {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const dd = String(date.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+
+    setExportStartDate(formatDate(firstDay));
+    setExportEndDate(formatDate(today));
+  }, []);
+
+  const handleExportLeads = async () => {
+    try {
+      setExporting(true);
+      const format = exportFormat;
+      const start = exportStartDate.trim();
+      const end = exportEndDate.trim();
+
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (start && !dateRegex.test(start)) {
+        alert('Start Date must be in YYYY-MM-DD format');
+        setExporting(false);
+        return;
+      }
+      if (end && !dateRegex.test(end)) {
+        alert('End Date must be in YYYY-MM-DD format');
+        setExporting(false);
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        const response = await crmApi.exportLeads(format, start, end);
+        const fileExt = format === 'excel' ? 'xlsx' : 'csv';
+        const contentType = format === 'excel' 
+          ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+          : 'text/csv';
+          
+        const blob = new Blob([response.data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').substring(0, 14);
+        link.setAttribute('download', `leads_export_${timestamp}.${fileExt}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      } else {
+        const token = await AsyncStorage.getItem('userToken');
+        const tenantId = (await AsyncStorage.getItem('tenantId')) || (await AsyncStorage.getItem('userId'));
+        
+        const fileExt = format === 'excel' ? 'xlsx' : 'csv';
+        const timestamp = new Date().toISOString().replace(/[-:T.]/g, '').substring(0, 14);
+        const filename = `leads_export_${timestamp}.${fileExt}`;
+        const localUri = `${FileSystem.documentDirectory}${filename}`;
+        
+        const downloadUrl = `${API_BASE_URL}/leads/export?format=${format}` + 
+                            (start ? `&startDate=${start}` : '') + 
+                            (end ? `&endDate=${end}` : '');
+        
+        const { uri } = await FileSystem.downloadAsync(
+          downloadUrl,
+          localUri,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'X-Tenant-ID': tenantId || '',
+            },
+          }
+        );
+        
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri);
+        } else {
+          alert(`File saved to: ${uri}`);
+        }
+      }
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('Failed to export leads:', error);
+      alert('Failed to export leads. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const fetchLeads = async () => {
     try {
@@ -664,7 +765,7 @@ export default function PipelineScreen({ navigation }: any) {
           value={viewMode}
           onValueChange={v => setViewMode(v as 'lead' | 'contact')}
           buttons={[
-            { value: 'lead',    label: 'By Lead',    icon: 'card-account-details' },
+            { value: 'lead', label: 'By Lead', icon: 'card-account-details' },
             { value: 'contact', label: 'By Contact', icon: 'account-group' },
           ]}
           style={{ flex: 1 }}
@@ -678,6 +779,16 @@ export default function PipelineScreen({ navigation }: any) {
           labelStyle={styles.uploadBtnLabel}
         >
           Upload
+        </Button>
+        <Button
+          mode="outlined"
+          compact
+          icon={() => <Download size={14} color={theme.colors.primary} />}
+          onPress={() => setShowExportModal(true)}
+          style={[styles.uploadBtn, { marginLeft: 8 }]}
+          labelStyle={styles.uploadBtnLabel}
+        >
+          Download
         </Button>
       </View>
 
@@ -718,6 +829,51 @@ export default function PipelineScreen({ navigation }: any) {
           onClose={() => setShowBulkModal(false)}
           onSuccess={() => { setShowBulkModal(false); fetchLeads(); }}
         />
+        <Dialog visible={showExportModal} onDismiss={() => setShowExportModal(false)} style={{ borderRadius: 12 }}>
+          <Dialog.Title>Download Leads Data</Dialog.Title>
+          <Dialog.Content>
+            <View style={{ gap: 16 }}>
+              <Text style={{ fontSize: 13, color: tokens.colors.textSecondary, marginBottom: 8 }}>
+                Filter leads by creation date and select the export format.
+              </Text>
+              
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <TextInput
+                  label="Start Date (YYYY-MM-DD)"
+                  value={exportStartDate}
+                  onChangeText={setExportStartDate}
+                  mode="outlined"
+                  style={{ flex: 1 }}
+                  placeholder="YYYY-MM-DD"
+                />
+                <TextInput
+                  label="End Date (YYYY-MM-DD)"
+                  value={exportEndDate}
+                  onChangeText={setExportEndDate}
+                  mode="outlined"
+                  style={{ flex: 1 }}
+                  placeholder="YYYY-MM-DD"
+                />
+              </View>
+
+              <Text style={{ fontSize: 14, fontWeight: '600', marginTop: 8, color: tokens.colors.textPrimary }}>Export Format</Text>
+              <SegmentedButtons
+                value={exportFormat}
+                onValueChange={v => setExportFormat(v as 'csv' | 'excel')}
+                buttons={[
+                  { value: 'csv', label: 'CSV File' },
+                  { value: 'excel', label: 'Excel (XLSX)' },
+                ]}
+              />
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowExportModal(false)} disabled={exporting}>Cancel</Button>
+            <Button mode="contained" onPress={handleExportLeads} loading={exporting} disabled={exporting}>
+              Download
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
         <Dialog visible={showLeadDialog} onDismiss={() => { setShowLeadDialog(false); setSelectedLead(null); }} style={{ borderRadius: 12 }}>
           <Dialog.Title>{selectedLead?.name} - Details</Dialog.Title>
           <Dialog.ScrollArea style={{ maxHeight: 400, paddingVertical: 10 }}>

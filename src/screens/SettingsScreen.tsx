@@ -71,12 +71,8 @@ const SettingsScreen = () => {
   const [returningMessage, setReturningMessage] = useState('');
   
   // ===== DYNAMIC MENU STATES =====
-  const [reviewUrl, setReviewUrl] = useState('');
-  const [offerText, setOfferText] = useState('');
   const [sosNote, setSosNote] = useState('');
   const [thirdButtonType, setThirdButtonType] = useState('ABOUT');
-  const [showTrustButton, setShowTrustButton] = useState(true);
-  const [showOfferButton, setShowOfferButton] = useState(true);
   const [showSosButton, setShowSosButton] = useState(true);
   const [showSupportFormButton, setShowSupportFormButton] = useState(true);
   const [customSubMenusJson, setCustomSubMenusJson] = useState('[]');
@@ -188,12 +184,8 @@ const SettingsScreen = () => {
         setShowAboutContact(response.data.showAboutContact !== false); // default true
         
         // Dynamic Buttons
-        setReviewUrl(response.data.reviewUrl || '');
-        setOfferText(response.data.offerText || '');
         setSosNote(response.data.sosNote || '');
         setThirdButtonType(response.data.thirdButtonType || 'ABOUT');
-        setShowTrustButton(response.data.showTrustButton !== false);
-        setShowOfferButton(response.data.showOfferButton !== false);
         setShowSosButton(response.data.showSosButton !== false);
         setShowSupportFormButton(response.data.showSupportFormButton !== false);
         setCustomSubMenusJson(response.data.customSubMenusJson || '[]');
@@ -259,12 +251,8 @@ const SettingsScreen = () => {
         welcomeMessage,
         returningMessage,
         showAboutContact,
-        reviewUrl,
-        offerText,
         sosNote,
         thirdButtonType,
-        showTrustButton,
-        showOfferButton,
         showSosButton,
         showSupportFormButton,
         customSubMenusJson,
@@ -301,12 +289,8 @@ const SettingsScreen = () => {
         welcomeMessage,
         returningMessage,
         showAboutContact,
-        reviewUrl,
-        offerText,
         sosNote,
         thirdButtonType,
-        showTrustButton,
-        showOfferButton,
         showSosButton,
         showSupportFormButton,
         customSubMenusJson,
@@ -339,12 +323,8 @@ const SettingsScreen = () => {
         welcomeMessage,
         returningMessage,
         showAboutContact,
-        reviewUrl,
-        offerText,
         sosNote,
         thirdButtonType,
-        showTrustButton,
-        showOfferButton,
         showSosButton,
         showSupportFormButton,
         customSubMenusJson,
@@ -363,36 +343,74 @@ const SettingsScreen = () => {
   };
 
   const compileMenu = () => {
-    // ── DYNAMIC SLOT CALCULATION ──────────────────────────────────────────
-    // Count how many slots are taken by enabled dynamic features
-    const reservedFeatureCount = (showSosButton ? 1 : 0) + 
-                                (showAboutContact ? 1 : 0) + 
-                                ((showTrustButton && reviewUrl) ? 1 : 0) + 
-                                ((showOfferButton && offerText) ? 1 : 0);
+    const { flowType, forceShowAppointment, forceShowBooking, forceShowLeads } = useAuthStore.getState();
+    const hasAppointment = flowType === 'APPOINTMENT' || forceShowAppointment;
+    const hasBooking = flowType === 'BOOKING' || forceShowBooking;
+    const hasLead = flowType === 'LEAD' || forceShowLeads || (!hasAppointment && !hasBooking);
 
-    const maxManualAllowed = (menuType === 'button' ? 1 : 9) - (menuType === 'list' ? reservedFeatureCount : 0);
+    const activeFlowCount = (hasAppointment ? 1 : 0) + (hasBooking ? 1 : 0) + (hasLead ? 1 : 0);
+
+    // ── DYNAMIC SLOT CALCULATION ──────────────────────────────────────────
+    const reservedFeatureCount = (showSosButton ? 1 : 0) + 
+                                 (showAboutContact ? 1 : 0) +
+                                 (showSupportFormButton ? 1 : 0);
+
+    const maxManualAllowed = menuType === 'button'
+      ? Math.max(0, 3 - activeFlowCount - 1)
+      : Math.max(0, 10 - activeFlowCount - reservedFeatureCount);
 
     // Filter only the items that fit in the remaining manual capacity
     const validItems = menuItems.slice(0, maxManualAllowed).filter(i => i.title.trim() !== '');
 
-    if (validItems.length === 0 && !showAboutContact && !showSosButton) {
+    if (validItems.length === 0 && !showAboutContact && !showSosButton && !showSupportFormButton) {
       Alert.alert('Validation Error', 'Please add at least one menu item or enable a feature.');
       return null;
     }
 
     const platformMax = menuType === 'button' ? 3 : 10;
     const fixedLabel = menuType === 'button' ? triggerLabels.button : triggerLabels.list;
-    
-    if (validItems.length + 1 > platformMax) {
-      Alert.alert('Validation Error', `Maximum ${platformMax} items total allowed (including fixed trigger).`);
-      return null;
+
+    const getEmoji = (label: string) => {
+      if (!label) return '';
+      const match = label.match(/^([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g);
+      return match ? match[0] + ' ' : '';
+    };
+    const emojiPrefix = getEmoji(fixedLabel);
+
+    const activeFlows: any[] = [];
+    if (hasLead) {
+      activeFlows.push({
+        id: "trigger_flow_lead",
+        title: `${emojiPrefix}Enquire Now`.substring(0, 24),
+        description: menuType === 'list' ? "Submit an enquiry" : undefined
+      });
+    }
+    if (hasAppointment) {
+      activeFlows.push({
+        id: "trigger_flow_appointment",
+        title: `${emojiPrefix}Book Appointment`.substring(0, 24),
+        description: menuType === 'list' ? "Schedule a visit" : undefined
+      });
+    }
+    if (hasBooking) {
+      activeFlows.push({
+        id: "trigger_flow_booking",
+        title: `${emojiPrefix}Book Service`.substring(0, 24),
+        description: menuType === 'list' ? "Book our services" : undefined
+      });
+    }
+    if (activeFlows.length === 0) {
+      activeFlows.push({
+        id: "trigger_flow",
+        title: fixedLabel.substring(0, 24),
+        description: menuType === 'list' ? "Automated flow trigger" : undefined
+      });
     }
 
-    const triggerRow = {
-      id: "trigger_flow",
-      title: fixedLabel,
-      description: menuType === 'list' ? "Automated flow trigger" : undefined
-    };
+    if (validItems.length + activeFlows.length > platformMax) {
+      Alert.alert('Validation Error', `Maximum ${platformMax} items total allowed.`);
+      return null;
+    }
 
     const payload = {
       type: menuType,
@@ -402,7 +420,7 @@ const SettingsScreen = () => {
         {
           title: "Available Options",
           rows: [
-            triggerRow,
+            ...activeFlows,
             ...validItems.map((item, index) => ({
                id: item.isCatalog ? "view_services" : 
                    item.customListId ? item.customListId : `item_${index}`,
@@ -557,18 +575,10 @@ const SettingsScreen = () => {
           setReturningMessage={setReturningMessage}
           showAboutContact={showAboutContact}
           setShowAboutContact={setShowAboutContact}
-          reviewUrl={reviewUrl}
-          setReviewUrl={setReviewUrl}
-          offerText={offerText}
-          setOfferText={setOfferText}
           sosNote={sosNote}
           setSosNote={setSosNote}
           thirdButtonType={thirdButtonType}
           setThirdButtonType={setThirdButtonType}
-          showTrustButton={showTrustButton}
-          setShowTrustButton={setShowTrustButton}
-          showOfferButton={showOfferButton}
-          setShowOfferButton={setShowOfferButton}
           showSosButton={showSosButton}
           setShowSosButton={setShowSosButton}
           showSupportFormButton={showSupportFormButton}
@@ -591,8 +601,8 @@ const SettingsScreen = () => {
               await whatsappApi.saveConfig({
                 phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
                 interactiveMenuJson, welcomeMessage, returningMessage,
-                showAboutContact, reviewUrl, offerText, sosNote,
-                thirdButtonType, showTrustButton, showOfferButton, showSosButton,
+                showAboutContact, sosNote,
+                thirdButtonType, showSosButton,
                 customSubMenusJson,
                 customMessagesJson: json
               });
@@ -636,8 +646,8 @@ const SettingsScreen = () => {
               await whatsappApi.saveConfig({
                 phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
                 interactiveMenuJson, welcomeMessage, returningMessage,
-                showAboutContact, reviewUrl, offerText, sosNote,
-                thirdButtonType, showTrustButton, showOfferButton, showSosButton,
+                showAboutContact, sosNote,
+                thirdButtonType, showSosButton,
                 customSubMenusJson,
                 customMessagesJson,
                 flowCancelMenuJson: cancelJson,

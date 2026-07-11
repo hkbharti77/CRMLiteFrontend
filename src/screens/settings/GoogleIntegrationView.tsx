@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Linking, TouchableOpacity } from 'react-native';
 import { Card, Title, Text, Button, Divider, ActivityIndicator, List } from 'react-native-paper';
 import { integrationApi } from '../../services/api';
 import { tokens } from '../../theme/tokens';
 import { Ionicons } from '@expo/vector-icons';
+import { ChevronLeft } from 'lucide-react-native';
+import { colors, typography, sharedStyles } from '../../theme';
 
 interface GoogleIntegrationViewProps {
   onBack: () => void;
@@ -81,11 +83,14 @@ const GoogleIntegrationView: React.FC<GoogleIntegrationViewProps> = ({ onBack })
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Button icon="arrow-left" mode="text" onPress={onBack} textColor="#64748B" style={styles.backBtn}>
-          Back to Settings
-        </Button>
+    <View style={sharedStyles.container}>
+      <View style={sharedStyles.header}>
+        <TouchableOpacity style={sharedStyles.backButton} onPress={onBack}>
+          <ChevronLeft color={colors.text} size={24} />
+        </TouchableOpacity>
+        <View style={sharedStyles.headerContent}>
+          <Text style={typography.pageTitle}>Google Integration</Text>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>

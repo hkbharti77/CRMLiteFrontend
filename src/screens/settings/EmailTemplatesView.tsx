@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
-import { Text, TextInput, Button, IconButton, List, useTheme, ActivityIndicator, Portal, Dialog, SegmentedButtons } from 'react-native-paper';
+import { Text, IconButton, List, useTheme, ActivityIndicator, Portal, Dialog, SegmentedButtons } from 'react-native-paper';
 import { ChevronLeft, Mail, Plus, Trash2, Edit2 } from 'lucide-react-native';
 import { emailTemplateApi } from '../../services/api';
 import { colors, typography, sharedStyles } from '../../theme';
+import { AppInput } from '../../components/global/Input/AppInput';
+import { AppButton } from '../../components/global/Button/AppButton';
 
 interface EmailTemplate {
   id: string;
@@ -192,31 +194,23 @@ const EmailTemplatesView: React.FC<EmailTemplatesViewProps> = ({ onBack }) => {
 
       {/* Edit/Create Dialog */}
       <Portal>
-        <Dialog visible={dialogVisible} onDismiss={handleCloseDialog} style={{ backgroundColor: colors.card }}>
+        <Dialog visible={dialogVisible} onDismiss={handleCloseDialog} style={{ backgroundColor: colors.card, borderRadius: 12 }}>
           <Dialog.Title style={{ color: colors.text }}>
             {editingTemplate ? 'Edit Template' : 'New Template'}
           </Dialog.Title>
           <Dialog.ScrollArea>
             <ScrollView contentContainerStyle={{ paddingVertical: 16, paddingHorizontal: 4 }}>
-              <TextInput
+               <AppInput
                 label="Template Name"
                 value={name}
                 onChangeText={setName}
-                mode="outlined"
-                style={sharedStyles.input}
-                outlineColor={colors.border}
-                activeOutlineColor={colors.primary}
               />
-              <TextInput
+              <AppInput
                 label="Email Subject"
                 value={subject}
                 onChangeText={setSubject}
-                mode="outlined"
-                style={sharedStyles.input}
-                outlineColor={colors.border}
-                activeOutlineColor={colors.primary}
               />
-              <Text style={{ marginTop: 8, marginBottom: 8, color: colors.textSecondary }}>
+              <Text style={{ marginTop: 8, marginBottom: 8, color: colors.textSecondary, fontSize: 13 }}>
                 Target Interest Level:
               </Text>
               <SegmentedButtons
@@ -230,27 +224,25 @@ const EmailTemplatesView: React.FC<EmailTemplatesViewProps> = ({ onBack }) => {
                 ]}
                 style={{ marginBottom: 16 }}
               />
-              <TextInput
+              <AppInput
                 label="Email Body"
                 value={content}
                 onChangeText={setContent}
-                mode="outlined"
                 multiline
                 numberOfLines={6}
-                style={sharedStyles.input}
-                outlineColor={colors.border}
-                activeOutlineColor={colors.primary}
               />
-              <Text style={{ fontSize: 12, color: colors.textSecondary }}>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: -8 }}>
                 Tip: You can use {"{leadName}"}, {"{businessName}"} as placeholders.
               </Text>
             </ScrollView>
           </Dialog.ScrollArea>
-          <Dialog.Actions>
-            <Button onPress={handleCloseDialog} textColor={colors.textSecondary}>Cancel</Button>
-            <Button onPress={handleSave} loading={saving} disabled={saving} textColor={colors.primary}>
+          <Dialog.Actions style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <AppButton variant="text" onPress={handleCloseDialog} style={{ marginRight: 8 }}>
+              Cancel
+            </AppButton>
+            <AppButton variant="primary" onPress={handleSave} loading={saving} disabled={saving}>
               {editingTemplate ? 'Update' : 'Create'}
-            </Button>
+            </AppButton>
           </Dialog.Actions>
         </Dialog>
       </Portal>

@@ -110,6 +110,7 @@ export const menuBuilderApi = {
 
 export const whatsappApi = {
   getConfig: () => api.get('/whatsapp-config'),
+  deleteConfig: () => api.delete('/whatsapp-config'),
   getFeatureLabels: () => api.get('/whatsapp-config/feature-labels'),
   saveConfig: (config: { 
     phoneNumberId: string; 
@@ -157,6 +158,12 @@ export const messageApi = {
   getHistory: (contactId: string) => api.get(`/messages/${contactId}`),
   sendMessage: (contactId: string, text: string) => api.post(`/messages/${contactId}`, { text }),
   sendMenu: (contactId: string) => api.post(`/messages/${contactId}/menu`),
+};
+
+export const webChatApi = {
+  getSessions: () => api.get('/webchat/sessions'),
+  getSessionDetails: (id: string) => api.get(`/webchat/sessions/${id}`),
+  deleteSession: (id: string) => api.delete(`/webchat/sessions/${id}`),
 };
 
 export const onboardingApi = {
@@ -318,6 +325,10 @@ export const userApi = {
   killSwitch: () => api.post('/users/me/kill-switch'),
   exportData: () => api.get('/users/me/export-data'),
   recoverLeads: () => api.post('/users/me/recover-leads'),
+  createPlatformTicket: (title: string, description: string) => api.post('/tickets', { title, description }),
+  getPlatformTickets: () => api.get('/tickets'),
+  getPlatformTicketMessages: (ticketId: string) => api.get(`/tickets/${ticketId}/messages`),
+  sendPlatformTicketMessage: (ticketId: string, message: string) => api.post(`/tickets/${ticketId}/messages`, { message }),
 };
 
 // Returns { categoryName: [subcat1, subcat2, ...] } — open to all authenticated users
@@ -544,6 +555,11 @@ export const billingApi = {
   initiateCheckout: (data: { planId: string; billingCycle: string; gateway: string }) =>
     api.post('/billing/checkout', data),
   getTransactions: () => api.get('/billing/transactions'),
+};
+
+export const integrationsApi = {
+  connectEmbeddedWhatsApp: (code: string) => 
+    api.post('/integrations/meta/oauth/exchange', { code }),
 };
 
 export default api;

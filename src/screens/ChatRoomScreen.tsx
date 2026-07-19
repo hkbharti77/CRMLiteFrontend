@@ -3,7 +3,7 @@ import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, TouchableOp
 import { IconButton, Surface, useTheme, Chip, Snackbar, Card } from 'react-native-paper';
 import { ArrowLeft, Phone, Video, FileText, MoreVertical } from 'lucide-react-native';
 import { useChatStore, Message } from '../store/useChatStore';
-import { crmApi, messageApi } from '../services/api';
+import { crmApi, messageApi, webChatApi } from '../services/api';
 import { useLeadStore } from '../store/useLeadStore';
 import { tokens } from '../theme/tokens';
 
@@ -15,7 +15,7 @@ import { TypingIndicator } from '@components/chat/TypingIndicator';
 const PIPELINE_STAGES = ['NEW', 'INTERESTED', 'FOLLOW_UP', 'BOOKED', 'CLOSED_WON'];
 
 export default function ChatRoomScreen({ route, navigation }: any) {
-  const { chatId, name } = route.params;
+  const { chatId, name, isWebChat } = route.params;
   const theme = useTheme();
   const { currentMessages, setMessages, updateChatStatus, setActiveChatId } = useChatStore();
   const { updateLeadStatus: updateStoreStatus } = useLeadStore();
@@ -45,15 +45,23 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
   const fetchHistory = async (isBackground = false) => {
     try {
-      const response = await messageApi.getHistory(chatId);
-      const mappedMessages = response.data.map((m: any, index: number) => ({
+      let rawMessages = [];
+      if (isWebChat) {
+        const response = await webChatApi.getSessionDetails(chatId);
+        rawMessages = response.data.messages || [];
+      } else {
+        const response = await messageApi.getHistory(chatId);
+        rawMessages = response.data || [];
+      }
+
+      const mappedMessages = rawMessages.map((m: any, index: number) => ({
         id: m.id,
         text: m.content,
-        sender: m.direction === 'INCOMING' ? 'contact' : 'user',
-        timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sender: (m.direction === 'INCOMING' || m.sender === 'USER') ? 'contact' : 'user',
+        timestamp: new Date(m.timestamp || m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         // Add mocked statuses and bot flags for demonstration
-        status: m.direction !== 'INCOMING' ? (index % 3 === 0 ? 'read' : 'delivered') : undefined,
-        type: index === 1 && m.direction === 'INCOMING' ? 'bot_card' : 'text',
+        status: (m.direction !== 'INCOMING' && m.sender !== 'USER') ? (index % 3 === 0 ? 'read' : 'delivered') : undefined,
+        type: index === 1 && (m.direction === 'INCOMING' || m.sender === 'USER') ? 'bot_card' : 'text',
         botOptions: index === 1 ? ['Start Project', 'About Us', 'Human Support'] : undefined,
       }));
 
@@ -137,12 +145,16 @@ export default function ChatRoomScreen({ route, navigation }: any) {
           </View>
 
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Phone size={20} color={tokens.colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Video size={20} color={tokens.colors.textSecondary} />
-            </TouchableOpacity>
+            {!isWebChat && (
+              <>
+                <TouchableOpacity style={styles.headerIcon}>
+                  <Phone size={20} color={tokens.colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerIcon}>
+                  <Video size={20} color={tokens.colors.textSecondary} />
+                </TouchableOpacity>
+              </>
+            )}
             <TouchableOpacity style={styles.headerIcon}>
               <FileText size={20} color={tokens.colors.textSecondary} />
             </TouchableOpacity>
@@ -226,15 +238,23 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       />
 
       {/* LAYER 3: Composer */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <MessageInput 
-          onSend={handleSend} 
-          placeholder="Type a message..." 
-        />
-      </KeyboardAvoidingView>
+      {!isWebChat ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <MessageInput 
+            onSend={handleSend} 
+            placeholder="Type a message..." 
+          />
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={{ padding: 16, backgroundColor: theme.colors.surface, alignItems: 'center' }}>
+          <Text style={{ color: tokens.colors.textSecondary, fontSize: 13 }}>
+            Replies to Web Chat users from the dashboard are not supported yet.
+          </Text>
+        </View>
+      )}
 
       <Snackbar
         visible={showError}

@@ -1,5 +1,5 @@
 /**
- * ChatCRM Lite - Premium Mobile-First Login Screen
+ * GyanVaniAi Connect - Premium Mobile-First Login Screen
  * 
  * Design Principles:
  * - Mobile-first optimized layout
@@ -211,7 +211,7 @@ export default function LoginScreen() {
 
     try {
       const response = await authApi.verifyOtp(email, trimmedOtp);
-      const { token, userId, tenantId, businessName, onboardingCompleted } =
+      const { token, userId, tenantId, businessName, role, onboardingCompleted } =
         response.data;
 
       await setToken(
@@ -220,6 +220,7 @@ export default function LoginScreen() {
         tenantId,
         email,
         businessName || 'My Business',
+        role,
         onboardingCompleted
       );
 
@@ -358,7 +359,7 @@ function HeaderSection({ step, theme }: HeaderSectionProps) {
 
       {/* Title */}
       <Text style={[styles.title, { color: theme.colors.primary }]}>
-        ChatCRM Lite
+        GyanVaniAi Connect
       </Text>
 
       {/* Subtitle */}

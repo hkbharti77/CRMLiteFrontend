@@ -20,8 +20,9 @@ import BookingScreen from '../screens/BookingScreen';
 import AppointmentScreen from '../screens/AppointmentScreen';
 import TicketScreen from '../screens/TicketScreen';
 import CustomEmailScreen from '../screens/CustomEmailScreen';
-
 import LeadDetailScreen from '../screens/LeadDetailScreen';
+import SupportTicketsListScreen from '../screens/settings/SupportTicketsListScreen';
+import SupportTicketChatScreen from '../screens/settings/SupportTicketChatScreen';
 
 export type RootStackParamList = {
   Auth: undefined;
@@ -30,6 +31,8 @@ export type RootStackParamList = {
   ChatRoom: { chatId: string; name: string };
   ContactProfile: { contactId: string };
   LeadDetail: { leadId: string; leadName: string };
+  SupportTicketsList: undefined;
+  SupportTicketChat: { ticketId: string; ticketTitle: string; ticketStatus: string };
 };
 
 export type AuthStackParamList = {
@@ -191,6 +194,8 @@ export default function AppNavigator() {
               headerTintColor: '#fff',
             })}
           />
+          <Stack.Screen name="SupportTicketsList" component={SupportTicketsListScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="SupportTicketChat" component={SupportTicketChatScreen} options={{ headerShown: false }} />
         </>
       )}
     </Stack.Navigator>

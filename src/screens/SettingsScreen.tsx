@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, SafeAreaView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { TextInput, Button, Title, Card, Text, Snackbar, ActivityIndicator, useTheme, Portal, Dialog, List } from 'react-native-paper';
 import { whatsappApi, userApi } from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
@@ -22,6 +23,7 @@ import GoogleIntegrationView from './settings/GoogleIntegrationView';
 import CustomBrandingView from './settings/CustomBrandingView';
 import CustomMenuCardsView from './settings/CustomMenuCardsView';
 import EmailTemplatesView from './settings/EmailTemplatesView';
+import { SupportTicketModal } from '../components/modals/SupportTicketModal';
 import { 
   Settings, 
   Search, 
@@ -53,6 +55,7 @@ import { AppSearchBar } from '@components/global/SearchBar/AppSearchBar';
 
 const SettingsScreen = () => {
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const { clearToken, businessName } = useAuthStore();
   
   // ===== SETTINGS DATA =====
@@ -61,6 +64,10 @@ const SettingsScreen = () => {
   const [accessToken, setAccessToken] = useState('');
   const [verifyToken, setVerifyToken] = useState('chatcrm_secret_token');
   const [appSecret, setAppSecret] = useState('');
+  const [verifiedName, setVerifiedName] = useState('');
+  const [displayPhoneNumber, setDisplayPhoneNumber] = useState('');
+  const [qualityRating, setQualityRating] = useState('');
+  const [accountStatus, setAccountStatus] = useState('');
   const [interactiveMenuJson, setInteractiveMenuJson] = useState('');
   const [menuType, setMenuType] = useState('list');
   const [menuItems, setMenuItems] = useState<{ title: string; desc: string; isCatalog?: boolean; customListId?: string }[]>(
@@ -176,6 +183,10 @@ const SettingsScreen = () => {
         setAccessToken(response.data.accessToken || '');
         setVerifyToken(response.data.verifyToken || 'chatcrm_secret_token');
         setAppSecret(response.data.appSecret || '');
+        setVerifiedName(response.data.verifiedName || '');
+        setDisplayPhoneNumber(response.data.displayPhoneNumber || '');
+        setQualityRating(response.data.qualityRating || '');
+        setAccountStatus(response.data.accountStatus || '');
         
         const existingJson = response.data.interactiveMenuJson || '';
         setInteractiveMenuJson(existingJson);
@@ -268,6 +279,29 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error('Error saving meta config:', error);
       Alert.alert('Error', 'Failed to save settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteMeta = async () => {
+    setLoading(true);
+    try {
+      await whatsappApi.deleteConfig();
+      setPhoneNumberId('');
+      setWabaId('');
+      setAccessToken('');
+      setVerifyToken('chatcrm_secret_token');
+      setAppSecret('');
+      setVerifiedName('');
+      setDisplayPhoneNumber('');
+      setQualityRating('');
+      setAccountStatus('');
+      setSnackbarMsg('Meta configuration deleted successfully!');
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error deleting meta config:', error);
+      Alert.alert('Error', 'Failed to disconnect Meta configuration.');
     } finally {
       setLoading(false);
     }
@@ -549,7 +583,13 @@ const SettingsScreen = () => {
           setVerifyToken={setVerifyToken}
           appSecret={appSecret}
           setAppSecret={setAppSecret}
+          verifiedName={verifiedName}
+          displayPhoneNumber={displayPhoneNumber}
+          qualityRating={qualityRating}
+          accountStatus={accountStatus}
           handleSaveMeta={handleSaveMeta}
+          handleDeleteMeta={handleDeleteMeta}
+          userEmail={accountProfile.email}
           loading={loading}
           onBack={() => setActiveView(null)}
         />
@@ -679,7 +719,13 @@ const SettingsScreen = () => {
           setVerifyToken={setVerifyToken}
           appSecret={appSecret}
           setAppSecret={setAppSecret}
+          verifiedName={verifiedName}
+          displayPhoneNumber={displayPhoneNumber}
+          qualityRating={qualityRating}
+          accountStatus={accountStatus}
           handleSaveMeta={handleSaveMeta}
+          handleDeleteMeta={handleDeleteMeta}
+          userEmail={accountProfile.email}
           loading={loading}
           onBack={() => setActiveView(null)}
         />
@@ -944,15 +990,20 @@ const SettingsScreen = () => {
         )}
 
         {/* ===== SUPPORT SECTION ===== */}
-        <SettingsSection title="Support & Help">
-          <TouchableOpacity style={styles.supportCard}>
-            <View style={styles.supportContent}>
-              <Text style={styles.supportTitle}>Need Help?</Text>
-              <Text style={styles.supportDescription}>Contact our support team for assistance</Text>
-            </View>
-            <ChevronRight size={20} color="#999" />
-          </TouchableOpacity>
-        </SettingsSection>
+        {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (
+          <SettingsSection title="Support & Help">
+            <TouchableOpacity 
+              style={styles.supportCard}
+              onPress={() => navigation.navigate('SupportTicketsList')}
+            >
+              <View style={styles.supportContent}>
+                <Text style={styles.supportTitle}>Need Help?</Text>
+                <Text style={styles.supportDescription}>Contact our support team for assistance</Text>
+              </View>
+              <ChevronRight size={20} color="#999" />
+            </TouchableOpacity>
+          </SettingsSection>
+        )}
 
         {/* ===== LOGOUT BUTTON ===== */}
         <TouchableOpacity 
@@ -966,7 +1017,7 @@ const SettingsScreen = () => {
 
         {/* ===== FOOTER =====  */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>ChatCRM Lite v1.0.0</Text>
+          <Text style={styles.footerText}>GyanVaniAi Connect v1.0.0</Text>
           <Text style={styles.footerSubtext}>© 2025 All rights reserved</Text>
         </View>
       </View>

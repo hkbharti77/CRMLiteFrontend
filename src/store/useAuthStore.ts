@@ -8,13 +8,14 @@ interface AuthState {
   email: string | null;
   businessName: string | null;
   businessSubType: string | null;
+  role: string | null;
   flowType: 'LEAD' | 'APPOINTMENT' | 'BOOKING' | null;
   forceShowBooking: boolean | null;
   forceShowAppointment: boolean | null;
   forceShowLeads: boolean | null;
   onboardingCompleted: boolean;
   isLoading: boolean;
-  setToken: (token: string, userId: string, tenantId: string, email: string, businessName: string, onboardingCompleted: boolean) => Promise<void>;
+  setToken: (token: string, userId: string, tenantId: string, email: string, businessName: string, role: string, onboardingCompleted: boolean) => Promise<void>;
   setOnboardingCompleted: (completed: boolean) => Promise<void>;
   clearToken: () => Promise<void>;
   restoreToken: () => Promise<void>;
@@ -28,6 +29,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   email: null,
   businessName: null,
   businessSubType: null,
+  role: null,
   flowType: null,
   forceShowBooking: null,
   forceShowAppointment: null,
@@ -35,14 +37,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   onboardingCompleted: false,
   isLoading: true,
 
-  setToken: async (token, userId, tenantId, email, businessName, onboardingCompleted) => {
+  setToken: async (token, userId, tenantId, email, businessName, role, onboardingCompleted) => {
     await AsyncStorage.setItem('userToken', token);
     await AsyncStorage.setItem('userId', userId);
     await AsyncStorage.setItem('tenantId', tenantId);
     await AsyncStorage.setItem('email', email);
     await AsyncStorage.setItem('businessName', businessName);
+    await AsyncStorage.setItem('role', role);
     await AsyncStorage.setItem('onboardingCompleted', JSON.stringify(onboardingCompleted));
-    set({ userToken: token, userId, tenantId, email, businessName, onboardingCompleted });
+    set({ userToken: token, userId, tenantId, email, businessName, role, onboardingCompleted });
     
     // Fetch latest profile after login
     try {
@@ -90,12 +93,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     await AsyncStorage.removeItem('tenantId');
     await AsyncStorage.removeItem('email');
     await AsyncStorage.removeItem('businessName');
+    await AsyncStorage.removeItem('role');
+    await AsyncStorage.removeItem('onboardingCompleted');
     await AsyncStorage.removeItem('businessSubType');
     await AsyncStorage.removeItem('forceShowBooking');
     await AsyncStorage.removeItem('forceShowAppointment');
     await AsyncStorage.removeItem('forceShowLeads');
-    await AsyncStorage.removeItem('onboardingCompleted');
-    set({ userToken: null, userId: null, tenantId: null, email: null, businessName: null, businessSubType: null, flowType: null, forceShowBooking: null, forceShowAppointment: null, forceShowLeads: null, onboardingCompleted: false, isLoading: false });
+    set({ userToken: null, userId: null, tenantId: null, email: null, businessName: null, role: null, businessSubType: null, flowType: null, forceShowBooking: null, forceShowAppointment: null, forceShowLeads: null, onboardingCompleted: false, isLoading: false });
   },
 
   restoreToken: async () => {
@@ -105,6 +109,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const tenantId = await AsyncStorage.getItem('tenantId');
       const email = await AsyncStorage.getItem('email');
       const businessName = await AsyncStorage.getItem('businessName');
+      const role = await AsyncStorage.getItem('role');
       const onboardingCompleted = await AsyncStorage.getItem('onboardingCompleted');
       const businessSubType = await AsyncStorage.getItem('businessSubType');
       const forceShowBookingStr = await AsyncStorage.getItem('forceShowBooking');
@@ -119,6 +124,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         tenantId,
         email, 
         businessName,
+        role,
         businessSubType: businessSubType,
         flowType: getFlowTypeFromNiche(businessSubType),
         forceShowBooking: forceShowBookingStr ? JSON.parse(forceShowBookingStr) : null,

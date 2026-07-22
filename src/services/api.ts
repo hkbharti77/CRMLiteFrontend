@@ -78,6 +78,7 @@ export const crmApi = {
     }),
   updateLeadStatus: (leadId: string, status: string) => api.patch(`/leads/${leadId}/status?status=${status}`),
   updateContactTags: (contactId: string, tags: string[]) => api.patch(`/contacts/${contactId}/tags`, tags),
+  toggleBot: (contactId: string, botPaused: boolean) => api.patch(`/contacts/${contactId}/toggle-bot`, { botPaused }),
   // Enquiry CRUD
   getEnquiries: (leadId: string) => api.get(`/leads/${leadId}/enquiries`),
   addEnquiry: (leadId: string, data: { type?: string; message: string; source?: string; status?: string }) =>
@@ -134,8 +135,14 @@ export const whatsappApi = {
     aiResponseMenuJson?: string;
     guardrailMessageAbuse?: string;
     guardrailMessageGibberish?: string;
+    connectionType?: string;
+    embeddedBusinessId?: string;
+    embeddedWabaId?: string;
+    embeddedPhoneId?: string;
   }) =>
     api.post('/whatsapp-config', config),
+  embeddedSignupCallback: (data: { code: string; wabaId?: string; phoneNumberId?: string }) =>
+    api.post('/whatsapp-config/embedded-signup/callback', data),
   uploadMedia: async (file: any) => {
     const formData = new FormData();
     if (Platform.OS === 'web' && file.file) {
@@ -151,6 +158,21 @@ export const whatsappApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+export const templateApi = {
+  getTemplates: (forceSync = false) => api.get(`/whatsapp/templates${forceSync ? '?forceSync=true' : ''}`),
+  createTemplate: (data: {
+    name: string;
+    language?: string;
+    category?: string;
+    headerType?: string;
+    headerContent?: string;
+    bodyText: string;
+    footerText?: string;
+    buttons?: Array<{ type: string; text: string; url?: string; phoneNumber?: string }>;
+  }) => api.post('/whatsapp/templates', data),
+  deleteTemplate: (name: string) => api.delete(`/whatsapp/templates/${name}`),
 };
 
 export const messageApi = {

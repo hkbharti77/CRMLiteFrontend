@@ -19,7 +19,7 @@ import { Client, IMessage } from '@stomp/stompjs';
 import { useChatStore } from './useChatStore';
 import { SERVER_HOST } from '../services/api';
 
-const WS_URL = `${SERVER_HOST}/ws`; 
+const WS_URL = `${SERVER_HOST}/ws`;
 
 interface WebSocketState {
   client: Client | null;
@@ -53,7 +53,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
       onConnect: () => {
         console.log('✅ WebSocket connected for tenant:', tenantId);
         set({ isConnected: true, retryCount: 0 }); // Reset retry count on success
-        
+
         // Reset reconnectDelay on success
         if (stompClient) {
           stompClient.reconnectDelay = 2000;
@@ -69,31 +69,35 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
             console.log('📩 Real-time message received:', incoming);
 
             // Map to the format ChatRoomScreen expects
+            const isIncoming = incoming.direction === 'INCOMING' || incoming.sender === 'USER';
             const newMsg = {
               id: incoming.id,
               text: incoming.content,
-              sender: 'contact' as const,
-              timestamp: new Date(incoming.timestamp).toLocaleTimeString(
+              sender: isIncoming ? ('contact' as const) : ('user' as const),
+              timestamp: new Date(incoming.timestamp || Date.now()).toLocaleTimeString(
                 [], { hour: '2-digit', minute: '2-digit' }
               ),
             };
 
-            // ── Multi-Route Real-time Handling ───────────────────────────
-            const { chats, setChats, currentMessages, setMessages, activeChatId } = useChatStore.getState();
-            
-            // 1. Update the chat list (Inbox) regardless of which room is open
-            // This ensures the "Last Message" and "Time" update everywhere
-            setChats(chats.map(chat => 
-              chat.id === incoming.contactId 
-                ? { ...chat, lastMessage: incoming.content, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } 
-                : chat
-            ));
+            // Fetch current state dynamically to prevent stale closures
+            const latestStore = useChatStore.getState();
+
+            // 1. Update the chat list (Inbox)
+            if (latestStore.chats && Array.isArray(latestStore.chats)) {
+              latestStore.setChats(latestStore.chats.map(chat =>
+                chat.id === incoming.contactId
+                  ? { ...chat, lastMessage: incoming.content, time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }
+                  : chat
+              ));
+            }
 
             // 2. ONLY push to chat history if the user is looking at THAT specific chat
-            // This prevents messages from Customer A leaking into Customer B's window.
-            if (activeChatId === incoming.contactId) {
-              console.log('✅ Porting message to active chat window');
-              setMessages([...currentMessages, newMsg]);
+            if (latestStore.activeChatId === incoming.contactId) {
+              console.log('✅ Porting message to active chat window:', newMsg);
+              const currentMsgs = latestStore.currentMessages || [];
+              if (!currentMsgs.some((m: any) => m.id === newMsg.id)) {
+                latestStore.setMessages([...currentMsgs, newMsg]);
+              }
             }
           }
         );
@@ -114,7 +118,7 @@ export const useWebSocketStore = create<WebSocketState>((set, get) => ({
 
         const nextDelay = Math.min(stompClient.reconnectDelay * 1.5, 30000);
         stompClient.reconnectDelay = nextDelay;
-        
+
         console.warn(`⚠️ WebSocket closed. Retry ${currentRetry + 1}/10 in ${nextDelay}ms`);
         set({ retryCount: currentRetry + 1 });
       },

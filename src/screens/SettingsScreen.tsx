@@ -23,6 +23,7 @@ import GoogleIntegrationView from './settings/GoogleIntegrationView';
 import CustomBrandingView from './settings/CustomBrandingView';
 import CustomMenuCardsView from './settings/CustomMenuCardsView';
 import EmailTemplatesView from './settings/EmailTemplatesView';
+import { TemplateManagerView } from './settings/TemplateManagerView';
 import { SupportTicketModal } from '../components/modals/SupportTicketModal';
 import { 
   Settings, 
@@ -595,6 +596,12 @@ const SettingsScreen = () => {
         />
       );
     }
+
+    if (activeView === 'templates') {
+      return (
+        <TemplateManagerView onBack={() => setActiveView(null)} />
+      );
+    }
     
     if (activeView === 'buttons') {
       return (
@@ -896,8 +903,15 @@ const SettingsScreen = () => {
             <SettingsItem
               icon={<Globe size={20} color="#075E54" />}
               title="Meta Integration"
-              description="WhatsApp API credentials"
+              description="WhatsApp API credentials & Dual Connection Modes"
               onPress={() => setActiveView('meta')}
+              divider
+            />
+            <SettingsItem
+              icon={<FileText size={20} color="#075E54" />}
+              title="WhatsApp Template Builder"
+              description="Create HSM message templates & sync Meta directory"
+              onPress={() => setActiveView('templates')}
               divider
             />
             <SettingsItem

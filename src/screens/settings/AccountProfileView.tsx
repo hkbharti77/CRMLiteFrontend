@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Clipboard, Alert, ScrollView, SafeAreaView, Platform, TextInput as RNTextInput } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Clipboard, Alert, ScrollView, SafeAreaView, Platform, TextInput as RNTextInput, Modal } from 'react-native';
 import { Card, Title, Text, TextInput, Button, Snackbar, Switch } from 'react-native-paper';
 import { categoryApi, SERVER_HOST } from '../../services/api';
 import { useAuthStore } from '../../store/useAuthStore';
@@ -30,6 +30,9 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [descriptionLength, setDescriptionLength] = useState(accountProfile.aboutUs?.length || 0);
   const [changes, setChanges] = useState(false);
+  const [showDocModal, setShowDocModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [docTab, setDocTab] = useState<'HTML' | 'REACT' | 'WORDPRESS' | 'CUSTOMIZATION'>('HTML');
 
   const { userId, flowType } = useAuthStore();
 
@@ -392,13 +395,16 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
           </View>
 
           <View style={styles.embedActionsContainer}>
-            <TouchableOpacity style={[styles.embedActionButton, styles.previewButton]}>
+            <TouchableOpacity
+              style={[styles.embedActionButton, styles.previewButton]}
+              onPress={() => setShowPreviewModal(true)}
+            >
               <Eye size={18} color="#0F766E" />
               <Text style={styles.embedActionText}>Preview Widget</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.embedActionButton, styles.docsButton]}
-              onPress={() => Alert.alert('Documentation', 'Visit our documentation for more details')}
+              onPress={() => setShowDocModal(true)}
             >
               <Text style={styles.docsButtonText}>📖 Documentation</Text>
             </TouchableOpacity>
@@ -408,6 +414,161 @@ const AccountProfileView: React.FC<AccountProfileViewProps> = ({
         {/* ===== BOTTOM SPACER ===== */}
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ===== DOCUMENTATION MODAL ===== */}
+      <Modal visible={showDocModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.docModalContainer}>
+            <View style={styles.modalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>📖 Website Chat Widget Documentation</Text>
+                <Text style={styles.modalSubtitle}>Complete integration guide for standard HTML, React, Next.js, WordPress & Shopify</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowDocModal(false)} style={styles.closeIconBtn}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.docTabsRow}>
+              {[
+                { key: 'HTML', label: 'HTML / JS' },
+                { key: 'REACT', label: 'React / Next.js' },
+                { key: 'WORDPRESS', label: 'WordPress & Shopify' },
+                { key: 'CUSTOMIZATION', label: 'Data Attributes' },
+              ].map((tab) => (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => setDocTab(tab.key as any)}
+                  style={[styles.docTabItem, docTab === tab.key && styles.docTabItemSelected]}
+                >
+                  <Text style={[styles.docTabText, docTab === tab.key && styles.docTabTextSelected]}>
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <ScrollView contentContainerStyle={{ padding: 20 }}>
+              {docTab === 'HTML' && (
+                <View>
+                  <Text style={styles.docSectionTitle}>1. HTML Website Installation</Text>
+                  <Text style={styles.docText}>
+                    Paste the following script tag right before the closing <Text style={styles.codeInline}>&lt;/body&gt;</Text> tag of your HTML pages:
+                  </Text>
+                  <View style={styles.docCodeCard}>
+                    <Text style={styles.docCodeText} selectable>
+                      {`<link rel="stylesheet" href="${API_BASE}/styles.css">\n<script src="${API_BASE}/chat-widget.js"\n  data-business-id="${userId || 'YOUR_BUSINESS_ID'}">\n</script>`}
+                    </Text>
+                  </View>
+                  <Text style={styles.docSectionTitle}>How it works:</Text>
+                  <Text style={styles.docBullet}>• Automatically renders a floating chat button in the bottom-right corner.</Text>
+                  <Text style={styles.docBullet}>• Syncs messages live with your CRM Inbox in real time via WebSockets.</Text>
+                  <Text style={styles.docBullet}>• Captures lead names, phone numbers, and inquiry details into your Pipeline.</Text>
+                </View>
+              )}
+
+              {docTab === 'REACT' && (
+                <View>
+                  <Text style={styles.docSectionTitle}>2. React / Next.js Integration</Text>
+                  <Text style={styles.docText}>
+                    For Next.js apps, add this script tag inside your root layout or <Text style={styles.codeInline}>pages/_app.tsx</Text>:
+                  </Text>
+                  <View style={styles.docCodeCard}>
+                    <Text style={styles.docCodeText} selectable>
+                      {`import Script from 'next/script';\n\nexport default function RootLayout({ children }) {\n  return (\n    <html>\n      <body>\n        {children}\n        <link rel="stylesheet" href="${API_BASE}/styles.css" />\n        <Script\n          src="${API_BASE}/chat-widget.js"\n          data-business-id="${userId || 'YOUR_BUSINESS_ID'}"\n          strategy="afterInteractive"\n        />\n      </body>\n    </html>\n  );\n}`}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {docTab === 'WORDPRESS' && (
+                <View>
+                  <Text style={styles.docSectionTitle}>3. WordPress & Shopify Guide</Text>
+                  <Text style={styles.docSubHeader}>WordPress Setup:</Text>
+                  <Text style={styles.docBullet}>1. Log into your WordPress Admin Dashboard.</Text>
+                  <Text style={styles.docBullet}>2. Go to <Text style={{ fontWeight: '700' }}>Plugins &gt; Add New</Text> and search for <Text style={{ fontWeight: '700' }}>"Header and Footer Scripts"</Text>.</Text>
+                  <Text style={styles.docBullet}>3. Paste the embed code into the Footer script section and click Save.</Text>
+
+                  <Text style={[styles.docSubHeader, { marginTop: 16 }]}>Shopify Setup:</Text>
+                  <Text style={styles.docBullet}>1. Go to <Text style={{ fontWeight: '700' }}>Online Store &gt; Themes &gt; Edit Code</Text>.</Text>
+                  <Text style={styles.docBullet}>2. Open <Text style={styles.codeInline}>layout/theme.liquid</Text>.</Text>
+                  <Text style={styles.docBullet}>3. Scroll to the bottom and paste the embed code right above <Text style={styles.codeInline}>&lt;/body&gt;</Text>.</Text>
+                </View>
+              )}
+
+              {docTab === 'CUSTOMIZATION' && (
+                <View>
+                  <Text style={styles.docSectionTitle}>4. Optional Data Attributes Reference</Text>
+                  <Text style={styles.docText}>Customize widget appearance & behavior by adding data attributes to the script tag:</Text>
+
+                  <View style={styles.attrRow}>
+                    <Text style={styles.attrName}>data-business-id</Text>
+                    <Text style={styles.attrDesc}>Your mandatory Business Account ID for routing messages to your CRM.</Text>
+                  </View>
+                  <View style={styles.attrRow}>
+                    <Text style={styles.attrName}>data-theme-color</Text>
+                    <Text style={styles.attrDesc}>Custom primary accent color for widget header & chat bubbles (e.g. "#0F766E").</Text>
+                  </View>
+                  <View style={styles.attrRow}>
+                    <Text style={styles.attrName}>data-position</Text>
+                    <Text style={styles.attrDesc}>Position on screen: "right" (default) or "left".</Text>
+                  </View>
+                  <View style={styles.attrRow}>
+                    <Text style={styles.attrName}>data-greeting</Text>
+                    <Text style={styles.attrDesc}>Initial popup greeting message shown to visitors.</Text>
+                  </View>
+                  <View style={styles.attrRow}>
+                    <Text style={styles.attrName}>data-auto-open</Text>
+                    <Text style={styles.attrDesc}>Time in milliseconds before opening chat window automatically (e.g. 5000).</Text>
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <Button mode="contained" onPress={() => setShowDocModal(false)} style={{ backgroundColor: '#0F766E' }}>
+                Close Documentation
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ===== PREVIEW WIDGET MODAL ===== */}
+      <Modal visible={showPreviewModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.docModalContainer, { maxWidth: 420 }]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>👁️ Website Chat Widget Preview</Text>
+              <TouchableOpacity onPress={() => setShowPreviewModal(false)} style={styles.closeIconBtn}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#64748B' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <View style={{ width: '100%', backgroundColor: '#F8FAFC', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16 }}>
+                <View style={{ backgroundColor: '#0F766E', padding: 12, borderRadius: 8, marginBottom: 12 }}>
+                  <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>💬 {accountProfile.businessName || 'ChatCRM AI Assistant'}</Text>
+                  <Text style={{ color: '#E0F2FE', fontSize: 11, marginTop: 2 }}>Online | Instant Support</Text>
+                </View>
+                <View style={{ backgroundColor: '#FFFFFF', padding: 10, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 8 }}>
+                  <Text style={{ fontSize: 12, color: '#334155' }}>Hello! 👋 Welcome to {accountProfile.businessName || 'our business'}. How can we assist you today?</Text>
+                </View>
+                <View style={{ backgroundColor: '#0F766E', padding: 10, borderRadius: 8, alignSelf: 'flex-end', maxWidth: '80%' }}>
+                  <Text style={{ fontSize: 12, color: '#FFF' }}>I would like to inquire about your services.</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center' }}>
+                This is how the live floating widget will interact with your website visitors.
+              </Text>
+            </View>
+            <View style={styles.modalFooter}>
+              <Button mode="contained" onPress={() => setShowPreviewModal(false)} style={{ backgroundColor: '#0F766E' }}>
+                Close Preview
+              </Button>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ===== STICKY ACTION BAR ===== */}
       <View style={styles.stickyActionBar}>
@@ -1191,6 +1352,143 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#fff',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  docModalContainer: {
+    width: '100%',
+    maxWidth: 700,
+    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  closeIconBtn: {
+    padding: 6,
+  },
+  docTabsRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  docTabItem: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  docTabItemSelected: {
+    borderBottomColor: '#0F766E',
+    backgroundColor: '#F0F9FC',
+  },
+  docTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  docTabTextSelected: {
+    color: '#0F766E',
+    fontWeight: '800',
+  },
+  docSectionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginTop: 8,
+    marginBottom: 6,
+  },
+  docSubHeader: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginTop: 6,
+  },
+  docText: {
+    fontSize: 13,
+    color: '#475569',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  docBullet: {
+    fontSize: 12,
+    color: '#475569',
+    marginBottom: 4,
+    paddingLeft: 4,
+  },
+  codeInline: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    backgroundColor: '#F1F5F9',
+    color: '#0F766E',
+    fontWeight: '700',
+  },
+  docCodeCard: {
+    backgroundColor: '#0F172A',
+    padding: 12,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  docCodeText: {
+    color: '#38BDF8',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  attrRow: {
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  attrName: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#0F766E',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  attrDesc: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 2,
+  },
+  modalFooter: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    alignItems: 'flex-end',
+    backgroundColor: '#F8FAFC',
   },
 });
 

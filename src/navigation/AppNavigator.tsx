@@ -20,6 +20,7 @@ import BookingScreen from '../screens/BookingScreen';
 import AppointmentScreen from '../screens/AppointmentScreen';
 import TicketScreen from '../screens/TicketScreen';
 import CustomEmailScreen from '../screens/CustomEmailScreen';
+import WhatsAppCampaignScreen from '../screens/WhatsAppCampaignScreen';
 import LeadDetailScreen from '../screens/LeadDetailScreen';
 import SupportTicketsListScreen from '../screens/settings/SupportTicketsListScreen';
 import SupportTicketChatScreen from '../screens/settings/SupportTicketChatScreen';
@@ -43,6 +44,7 @@ export type MainTabParamList = {
   Dashboard: undefined;
   Inbox: undefined;
   Pipeline: undefined;
+  Campaigns: undefined;
   Appointments: undefined;
   Booking: undefined;
   Tickets: undefined;
@@ -85,6 +87,8 @@ function MainNavigator() {
             iconName = focused ? 'chatbubble' : 'chatbubble-outline';
           } else if (route.name === 'Pipeline') {
             iconName = focused ? 'list' : 'list-outline';
+          } else if (route.name === 'Campaigns') {
+            iconName = focused ? 'megaphone' : 'megaphone-outline';
           } else if (route.name === 'Appointments') {
             iconName = focused ? 'time' : 'time-outline';
           } else if (route.name === 'Booking') {
@@ -100,6 +104,9 @@ function MainNavigator() {
         },
         tabBarActiveTintColor: theme.colors.primary,
         tabBarInactiveTintColor: 'gray',
+        tabBarLabelStyle: { fontSize: 9, fontWeight: '600' },
+        tabBarItemStyle: { paddingHorizontal: 0 },
+        tabBarStyle: { height: 56, paddingBottom: 4 },
         headerStyle: { backgroundColor: theme.colors.primary },
         headerTintColor: '#fff',
       })}
@@ -109,8 +116,17 @@ function MainNavigator() {
       {shouldShowLeads && (
         <Tab.Screen name="Pipeline" component={PipelineScreen} />
       )}
+      <Tab.Screen
+        name="Campaigns"
+        component={WhatsAppCampaignScreen}
+        options={{ title: 'WhatsApp Broadcasts', tabBarLabel: 'Broadcasts' }}
+      />
       {shouldShowAppointments && (
-        <Tab.Screen name="Appointments" component={AppointmentScreen} />
+        <Tab.Screen
+          name="Appointments"
+          component={AppointmentScreen}
+          options={{ title: 'Appointments', tabBarLabel: 'Appts' }}
+        />
       )}
       {shouldShowBooking && (
         <Tab.Screen name="Booking" component={BookingScreen} />
@@ -118,12 +134,12 @@ function MainNavigator() {
       <Tab.Screen
         name="Tickets"
         component={TicketScreen}
-        options={{ title: 'Support Tickets' }}
+        options={{ title: 'Support Tickets', tabBarLabel: 'Tickets' }}
       />
       <Tab.Screen
         name="Emails"
         component={CustomEmailScreen}
-        options={{ title: 'Email Campaigns' }}
+        options={{ title: 'Email Campaigns', tabBarLabel: 'Emails' }}
       />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>

@@ -13,12 +13,34 @@ export interface ChatBubbleProps {
     status?: 'sent' | 'delivered' | 'read';
     type?: 'text' | 'bot_card';
     botOptions?: string[];
+    sentiment?: 'POSITIVE' | 'NEUTRAL' | 'FRUSTRATED' | 'URGENT';
   };
   style?: any;
 }
 
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, style }) => {
   const theme = useTheme();
+
+  const renderSentimentBadge = () => {
+    if (message.isSender || !message.sentiment || message.sentiment === 'NEUTRAL') return null;
+    let badgeText = '😊 Positive';
+    let color = '#059669';
+    let bg = '#ECFDF5';
+    if (message.sentiment === 'FRUSTRATED') {
+      badgeText = '😠 Frustrated';
+      color = '#DC2626';
+      bg = '#FEF2F2';
+    } else if (message.sentiment === 'URGENT') {
+      badgeText = '🚨 Urgent';
+      color = '#D97706';
+      bg = '#FEF3C7';
+    }
+    return (
+      <View style={[styles.sentimentBadge, { backgroundColor: bg, borderColor: color }]}>
+        <Text style={{ fontSize: 10, fontWeight: '800', color }}>{badgeText}</Text>
+      </View>
+    );
+  };
 
   // Mock bot card layout if message type is 'bot_card'
   if (message.type === 'bot_card') {
@@ -64,6 +86,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ message, style }) => {
               }
         ]}
       >
+        {renderSentimentBadge()}
         <Text style={[styles.text, { color: message.isSender ? '#FFFFFF' : tokens.colors.textPrimary }]}>
           {message.text}
         </Text>
@@ -145,5 +168,13 @@ const styles = StyleSheet.create({
   botOptionText: {
     fontWeight: '600',
     fontSize: tokens.typography.bodyMedium.fontSize,
+  },
+  sentimentBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 4,
   },
 });

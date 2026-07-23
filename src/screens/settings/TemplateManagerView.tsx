@@ -274,7 +274,7 @@ export const TemplateManagerView: React.FC<TemplateManagerViewProps> = ({ onBack
       {/* Top Header Card */}
       <Surface style={styles.headerCard} elevation={2}>
         <View style={styles.headerTop}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <View style={styles.headerTopMain}>
             {onBack && (
               <TouchableOpacity onPress={onBack} style={styles.backButton}>
                 <ChevronLeft size={22} color="#0F766E" />
@@ -288,25 +288,27 @@ export const TemplateManagerView: React.FC<TemplateManagerViewProps> = ({ onBack
               <Text style={styles.subtitleText}>Create, preview, and sync HSM message templates directly with Meta WABA</Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'row', marginTop: 12 }}>
+          <View style={styles.actionButtonsRow}>
             <Button
               mode="outlined"
+              compact
               onPress={() => fetchTemplates(true)}
               loading={syncing}
               disabled={syncing}
-              icon={({ size, color }) => <RefreshCw size={16} color={color} />}
-              style={{ marginRight: 10, borderColor: '#10B981' }}
+              icon={({ size, color }) => <RefreshCw size={14} color={color} />}
+              style={{ marginRight: 6, borderColor: '#10B981' }}
               textColor="#10B981"
             >
               Sync Meta Templates
             </Button>
             <Button
               mode="contained"
+              compact
               onPress={() => setShowBuilderModal(true)}
-              icon={({ size, color }) => <Plus size={16} color={color} />}
+              icon={({ size, color }) => <Plus size={14} color={color} />}
               style={{ backgroundColor: '#10B981' }}
             >
-              New Template Builder
+              + New Template
             </Button>
           </View>
         </View>
@@ -370,13 +372,13 @@ export const TemplateManagerView: React.FC<TemplateManagerViewProps> = ({ onBack
               <Card key={item.id || item.name} style={styles.templateCard}>
                 <Card.Content>
                   <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.templateNameText}>{item.name}</Text>
+                    <View style={{ flex: 1, marginRight: 6 }}>
+                      <Text style={styles.templateNameText} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
                       <Text style={styles.templateSubText}>{item.category} • {item.language || 'en_US'}</Text>
                     </View>
                     <View style={[styles.statusBadge, { backgroundColor: statusBg }]}>
-                      <StatusIcon size={12} color={statusColor} style={{ marginRight: 4 }} />
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: statusColor }}>{item.status}</Text>
+                      <StatusIcon size={10} color={statusColor} style={{ marginRight: 3 }} />
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: statusColor }}>{item.status}</Text>
                     </View>
                   </View>
 
@@ -767,23 +769,25 @@ export const TemplateManagerView: React.FC<TemplateManagerViewProps> = ({ onBack
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16, backgroundColor: '#F9FAFB' },
-  headerCard: { padding: 20, borderRadius: 16, backgroundColor: '#FFF', marginBottom: 20 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' },
-  backButton: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: '#E5E7EB' },
-  iconContainer: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
-  titleText: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  subtitleText: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  filtersRow: { flexDirection: 'row', alignItems: 'center', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  filterLabel: { fontSize: 13, fontWeight: '600', color: '#4B5563', marginRight: 8, alignSelf: 'center' },
-  chipFilter: { marginRight: 8, height: 32 },
-  emptyCard: { padding: 40, borderRadius: 16, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginTop: 20 },
-  templatesGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -8 },
-  templateCard: { width: '48%', margin: '1%', borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB' },
+  container: { flex: 1, padding: 12, backgroundColor: '#F9FAFB' },
+  headerCard: { padding: 16, borderRadius: 16, backgroundColor: '#FFF', marginBottom: 16 },
+  headerTop: { flexDirection: 'column', alignItems: 'flex-start' },
+  headerTopMain: { flexDirection: 'row', alignItems: 'center', width: '100%' },
+  actionButtonsRow: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12, width: '100%', gap: 6 },
+  backButton: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2, borderWidth: 1, borderColor: '#E5E7EB' },
+  iconContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
+  titleText: { fontSize: 18, fontWeight: '700', color: '#111827' },
+  subtitleText: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  filtersRow: { flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  filterLabel: { fontSize: 12, fontWeight: '600', color: '#4B5563', marginRight: 6, alignSelf: 'center' },
+  chipFilter: { marginRight: 6, height: 30 },
+  emptyCard: { padding: 32, borderRadius: 16, backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  templatesGrid: { flexDirection: 'column', width: '100%' },
+  templateCard: { width: '100%', marginBottom: 12, borderRadius: 12, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E5E7EB' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  templateNameText: { fontSize: 15, fontWeight: '700', color: '#111827', fontFamily: 'monospace' },
+  templateNameText: { fontSize: 14, fontWeight: '700', color: '#111827', fontFamily: 'monospace' },
   templateSubText: { fontSize: 11, color: '#6B7280', marginTop: 2 },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 12, alignSelf: 'flex-start' },
   templatePreviewBox: { backgroundColor: '#F9FAFB', padding: 12, borderRadius: 8, marginTop: 12, borderWidth: 1, borderColor: '#F3F4F6' },
   previewHeader: { fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 4 },
   previewBody: { fontSize: 13, color: '#1F2937', lineHeight: 18 },

@@ -584,5 +584,49 @@ export const integrationsApi = {
     api.post('/integrations/meta/oauth/exchange', { code }),
 };
 
+export const whatsappTemplateApi = {
+  getTemplates: (forceSync = false) => api.get(`/whatsapp/templates?forceSync=${forceSync}`),
+  createTemplate: (data: any) => api.post('/whatsapp/templates', data),
+  deleteTemplate: (name: string) => api.delete(`/whatsapp/templates/${name}`),
+};
+
+export const campaignApi = {
+  getCampaigns: (page = 0, size = 20) => api.get(`/whatsapp/campaigns?page=${page}&size=${size}`),
+  getCampaignById: (id: string) => api.get(`/whatsapp/campaigns/${id}`),
+  createCampaign: (data: {
+    name: string;
+    templateId: string;
+    targetType: 'ALL_CONTACTS' | 'TAG_BASED' | 'LEAD_STATUS_BASED' | 'CSV_EXCEL_UPLOAD' | 'CUSTOM_SEGMENT';
+    targetFilterJson?: string;
+    variableMappingJson?: string;
+  }) => api.post('/whatsapp/campaigns', data),
+  executeDryRun: (id: string, testPhoneNumber: string) =>
+    api.post(`/whatsapp/campaigns/${id}/dry-run`, { testPhoneNumber }),
+  scheduleCampaign: (id: string, scheduleTime?: string) =>
+    api.post(`/whatsapp/campaigns/${id}/schedule`, scheduleTime ? { scheduleTime } : {}),
+  pauseCampaign: (id: string) => api.post(`/whatsapp/campaigns/${id}/pause`),
+  resumeCampaign: (id: string) => api.post(`/whatsapp/campaigns/${id}/resume`),
+  cancelCampaign: (id: string) => api.post(`/whatsapp/campaigns/${id}/cancel`),
+  getAnalytics: (id: string) => api.get(`/whatsapp/campaigns/${id}/analytics`),
+  getAuditLogs: (id: string) => api.get(`/whatsapp/campaigns/${id}/audit-logs`),
+};
+
+export const leadScoringApi = {
+  getScore: (leadId: string) => api.get(`/leads/${leadId}/score`),
+  recalculateScore: (leadId: string) => api.post(`/leads/${leadId}/recalculate-score`),
+  getEscalatedContacts: () => api.get('/contacts/escalated'),
+  resolveEscalation: (contactId: string, resumeBot = true) =>
+    api.post(`/contacts/${contactId}/resolve-escalation`, { resumeBot }),
+};
+
+export const teamApi = {
+  getTeamMembers: () => api.get('/team/members'),
+  updateAvailability: (agentId: string, availabilityStatus: 'AVAILABLE' | 'BUSY' | 'OFFLINE') =>
+    api.patch(`/team/members/${agentId}/availability`, { availabilityStatus }),
+  getPerformanceAnalytics: () => api.get('/team/analytics/performance'),
+  assignLead: (leadId: string, agentId?: string) =>
+    api.post(`/team/leads/${leadId}/assign`, agentId ? { agentId } : {}),
+};
+
 export default api;
 

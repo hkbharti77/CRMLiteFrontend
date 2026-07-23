@@ -37,19 +37,22 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
   const renderScoreBadge = () => {
     if (lead.score === undefined || lead.score === null) return null;
-    let color = '#9E9E9E';
-    let text = `❄️ ${lead.score}`;
-    if (lead.score >= 80) {
-      color = '#4CAF50';
-      text = `🔥 ${lead.score}`;
-    } else if (lead.score >= 50) {
-      color = '#FF9800';
-      text = `⭐ ${lead.score}`;
+    let color = '#2563EB';
+    let text = `❄️ ${lead.score}/100 COLD`;
+    let bg = '#EFF6FF';
+    if (lead.score >= 75) {
+      color = '#DC2626';
+      text = `🔥 ${lead.score}/100 HOT`;
+      bg = '#FEF2F2';
+    } else if (lead.score >= 45) {
+      color = '#D97706';
+      text = `☀️ ${lead.score}/100 WARM`;
+      bg = '#FEF3C7';
     }
     
     return (
-      <View style={[styles.scoreBadge, { backgroundColor: color + '20' }]}>
-        <Text style={{ color, fontSize: 12, fontWeight: 'bold' }}>{text}</Text>
+      <View style={[styles.scoreBadge, { backgroundColor: bg, borderColor: color, borderWidth: 1, marginRight: 6 }]}>
+        <Text style={{ color, fontSize: 10, fontWeight: '800' }}>{text}</Text>
       </View>
     );
   };

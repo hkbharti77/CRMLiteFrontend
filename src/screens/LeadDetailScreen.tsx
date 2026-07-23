@@ -226,9 +226,15 @@ export default function LeadDetailScreen({ route, navigation }: any) {
   const metrics = [];
   if (lead?.score !== undefined && lead?.score !== null) {
     let emoji = '❄️';
-    if (lead.score >= 80) emoji = '🔥';
-    else if (lead.score >= 50) emoji = '⭐';
-    metrics.push({ label: 'Lead Score', value: `${emoji} ${lead.score}` });
+    let grade = 'COLD';
+    if (lead.score >= 75) {
+      emoji = '🔥';
+      grade = 'HOT';
+    } else if (lead.score >= 45) {
+      emoji = '☀️';
+      grade = 'WARM';
+    }
+    metrics.push({ label: 'Quality Score', value: `${emoji} ${lead.score}/100 ${grade}` });
   }
   if (lead?.interestCategory) {
     metrics.push({ label: 'Interest', value: lead.interestCategory });

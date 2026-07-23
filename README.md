@@ -250,6 +250,51 @@ The project includes comprehensive documentation for a major component architect
 
 ## 🏗️ Architecture
 
+### Detailed System Design
+
+```mermaid
+graph TD
+    subgraph CRMLite React Native App
+        subgraph UI Layer
+            Nav[🧭 React Navigation]
+            Screens[📱 Screens & Views]
+            Components[🧩 UI Components]
+            Nav --> Screens
+            Screens --> Components
+        end
+        
+        subgraph State Management - Zustand
+            AuthStore[Auth Store]
+            LeadStore[Lead Store]
+            ChatStore[Chat Store]
+            OtherStores[Other Stores...]
+        end
+
+        subgraph Network & Services
+            Axios[🌐 Axios REST Client]
+            WSClient[🔌 WebSocket Client]
+        end
+
+        Screens <-->|Read/Write State| AuthStore
+        Screens <-->|Read/Write State| LeadStore
+        Screens <-->|Read/Write State| ChatStore
+        Screens <-->|Read/Write State| OtherStores
+
+        AuthStore <--> Axios
+        LeadStore <--> Axios
+        OtherStores <--> Axios
+        ChatStore <--> WSClient
+    end
+
+    subgraph Backend Services
+        API[⚙️ Spring Boot REST API]
+        WSServer[🔌 WebSocket Server]
+    end
+
+    Axios <-->|REST over HTTPS| API
+    WSClient <-->|Real-time Data| WSServer
+```
+
 ### Component Organization
 
 The application is organized into three component categories:
@@ -477,3 +522,12 @@ See [BEST_PRACTICES.md](./BEST_PRACTICES.md) for contribution guidelines.
 **Happy Coding! 🚀**
 
 </div>
+
+### Recent Updates & Features
+- **Multi-tier Subscriptions & Billing UI**: Added full interface support for `FREE`, `MIN`, `PRO`, and `ENTERPRISE` plans with billing cycles and quota transparency.
+- **Dynamic Plan Restrictions**: Implemented frontend logic to disable invalid downgrades and dynamically route users to appropriate upgrade paths.
+- **Custom Branding & Appearance Settings**: Added a new UI view for configuring widget white-labeling (Colors & Logo), unlocked dynamically based on user subscription tiers.
+- **Payment Gateway Integrations**: Included interactive checkout mocks and real integrations for Razorpay & Stripe within the subscription upgrades page.
+- **Dynamic Multi-Flow Dashboard**: UI updates to support switching between AI, Support, and Lead flow states per tenant.
+- **Customizable Greeting Setup**: New interface components to configure dynamic greetings and interactive WhatsApp menus.
+- **AI Fallback & Component Architecture**: Major refactoring of React components (Lists, Headers, Loaders, Tabs, Toasts) for a cleaner scalable UI.

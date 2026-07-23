@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../store/useAuthStore';
 import { onboardingApi, categoryApi } from '../services/api';
+import { WhatsAppConnectButton } from '../components/whatsapp/WhatsAppConnectButton';
 const TOTAL_STEPS = 5;
 
 export default function OnboardingScreen() {
@@ -263,7 +264,21 @@ export default function OnboardingScreen() {
           {step === 3 && (
             <View style={styles.stepContent}>
               <Text style={styles.stepTitle}>WhatsApp Setup</Text>
-              <Text style={styles.stepSubtitle}>Connect your Meta Cloud API credentials</Text>
+              
+              <Text style={styles.stepSubtitle}>Option 1: Connect via Tech Provider</Text>
+              <View style={{ alignItems: 'center', marginBottom: 24, marginTop: 8 }}>
+                <WhatsAppConnectButton 
+                  onSuccess={() => {
+                    // Pre-fill dummy values or proceed automatically, but for now we'll just let them click Next.
+                    // (They won't need manual credentials if token is saved via backend)
+                    setPhoneNumberId('CONNECTED_VIA_META');
+                    setAccessToken('CONNECTED_VIA_META');
+                    Alert.alert('Success', 'Now click Continue to finish setup.');
+                  }} 
+                />
+              </View>
+
+              <Text style={styles.stepSubtitle}>Option 2: Manual Configuration</Text>
               <Text style={styles.label}>Phone Number ID</Text>
               <TextInput
                 style={styles.input}
@@ -318,7 +333,7 @@ export default function OnboardingScreen() {
                   {consentData && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.checkboxLabel}>
-                  I allow ChatCRM Lite to store and process chat data for my business
+                  I allow GyanVaniAi Connect to store and process chat data for my business
                 </Text>
               </TouchableOpacity>
             </View>

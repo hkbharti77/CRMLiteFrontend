@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform, TouchableOpacity, Modal, ScrollView as RNScrollView, Text } from 'react-native';
-import { IconButton, Surface, useTheme, Chip, Snackbar, Card } from 'react-native-paper';
-import { ArrowLeft, Phone, Video, FileText, MoreVertical } from 'lucide-react-native';
+import { IconButton, Surface, useTheme, Chip, Snackbar, Card, Switch } from 'react-native-paper';
+import { ArrowLeft, Phone, Video, FileText, MoreVertical, Bot } from 'lucide-react-native';
 import { useChatStore, Message } from '../store/useChatStore';
-import { crmApi, messageApi } from '../services/api';
+import { crmApi, messageApi, webChatApi } from '../services/api';
 import { useLeadStore } from '../store/useLeadStore';
 import { tokens } from '../theme/tokens';
 
@@ -15,7 +15,7 @@ import { TypingIndicator } from '@components/chat/TypingIndicator';
 const PIPELINE_STAGES = ['NEW', 'INTERESTED', 'FOLLOW_UP', 'BOOKED', 'CLOSED_WON'];
 
 export default function ChatRoomScreen({ route, navigation }: any) {
-  const { chatId, name } = route.params;
+  const { chatId, name, isWebChat } = route.params;
   const theme = useTheme();
   const { currentMessages, setMessages, updateChatStatus, setActiveChatId } = useChatStore();
   const { updateLeadStatus: updateStoreStatus } = useLeadStore();
@@ -25,14 +25,34 @@ export default function ChatRoomScreen({ route, navigation }: any) {
   const [sending, setSending] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [showError, setShowError] = useState(false);
+  const [botPaused, setBotPaused] = useState(false);
+  const [togglingBot, setTogglingBot] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
   useEffect(() => {
     fetchHistory();
     fetchLead();
+    fetchContact();
     setActiveChatId(chatId);
-    return () => setActiveChatId(null);
+
+    const interval = setInterval(() => {
+      fetchHistory(true);
+    }, 3000);
+
+    return () => {
+      setActiveChatId(null);
+      clearInterval(interval);
+    };
   }, [chatId]);
+
+  const fetchContact = async () => {
+    try {
+      const response = await crmApi.getContactById(chatId);
+      setBotPaused(response.data.botPaused);
+    } catch (e) {
+      console.log('Could not fetch contact details', e);
+    }
+  };
 
   const fetchLead = async () => {
     try {
@@ -45,15 +65,23 @@ export default function ChatRoomScreen({ route, navigation }: any) {
 
   const fetchHistory = async (isBackground = false) => {
     try {
-      const response = await messageApi.getHistory(chatId);
-      const mappedMessages = response.data.map((m: any, index: number) => ({
+      let rawMessages = [];
+      if (isWebChat) {
+        const response = await webChatApi.getSessionDetails(chatId);
+        rawMessages = response.data.messages || [];
+      } else {
+        const response = await messageApi.getHistory(chatId);
+        rawMessages = response.data || [];
+      }
+
+      const mappedMessages = rawMessages.map((m: any, index: number) => ({
         id: m.id,
         text: m.content,
-        sender: m.direction === 'INCOMING' ? 'contact' : 'user',
-        timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sender: (m.direction === 'INCOMING' || m.sender === 'USER') ? 'contact' : 'user',
+        timestamp: new Date(m.timestamp || m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         // Add mocked statuses and bot flags for demonstration
-        status: m.direction !== 'INCOMING' ? (index % 3 === 0 ? 'read' : 'delivered') : undefined,
-        type: index === 1 && m.direction === 'INCOMING' ? 'bot_card' : 'text',
+        status: (m.direction !== 'INCOMING' && m.sender !== 'USER') ? (index % 3 === 0 ? 'read' : 'delivered') : undefined,
+        type: index === 1 && (m.direction === 'INCOMING' || m.sender === 'USER') ? 'bot_card' : 'text',
         botOptions: index === 1 ? ['Start Project', 'About Us', 'Human Support'] : undefined,
       }));
 
@@ -82,8 +110,16 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     if (sending) return;
     setSending(true);
     try {
+      const optimisticMsg = {
+        id: 'opt-' + Date.now(),
+        text,
+        sender: 'user' as const,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages([...useChatStore.getState().currentMessages, optimisticMsg]);
+      
       await messageApi.sendMessage(chatId, text);
-      await fetchHistory();
+      await fetchHistory(true);
     } catch (error: any) {
       console.error('Error sending message:', error);
       const msg = error.response?.data?.message || error.message || 'Failed to send message';
@@ -91,6 +127,21 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       setShowError(true);
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleToggleBot = async () => {
+    if (togglingBot) return;
+    setTogglingBot(true);
+    try {
+      await crmApi.toggleBot(chatId, !botPaused);
+      setBotPaused(!botPaused);
+    } catch (error) {
+      console.error('Failed to toggle bot', error);
+      setErrorMsg('Failed to toggle bot status');
+      setShowError(true);
+    } finally {
+      setTogglingBot(false);
     }
   };
 
@@ -110,84 +161,90 @@ export default function ChatRoomScreen({ route, navigation }: any) {
     }
   };
 
+  React.useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ position: 'relative' }}>
+            <AppAvatar name={name} size="small" />
+            <View style={styles.onlineStatusBadge} />
+          </View>
+          <View style={{ marginLeft: 10, justifyContent: 'center' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }} numberOfLines={1}>{name}</Text>
+              <View style={[styles.leadTag, { backgroundColor: '#FEF3C7', marginLeft: 8 }]}>
+                 <Text style={[styles.leadTagText, { color: '#B45309' }]}>HOT LEAD</Text>
+              </View>
+            </View>
+            <Text style={{ color: '#10B981', fontSize: 12 }}>● Online</Text>
+          </View>
+        </View>
+      ),
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 8, backgroundColor: botPaused ? '#FEF2F2' : '#ECFDF5', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 16 }}>
+            <Bot size={16} color={botPaused ? '#EF4444' : '#10B981'} style={{ marginRight: 4 }} />
+            <Switch value={!botPaused} onValueChange={handleToggleBot} disabled={togglingBot} color="#10B981" />
+          </View>
+          {!isWebChat && (
+            <>
+              <TouchableOpacity style={styles.headerIcon}>
+                <Phone size={20} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.headerIcon}>
+                <Video size={20} color="#fff" />
+              </TouchableOpacity>
+            </>
+          )}
+          <TouchableOpacity style={styles.headerIcon}>
+            <FileText size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerIcon} onPress={() => setShowCRM(true)}>
+            <MoreVertical size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, name, botPaused, isWebChat, togglingBot, handleToggleBot, setShowCRM]);
+
   return (
     <View style={[styles.container, { backgroundColor: tokens.colors.backgroundDark }]}>
       
-      {/* LAYER 1: Header */}
-      <Surface style={[styles.header, { backgroundColor: theme.colors.surface, borderBottomColor: tokens.colors.border }]} elevation={0}>
-        <View style={styles.headerTop}>
-          <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <ArrowLeft size={24} color={tokens.colors.textPrimary} />
-            </TouchableOpacity>
-            <View style={styles.headerAvatar}>
-              <AppAvatar name={name} size="small" />
-              <View style={styles.onlineStatusBadge} />
-            </View>
-            <View style={styles.headerTitleContainer}>
-              <Text style={[styles.headerName, { color: tokens.colors.textPrimary }]} numberOfLines={1}>{name}</Text>
-              <Text style={[styles.headerStatus, { color: tokens.colors.success }]}>● Online</Text>
-            </View>
-          </View>
-
-          <View style={styles.headerCenter}>
-             <View style={[styles.leadTag, { backgroundColor: '#FEF3C7' }]}>
-               <Text style={[styles.leadTagText, { color: '#B45309' }]}>HOT LEAD</Text>
-             </View>
-          </View>
-
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Phone size={20} color={tokens.colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <Video size={20} color={tokens.colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon}>
-              <FileText size={20} color={tokens.colors.textSecondary} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerIcon} onPress={() => setShowCRM(true)}>
-              <MoreVertical size={20} color={tokens.colors.textSecondary} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Pipeline Stepper */}
-        {associatedLead && (
-          <View style={styles.stepperContainer}>
-            <RNScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepperScroll}>
-              {PIPELINE_STAGES.map((status, index) => {
-                const isActive = associatedLead?.status === status;
-                const isPast = PIPELINE_STAGES.indexOf(associatedLead?.status) > index;
-                return (
-                  <View key={status} style={styles.stepWrapper}>
-                    <TouchableOpacity 
-                      onPress={() => handleStatusUpdate(status)}
-                      style={[
-                        styles.stepChip,
-                        isActive && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-                        isPast && { backgroundColor: '#F0FDFA', borderColor: theme.colors.primary },
-                      ]}
-                      disabled={updating}
-                    >
-                      <Text style={[
-                        styles.stepText,
-                        isActive && { color: '#FFF' },
-                        isPast && { color: theme.colors.primary },
-                      ]}>
-                        {status.replace('_', ' ')}
-                      </Text>
-                    </TouchableOpacity>
-                    {index < PIPELINE_STAGES.length - 1 && (
-                      <View style={[styles.stepLine, isPast && { backgroundColor: theme.colors.primary }]} />
-                    )}
-                  </View>
-                );
-              })}
-            </RNScrollView>
-          </View>
-        )}
-      </Surface>
+      {/* Pipeline Stepper */}
+      {associatedLead && (
+        <Surface style={styles.stepperContainer} elevation={0}>
+          <RNScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stepperScroll}>
+            {PIPELINE_STAGES.map((status, index) => {
+              const isActive = associatedLead?.status === status;
+              const isPast = PIPELINE_STAGES.indexOf(associatedLead?.status) > index;
+              return (
+                <View key={status} style={styles.stepWrapper}>
+                  <TouchableOpacity 
+                    onPress={() => handleStatusUpdate(status)}
+                    style={[
+                      styles.stepChip,
+                      isActive && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+                      isPast && { backgroundColor: '#F0FDFA', borderColor: theme.colors.primary },
+                    ]}
+                    disabled={updating}
+                  >
+                    <Text style={[
+                      styles.stepText,
+                      isActive && { color: '#FFF' },
+                      isPast && { color: theme.colors.primary },
+                    ]}>
+                      {status.replace('_', ' ')}
+                    </Text>
+                  </TouchableOpacity>
+                  {index < PIPELINE_STAGES.length - 1 && (
+                    <View style={[styles.stepLine, isPast && { backgroundColor: theme.colors.primary }]} />
+                  )}
+                </View>
+              );
+            })}
+          </RNScrollView>
+        </Surface>
+      )}
 
       {/* LAYER 2: Timeline */}
       <FlatList
@@ -226,15 +283,23 @@ export default function ChatRoomScreen({ route, navigation }: any) {
       />
 
       {/* LAYER 3: Composer */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <MessageInput 
-          onSend={handleSend} 
-          placeholder="Type a message..." 
-        />
-      </KeyboardAvoidingView>
+      {!isWebChat ? (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        >
+          <MessageInput 
+            onSend={handleSend} 
+            placeholder="Type a message..." 
+          />
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={{ padding: 16, backgroundColor: theme.colors.surface, alignItems: 'center' }}>
+          <Text style={{ color: tokens.colors.textSecondary, fontSize: 13 }}>
+            Replies to Web Chat users from the dashboard are not supported yet.
+          </Text>
+        </View>
+      )}
 
       <Snackbar
         visible={showError}

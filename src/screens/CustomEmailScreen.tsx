@@ -24,7 +24,11 @@ import {
   IconButton,
 } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { customEmailApi } from '../services/api';
+import { customEmailApi, userApi } from '../services/api';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import * as XLSX from 'xlsx';
+import * as Sharing from 'expo-sharing';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,6 +81,234 @@ export default function CustomEmailScreen() {
     tagsFilter: '',
     manualRecipients: '',
   });
+
+  const [planType, setPlanType] = useState<string>('FREE');
+  const [aiPrompt, setAiPrompt] = useState<string>('');
+  const [generatingAi, setGeneratingAi] = useState<boolean>(false);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await userApi.getProfile();
+        setPlanType(res.data.planType || 'FREE');
+      } catch (e) {
+        console.error('Error fetching profile in CustomEmailScreen:', e);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleGenerateAiContent = async () => {
+    if (planType === 'FREE') return;
+    if (!aiPrompt.trim()) {
+      setSnackMsg('⚠️ Please enter an instruction prompt.');
+      return;
+    }
+    try {
+      setGeneratingAi(true);
+      const response = await customEmailApi.generateAi(aiPrompt.trim());
+      if (response.data && response.data.subject && response.data.body) {
+        setForm(f => ({
+          ...f,
+          subject: response.data.subject,
+          body: response.data.body,
+          ctaLabel: response.data.ctaLabel || '',
+          ctaUrl: response.data.ctaUrl || ''
+        }));
+        setAiPrompt('');
+        setSnackMsg('✨ AI email content generated successfully!');
+      } else {
+        setSnackMsg('❌ Failed to generate content in the correct format.');
+      }
+    } catch (e: any) {
+      console.error(e);
+      const errMsg = e?.response?.data?.message || 'Failed to generate email content.';
+      setSnackMsg('❌ ' + errMsg);
+    } finally {
+      setGeneratingAi(false);
+    }
+  };
+
+  const downloadTemplate = () => {
+    try {
+      const templateData = [
+        ['Name', 'Email', 'Phone', 'Company'],
+        ['John Doe', 'john@example.com', '9876543210', 'Example Corp'],
+        ['Jane Smith', 'jane@example.com', '9555123456', 'ACME Inc']
+      ];
+      
+      const ws = XLSX.utils.aoa_to_sheet(templateData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Recipient Template');
+      
+      if (Platform.OS === 'web') {
+        XLSX.writeFile(wb, 'crmlite_recipient_template.xlsx');
+      } else {
+        const wbout = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+        const uri = FileSystem.cacheDirectory + 'crmlite_recipient_template.xlsx';
+        FileSystem.writeAsStringAsync(uri, wbout, {
+          encoding: FileSystem.EncodingType.Base64,
+        }).then(() => {
+          Sharing.shareAsync(uri);
+        });
+      }
+      setSnackMsg('📥 Template download started!');
+    } catch (err) {
+      console.error('Failed to download template:', err);
+      setSnackMsg('❌ Failed to download template.');
+    }
+  };
+
+  const handleUploadFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: [
+          'text/csv',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'application/vnd.ms-excel'
+        ],
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const asset = result.assets[0];
+      let bstr = '';
+
+      if (Platform.OS === 'web') {
+        const file = asset.file;
+        if (!file) return;
+        bstr = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const data = e.target?.result;
+            resolve(data as string);
+          };
+          reader.onerror = (err) => reject(err);
+          reader.readAsBinaryString(file);
+        });
+      } else {
+        const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        const workbook = XLSX.read(base64, { type: 'base64' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 });
+        processRows(rows);
+        return;
+      }
+
+      const workbook = XLSX.read(bstr, { type: 'binary' });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json<any>(sheet, { header: 1 });
+      processRows(rows);
+
+    } catch (err: any) {
+      console.error('File parsing failed:', err);
+      setSnackMsg('❌ Failed to parse the selected file.');
+    }
+  };
+
+  const processRows = (rows: any[][]) => {
+    if (!rows || rows.length === 0) {
+      setSnackMsg('⚠️ The selected file is empty.');
+      return;
+    }
+
+    const headers = rows[0].map(h => String(h || '').toLowerCase().trim());
+    
+    let emailIdx = headers.findIndex(h => h.includes('email') || h.includes('mail'));
+    let nameIdx = headers.findIndex(h => h.includes('name') || h.includes('user') || h.includes('customer'));
+    let phoneIdx = headers.findIndex(h => h.includes('phone') || h.includes('mobile') || h.includes('contact'));
+
+    if (emailIdx === -1) {
+      const emailRegex = /\S+@\S+\.\S+/;
+      for (let r = 0; r < Math.min(rows.length, 5); r++) {
+        const row = rows[r];
+        if (row) {
+          const idx = row.findIndex(val => emailRegex.test(String(val || '')));
+          if (idx !== -1) {
+            emailIdx = idx;
+            break;
+          }
+        }
+      }
+    }
+
+    if (nameIdx === -1 && emailIdx !== -1) {
+      nameIdx = rows[0].findIndex((_, i) => i !== emailIdx && i !== phoneIdx);
+    }
+
+    if (emailIdx === -1) {
+      setSnackMsg('❌ Could not identify an Email column in the file.');
+      return;
+    }
+
+    const recipients: string[] = [];
+    const startRow = 1;
+    let skippedCount = 0;
+
+    for (let i = startRow; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row || row.length === 0) continue;
+
+      const email = String(row[emailIdx] || '').trim();
+      const name = nameIdx !== -1 ? String(row[nameIdx] || '').trim() : '';
+      const phone = phoneIdx !== -1 ? String(row[phoneIdx] || '').trim() : '';
+
+      let isValid = true;
+
+      // 1. Email format check
+      if (!email || !email.includes('@') || !email.includes('.')) {
+        isValid = false;
+      }
+
+      // 2. Phone check (if phone number is specified, verify it is digit-like)
+      if (isValid && phone) {
+        const cleanPhone = phone.replace(/[^0-9+]/g, '');
+        if (cleanPhone.length > 0 && cleanPhone.length < 7) {
+          isValid = false; // Too short to be a valid phone number
+        }
+      }
+
+      if (isValid) {
+        if (name) {
+          recipients.push(`${name} <${email}>`);
+        } else {
+          recipients.push(email);
+        }
+      } else {
+        skippedCount++;
+      }
+    }
+
+    if (recipients.length === 0) {
+      setSnackMsg(skippedCount > 0 
+        ? `⚠️ No valid recipients found. Skipped ${skippedCount} rows due to invalid data.`
+        : '⚠️ No valid email addresses found in the file.'
+      );
+      return;
+    }
+
+    setForm(f => {
+      const existing = f.manualRecipients.trim();
+      const delimiter = existing ? ', ' : '';
+      return {
+        ...f,
+        manualRecipients: existing + delimiter + recipients.join(', ')
+      };
+    });
+
+    if (skippedCount > 0) {
+      setSnackMsg(`📊 Imported ${recipients.length} recipients. Skipped ${skippedCount} rows due to validation.`);
+    } else {
+      setSnackMsg(`📊 Successfully imported ${recipients.length} recipients!`);
+    }
+  };
 
   // Detail dialog
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
@@ -308,6 +540,50 @@ export default function CustomEmailScreen() {
               <ScrollView showsVerticalScrollIndicator={true} contentContainerStyle={styles.dialogScrollContent}>
                 
                 <Text variant="labelMedium" style={styles.modernSectionLabel}>Email Content</Text>
+                
+                {/* AI Email Generation Section */}
+                <View style={styles.aiContainer}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 6 }}>
+                    <Ionicons name="sparkles" size={18} color="#0F766E" />
+                    <Text variant="labelMedium" style={{ fontWeight: '700', color: '#0F766E', fontSize: 13 }}>AI Email Writer</Text>
+                    {planType === 'FREE' && (
+                      <Chip compact style={{ backgroundColor: '#FEE2E2', height: 20 }} textStyle={{ color: '#EF4444', fontSize: 10, fontWeight: '700', lineHeight: 12 }}>
+                        PRO Feature
+                      </Chip>
+                    )}
+                  </View>
+                  
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TextInput
+                      placeholder="e.g. Write a summer sale promo email"
+                      value={aiPrompt}
+                      onChangeText={setAiPrompt}
+                      mode="outlined"
+                      dense
+                      style={{ flex: 1, backgroundColor: '#FAFAFA', fontSize: 13 }}
+                      outlineColor="#E2E8F0"
+                      activeOutlineColor="#0F766E"
+                      disabled={planType === 'FREE' || generatingAi}
+                    />
+                    <Button
+                      mode="contained"
+                      onPress={handleGenerateAiContent}
+                      loading={generatingAi}
+                      disabled={planType === 'FREE' || generatingAi}
+                      style={{ backgroundColor: planType === 'FREE' ? '#E2E8F0' : '#0F766E', borderRadius: 6 }}
+                      labelStyle={{ color: planType === 'FREE' ? '#94A3B8' : '#FFFFFF', fontSize: 12 }}
+                      compact
+                    >
+                      Write
+                    </Button>
+                  </View>
+                  {planType === 'FREE' && (
+                    <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 6, fontWeight: '500' }}>
+                      🔒 AI Content Generation is only available for PRO and Enterprise users. Please upgrade in settings.
+                    </Text>
+                  )}
+                </View>
+
                 <TextInput label="Subject *" value={form.subject}
                   onChangeText={(v) => setForm((f) => ({ ...f, subject: v }))}
                   mode="outlined" style={styles.modernInput}
@@ -332,6 +608,12 @@ export default function CustomEmailScreen() {
                   placeholder="https://yoursite.com/offer" style={styles.modernInput}
                   outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
 
+                {((!!form.ctaLabel.trim() && !form.ctaUrl.trim()) || (!form.ctaLabel.trim() && !!form.ctaUrl.trim())) && (
+                  <Text style={{ color: '#EF4444', fontSize: 11, marginTop: -8, marginBottom: 12, fontWeight: '500' }}>
+                    ⚠️ Both CTA Label and CTA URL must be provided to attach a Call to Action button.
+                  </Text>
+                )}
+
                 <Text variant="labelMedium" style={[styles.modernSectionLabel, { marginTop: 8 }]}>Recipients</Text>
                 <SegmentedButtons
                   value={form.recipientMode}
@@ -354,12 +636,43 @@ export default function CustomEmailScreen() {
                 )}
 
                 {form.recipientMode === 'MANUAL' && (
-                  <TextInput label="Email Addresses (comma-separated)" value={form.manualRecipients}
-                    onChangeText={(v) => setForm((f) => ({ ...f, manualRecipients: v }))}
-                    mode="outlined" multiline numberOfLines={3}
-                    placeholder="alice@example.com, bob@example.com"
-                    keyboardType="email-address" style={styles.modernInput}
-                    outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
+                  <View style={{ marginBottom: 16 }}>
+                    <TextInput label="Email Addresses (comma-separated)" value={form.manualRecipients}
+                      onChangeText={(v) => setForm((f) => ({ ...f, manualRecipients: v }))}
+                      mode="outlined" multiline numberOfLines={3}
+                      placeholder="alice@example.com, bob@example.com or John Doe <john@example.com>"
+                      keyboardType="email-address" style={[styles.modernInput, { marginBottom: 4 }]}
+                      outlineColor="#E2E8F0" activeOutlineColor="#0F766E" />
+                    
+                    <Text variant="bodySmall" style={{ color: '#64748B', marginBottom: 8, fontSize: 11, lineHeight: 15 }}>
+                      💡 Format: <Text style={{ fontWeight: 'bold' }}>Name &lt;email&gt;</Text> or simple <Text style={{ fontWeight: 'bold' }}>email</Text>. Placeholders like [User Name] or [Customer Name] in subject/body will be automatically replaced with their name.
+                    </Text>
+                    
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 4, alignItems: 'center' }}>
+                      <Button 
+                        mode="outlined" 
+                        onPress={handleUploadFile}
+                        icon="upload"
+                        textColor="#0F766E"
+                        style={{ borderColor: '#0F766E', borderRadius: 6 }}
+                        labelStyle={{ fontSize: 12 }}
+                        compact
+                      >
+                        Upload CSV / Excel
+                      </Button>
+                      
+                      <Button 
+                        mode="text" 
+                        onPress={downloadTemplate}
+                        icon="download"
+                        textColor="#64748B"
+                        labelStyle={{ fontSize: 12 }}
+                        compact
+                      >
+                        Download Template
+                      </Button>
+                    </View>
+                  </View>
                 )}
 
                 {/* Preview note */}
@@ -377,13 +690,22 @@ export default function CustomEmailScreen() {
             <View style={{ flexDirection: 'row' }}>
               <Button onPress={() => { setShowCompose(false); resetForm(); }} textColor="#64748B">Cancel</Button>
               <Button onPress={handleSaveDraft}
-                disabled={!form.subject.trim() || !form.body.trim()}
+                disabled={
+                  !form.subject.trim() || 
+                  !form.body.trim() || 
+                  (!!form.ctaLabel.trim() !== !!form.ctaUrl.trim())
+                }
                 textColor="#0F766E" style={{ marginLeft: 8 }}>
                 Save Draft
               </Button>
             </View>
             <Button mode="contained" onPress={handleSend} loading={sending}
-              disabled={!form.subject.trim() || !form.body.trim() || sending}
+              disabled={
+                !form.subject.trim() || 
+                !form.body.trim() || 
+                sending || 
+                (!!form.ctaLabel.trim() !== !!form.ctaUrl.trim())
+              }
               style={styles.primaryBtn} contentStyle={{ paddingHorizontal: 12 }}>
               Send Now
             </Button>
@@ -500,6 +822,14 @@ function infoRow(label: string, value: string) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 100 },
+  aiContainer: {
+    backgroundColor: '#F0FDFA',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
 
   statsBar: {
     flexDirection: 'row',

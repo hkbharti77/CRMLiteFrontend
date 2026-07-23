@@ -12,6 +12,8 @@ export interface Booking {
   status: 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   createdAt: string;
   updatedAt?: string;
+  ownerName?: string;
+  source?: string;
 }
 
 interface BookingState {

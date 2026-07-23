@@ -4,6 +4,7 @@ import { Text, TextInput, Button, SegmentedButtons, ActivityIndicator, Switch, M
 import { ChevronLeft } from 'lucide-react-native';
 import { flowConfigApi } from '../../services/api';
 import { colors, typography, sharedStyles } from '../../theme';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface MenuButtonsViewProps {
   menuItems: { title: string; desc: string; isCatalog?: boolean; customListId?: string }[];
@@ -22,20 +23,14 @@ interface MenuButtonsViewProps {
   tenantSubCategory: string;
   showAboutContact: boolean;
   setShowAboutContact: (val: boolean) => void;
-  reviewUrl: string;
-  setReviewUrl: (val: string) => void;
-  offerText: string;
-  setOfferText: (val: string) => void;
   sosNote: string;
   setSosNote: (val: string) => void;
   thirdButtonType: string;
   setThirdButtonType: (val: string) => void;
-  showTrustButton: boolean;
-  setShowTrustButton: (val: boolean) => void;
-  showOfferButton: boolean;
-  setShowOfferButton: (val: boolean) => void;
   showSosButton: boolean;
   setShowSosButton: (val: boolean) => void;
+  showSupportFormButton: boolean;
+  setShowSupportFormButton: (val: boolean) => void;
   customSubMenusJson: string;
   customMessagesJson: string;
 }
@@ -57,20 +52,14 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
   setReturningMessage,
   showAboutContact,
   setShowAboutContact,
-  reviewUrl,
-  setReviewUrl,
-  offerText,
-  setOfferText,
   sosNote,
   setSosNote,
   thirdButtonType,
   setThirdButtonType,
-  showTrustButton,
-  setShowTrustButton,
-  showOfferButton,
-  setShowOfferButton,
   showSosButton,
   setShowSosButton,
+  showSupportFormButton,
+  setShowSupportFormButton,
   customSubMenusJson,
   customMessagesJson
 }) => {
@@ -105,9 +94,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
   const [isEditingFeatures, setIsEditingFeatures]   = useState(false);
   const [featureLabels, setFeatureLabels]           = useState<Record<string, string>>({
     SOS: '🆘 Human Support',
-    TRUST: '⭐ Trust & Reviews',
-    OFFER: '🎁 Special Offer',
-    ABOUT: '📂 About & Contact'
+    ABOUT: '📂 About & Contact',
+    SUPPORT_FORM: '🎫 Get Support'
   });
 
   useEffect(() => {
@@ -128,7 +116,28 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
       .catch(() => {});
   }, [tenantSubCategory]);
 
+  const { flowType: baseFlowType, forceShowAppointment, forceShowBooking, forceShowLeads } = useAuthStore();
+
+  const hasAppointment = baseFlowType === 'APPOINTMENT' || forceShowAppointment;
+  const hasBooking = baseFlowType === 'BOOKING' || forceShowBooking;
+  const hasLead = baseFlowType === 'LEAD' || forceShowLeads || (!hasAppointment && !hasBooking);
+
+  const activeFlowCount = (hasAppointment ? 1 : 0) + (hasBooking ? 1 : 0) + (hasLead ? 1 : 0);
+
+  const getEmoji = (label: string) => {
+    if (!label) return '';
+    const match = label.match(/^([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g);
+    return match ? match[0] + ' ' : '';
+  };
+
   const fixedTriggerLabel = menuType === 'button' ? triggerButtonLabel : triggerListLabel;
+  const emojiPrefix = getEmoji(fixedTriggerLabel);
+
+  const activeFlows: string[] = [];
+  if (hasLead) activeFlows.push(`${emojiPrefix}Enquire Now`);
+  if (hasAppointment) activeFlows.push(`${emojiPrefix}Book Appointment`);
+  if (hasBooking) activeFlows.push(`${emojiPrefix}Book Service`);
+  if (activeFlows.length === 0) activeFlows.push(fixedTriggerLabel);
 
   const resolvePlaceholders = (): string[] => {
     const cat = (tenantCategory || '').toLowerCase();
@@ -147,13 +156,15 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
   const placeholders = resolvePlaceholders();
 
   const reservedFeatures: string[] = [];
-  if (showTrustButton && reviewUrl) reservedFeatures.push(featureLabels.TRUST);
-  if (showOfferButton && offerText) reservedFeatures.push(featureLabels.OFFER);
+  if (showSupportFormButton) reservedFeatures.push(featureLabels.SUPPORT_FORM);
   if (showAboutContact) reservedFeatures.push(featureLabels.ABOUT);
   if (showSosButton) reservedFeatures.push(featureLabels.SOS);
 
-  const reservedCount = menuType === 'button' ? 1 : reservedFeatures.length;
-  const maxManualSlots = (menuType === 'button' ? 1 : 9) - (menuType === 'list' ? reservedCount : 0);
+  const maxManualSlots = menuType === 'button'
+    ? Math.max(0, 3 - activeFlowCount - 1)
+    : Math.max(0, 10 - activeFlowCount - reservedFeatures.length);
+
+  const reservedCount = reservedFeatures.length;
 
   return (
     <View style={sharedStyles.container}>
@@ -303,54 +314,13 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
           </Text>
 
           <View style={styles.featureContainer}>
-            <View style={styles.featureHeader}>
-               <Text style={styles.featureTitle}>{featureLabels.TRUST}</Text>
-               <Switch 
-                 value={showTrustButton} 
-                 onValueChange={setShowTrustButton}
-                 color={colors.primary}
-                 disabled={!isEditingFeatures}
-               />
-            </View>
-            <TextInput
-              label="Review URL"
-              value={reviewUrl}
-              onChangeText={setReviewUrl}
-              mode="outlined"
-              style={sharedStyles.input}
-              outlineColor={colors.border}
-              activeOutlineColor={colors.primary}
-              placeholder="e.g. Google Maps Review URL"
-              editable={isEditingFeatures && showTrustButton}
-              left={<TextInput.Icon icon="star-outline" />}
-            />
-
-            <View style={styles.featureHeader}>
-               <Text style={styles.featureTitle}>{featureLabels.OFFER}</Text>
-               <Switch 
-                 value={showOfferButton} 
-                 onValueChange={setShowOfferButton}
-                 color={colors.primary}
-                 disabled={!isEditingFeatures}
-               />
-            </View>
-            <TextInput
-              label="Offer Details"
-              value={offerText}
-              onChangeText={setOfferText}
-              mode="outlined"
-              style={sharedStyles.input}
-              outlineColor={colors.border}
-              activeOutlineColor={colors.primary}
-              multiline
-              numberOfLines={2}
-              placeholder="e.g. Use code SAVE20 for 20% off!"
-              editable={isEditingFeatures && showOfferButton}
-              left={<TextInput.Icon icon="gift-outline" />}
-            />
-
-            <View style={styles.featureHeader}>
-               <Text style={styles.featureTitle}>{featureLabels.SOS}</Text>
+            <View style={[styles.featureHeader, { alignItems: 'flex-start', paddingVertical: 4 }]}>
+               <View style={{ flex: 1, marginRight: 10 }}>
+                 <Text style={styles.featureTitle}>{featureLabels.SOS}</Text>
+                 <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                   Allows customers to request direct assistance from a support agent.
+                 </Text>
+               </View>
                <Switch 
                  value={showSosButton} 
                  onValueChange={setShowSosButton}
@@ -363,13 +333,28 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
               value={sosNote}
               onChangeText={setSosNote}
               mode="outlined"
-              style={sharedStyles.input}
+              style={[sharedStyles.input, { marginTop: 6, marginBottom: 12 }]}
               outlineColor={colors.border}
               activeOutlineColor={colors.primary}
               placeholder="e.g. Call us at +91 98765 43210"
               editable={isEditingFeatures && showSosButton}
               left={<TextInput.Icon icon="account-supervisor-circle" />}
             />
+
+            <View style={[styles.featureHeader, { alignItems: 'flex-start', marginTop: 10, paddingVertical: 4 }]}>
+               <View style={{ flex: 1, marginRight: 10 }}>
+                 <Text style={styles.featureTitle}>{featureLabels.SUPPORT_FORM}</Text>
+                 <Text style={{ fontSize: 12, color: colors.muted, marginTop: 2 }}>
+                   Allows customers to submit structured tickets using the interactive Support Form flow on WhatsApp.
+                 </Text>
+               </View>
+               <Switch 
+                 value={showSupportFormButton} 
+                 onValueChange={setShowSupportFormButton}
+                 color={colors.primary}
+                 disabled={!isEditingFeatures}
+               />
+            </View>
           </View>
 
           <Text style={[typography.label, { marginTop: 10 }]}>Main Menu: Choose 3rd Button</Text>
@@ -378,9 +363,8 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
             onValueChange={setThirdButtonType}
             buttons={[
               { value: 'ABOUT', label: 'About', disabled: !isEditingFeatures },
-              { value: 'TRUST', label: 'Trust', disabled: !isEditingFeatures },
-              { value: 'OFFER', label: 'Offer', disabled: !isEditingFeatures },
               { value: 'SOS', label: 'SOS', disabled: !isEditingFeatures },
+              { value: 'SUPPORT_FORM', label: 'Support Form', disabled: !isEditingFeatures },
             ]}
             style={{ marginBottom: 20 }}
           />
@@ -431,22 +415,25 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
 
           <View style={styles.fixedSlot}>
             <View style={styles.fixedSlotHeader}>
-              <Text style={styles.fixedSlotBadge}>🔒 Fixed Flow Trigger</Text>
+              <Text style={styles.fixedSlotBadge}>🔒 Fixed Flow Trigger(s)</Text>
               <Text style={styles.fixedSlotNote}>Auto-set · Cannot be changed</Text>
             </View>
             {loadingLabels ? (
               <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: 8 }} />
             ) : (
-              <TextInput
-                label="Trigger Button (Fixed)"
-                value={fixedTriggerLabel}
-                editable={false}
-                mode="outlined"
-                style={styles.fixedInput}
-                outlineColor={colors.primary}
-                activeOutlineColor={colors.primary}
-                left={<TextInput.Icon icon="lock" color={colors.primary} />}
-              />
+              activeFlows.map((flowLabel, idx) => (
+                <TextInput
+                  key={idx}
+                  label={`Trigger Option ${idx + 1} (Fixed)`}
+                  value={flowLabel}
+                  editable={false}
+                  mode="outlined"
+                  style={[styles.fixedInput, { marginBottom: idx < activeFlows.length - 1 ? 10 : 4 }]}
+                  outlineColor={colors.primary}
+                  activeOutlineColor={colors.primary}
+                  left={<TextInput.Icon icon="lock" color={colors.primary} />}
+                />
+              ))
             )}
             <Text style={styles.fixedHint}>
               When a customer taps this, the automated {menuType === 'button' ? 'button' : 'list option'} will guide them through the booking/enquiry chat flow.
@@ -455,6 +442,15 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
 
           {/* ─── SLOTS 1+: EDITABLE MENU OPTIONS ─────────────────────────────── */}
           <Text style={[typography.label, { marginBottom: 10 }]}>Customizable Options</Text>
+
+          {maxManualSlots === 0 && (
+            <View style={[styles.hintBox, { marginTop: 0, marginBottom: 15 }]}>
+              <Text style={styles.hintTitle}>ℹ️ Capacity Reached</Text>
+              <Text style={styles.hintText}>
+                No manual options can be added because all available slots in the button menu are occupied by your enabled App Modules.
+              </Text>
+            </View>
+          )}
 
           {menuItems.map((item, index) => {
             if (index >= maxManualSlots) return null; 

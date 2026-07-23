@@ -13,6 +13,8 @@ export interface ChatListItemProps {
     timestamp: string;
     unreadCount?: number;
     channel?: 'whatsapp' | 'email' | 'web';
+    escalated?: boolean;
+    latestSentiment?: 'POSITIVE' | 'NEUTRAL' | 'FRUSTRATED' | 'URGENT';
   };
   onPress?: () => void;
   style?: any;
@@ -20,7 +22,7 @@ export interface ChatListItemProps {
 
 export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress, style }) => {
   const theme = useTheme();
-  const isUnread = chat.unreadCount && chat.unreadCount > 0;
+  const isUnread = Boolean(chat.unreadCount && chat.unreadCount > 0);
 
   return (
     <TouchableOpacity 
@@ -29,8 +31,8 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress, style
       style={[
         styles.container, 
         { 
-          backgroundColor: isUnread ? theme.colors.primaryContainer || '#E0F2F1' : theme.colors.surface,
-          borderColor: isUnread ? theme.colors.primary : tokens.colors.borderLight,
+          backgroundColor: chat.escalated ? '#FEF2F2' : isUnread ? (theme.colors.primaryContainer || '#E0F2F1') : theme.colors.surface,
+          borderColor: chat.escalated ? '#EF4444' : isUnread ? theme.colors.primary : tokens.colors.borderLight,
           shadowColor: tokens.colors.shadow,
         },
         style
@@ -50,7 +52,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress, style
             style={[
               styles.name, 
               { color: theme.colors.onSurface },
-              isUnread && { fontWeight: '700' }
+              Boolean(isUnread) && { fontWeight: '700' }
             ]} 
             numberOfLines={1}
           >
@@ -65,7 +67,7 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress, style
             style={[
               styles.message, 
               { color: isUnread ? theme.colors.onSurface : tokens.colors.textSecondary },
-              isUnread && { fontWeight: '600' }
+              Boolean(isUnread) && { fontWeight: '600' }
             ]} 
             numberOfLines={1}
           >
@@ -74,14 +76,20 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({ chat, onPress, style
           {isUnread ? (
             <View style={[styles.badge, { backgroundColor: theme.colors.primary }]}>
               <Text style={[styles.badgeText, { color: theme.colors.onPrimary || '#FFF' }]}>
-                {chat.unreadCount > 99 ? '99+' : chat.unreadCount}
+                {(chat.unreadCount || 0) > 99 ? '99+' : chat.unreadCount}
               </Text>
             </View>
           ) : null}
         </View>
         
-        {/* Tags / Channel Badge could go here. For now we will mock a small channel text if provided */}
-        {chat.channel && (
+        {chat.escalated && (
+          <View style={styles.escalationChip}>
+            <Text style={styles.escalationText}>🚨 Escalated - Human Agent Required</Text>
+          </View>
+        )}
+
+        {/* Tags / Channel Badge */}
+        {chat.channel && !chat.escalated && (
            <View style={[styles.channelBadge, { backgroundColor: tokens.colors.backgroundDark }]}>
              <Text style={[styles.channelText, { color: tokens.colors.textSecondary }]}>
                {chat.channel.toUpperCase()}
@@ -180,5 +188,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  escalationChip: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#EF4444',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginTop: 6,
+  },
+  escalationText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#DC2626',
   },
 });

@@ -1,5 +1,5 @@
 /**
- * ChatCRM Lite - Premium OTP Verification Screen
+ * GyanVaniAi Connect - Premium OTP Verification Screen
  * 
  * Alternative standalone OTP verification screen with premium design
  * Can be used as a separate screen or integrated into LoginScreen
@@ -175,7 +175,7 @@ export default function OtpVerificationScreen({
 
     try {
       const response = await authApi.verifyOtp(email, otp);
-      const { token, userId, tenantId, businessName, onboardingCompleted } =
+      const { token, userId, tenantId, businessName, role, onboardingCompleted } =
         response.data;
 
       await setToken(
@@ -184,6 +184,7 @@ export default function OtpVerificationScreen({
         tenantId,
         email,
         businessName || 'My Business',
+        role,
         onboardingCompleted
       );
 

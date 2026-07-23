@@ -9,6 +9,7 @@ import { tokens } from '@theme/tokens';
 import { AppSearchBar } from '@components/global/SearchBar/AppSearchBar';
 import { ChatListItem } from '@components/chat/ChatListItem';
 import { EmptyState } from '@components/global/EmptyState/EmptyState';
+import { WebChatList } from '@components/chat/WebChatList';
 
 const FILTERS = ['All', 'Unread', 'Assigned', 'Resolved', 'Today'];
 
@@ -19,6 +20,7 @@ export default function ChatListScreen({ navigation }: any) {
   const [refreshing, setRefreshing] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
   const [showSearch, setShowSearch] = useState(false);
+  const [activeTab, setActiveTab] = useState('whatsapp');
 
   const fetchChats = async () => {
     try {
@@ -96,6 +98,28 @@ export default function ChatListScreen({ navigation }: any) {
           </View>
         )}
 
+        {/* Channel Tabs */}
+        <View style={{ flexDirection: 'row', paddingHorizontal: tokens.spacing.lg, paddingBottom: tokens.spacing.md, gap: 10 }}>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { flex: 1, alignItems: 'center', backgroundColor: activeTab === 'whatsapp' ? theme.colors.primary : tokens.colors.background, borderColor: activeTab === 'whatsapp' ? theme.colors.primary : tokens.colors.border }
+            ]}
+            onPress={() => setActiveTab('whatsapp')}
+          >
+            <Text style={[styles.filterText, { color: activeTab === 'whatsapp' ? '#FFFFFF' : tokens.colors.textSecondary }]}>WhatsApp</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.filterChip,
+              { flex: 1, alignItems: 'center', backgroundColor: activeTab === 'web' ? theme.colors.primary : tokens.colors.background, borderColor: activeTab === 'web' ? theme.colors.primary : tokens.colors.border }
+            ]}
+            onPress={() => setActiveTab('web')}
+          >
+            <Text style={[styles.filterText, { color: activeTab === 'web' ? '#FFFFFF' : tokens.colors.textSecondary }]}>Web Widget</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Filter Chips */}
         <ScrollView 
           horizontal 
@@ -129,35 +153,42 @@ export default function ChatListScreen({ navigation }: any) {
       </View>
       
       {/* Conversation List */}
-      <FlatList
-        data={filteredChats}
-        keyExtractor={item => item.id}
-        renderItem={({ item }) => (
-          <ChatListItem
-            chat={{
-              id: item.id,
-              contactName: item.name || 'Unknown',
-              lastMessage: item.lastMessage || '',
-              timestamp: item.time || '',
-              unreadCount: item.unread,
-              // channel mock for showcase
-              channel: Math.random() > 0.5 ? 'whatsapp' : 'web',
-            }}
-            onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, name: item.name || 'Unknown' })}
-          />
-        )}
-        ListEmptyComponent={
-          <EmptyState 
-            title="No conversations yet" 
-            description="New customer messages will appear here." 
-            icon={<MessageSquare size={32} color={theme.colors.primary} />}
-            actionLabel="Start Conversation"
-            onAction={() => console.log('Start Conversation')}
-          />
-        }
-        contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
-      />
+      {activeTab === 'whatsapp' ? (
+        <FlatList
+          data={filteredChats}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <ChatListItem
+              chat={{
+                id: item.id,
+                contactName: item.name || 'Unknown',
+                lastMessage: item.lastMessage || '',
+                timestamp: item.time || '',
+                unreadCount: item.unread,
+                channel: 'whatsapp',
+              }}
+              onPress={() => navigation.navigate('ChatRoom', { chatId: item.id, name: item.name || 'Unknown' })}
+            />
+          )}
+          ListEmptyComponent={
+            <EmptyState 
+              title="No conversations yet" 
+              description="New customer messages will appear here." 
+              icon={<MessageSquare size={32} color={theme.colors.primary} />}
+              actionLabel="Start Conversation"
+              onAction={() => console.log('Start Conversation')}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[theme.colors.primary]} />}
+        />
+      ) : (
+        <WebChatList 
+           navigation={navigation} 
+           searchQuery={searchQuery} 
+           activeFilter={activeFilter} 
+        />
+      )}
       
       {/* Extended FAB */}
       <FAB

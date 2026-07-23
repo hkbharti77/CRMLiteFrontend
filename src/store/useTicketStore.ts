@@ -62,6 +62,8 @@ interface TicketStore {
   // Filters
   searchQuery: string;
   statusFilter: TicketStatus | 'ALL';
+  sortBy: 'createdAt' | 'name' | 'email' | 'phone';
+  sortOrder: 'asc' | 'desc';
   
   // Actions
   fetchTickets: () => Promise<void>;
@@ -86,6 +88,8 @@ interface TicketStore {
   setSelectedTicket: (ticket: Ticket | null) => void;
   setSearchQuery: (query: string) => void;
   setStatusFilter: (status: TicketStatus | 'ALL') => void;
+  setSortBy: (sortBy: 'createdAt' | 'name' | 'email' | 'phone') => void;
+  setSortOrder: (sortOrder: 'asc' | 'desc') => void;
   clearError: () => void;
   refreshStats: () => Promise<void>;
 }
@@ -99,6 +103,8 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
   stats: null,
   searchQuery: '',
   statusFilter: 'ALL',
+  sortBy: 'createdAt',
+  sortOrder: 'desc',
 
   // Fetch all tickets
   fetchTickets: async () => {
@@ -263,6 +269,14 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
     set({ statusFilter: status });
   },
 
+  setSortBy: (sortBy) => {
+    set({ sortBy });
+  },
+
+  setSortOrder: (sortOrder) => {
+    set({ sortOrder });
+  },
+
   clearError: () => {
     set({ error: null });
   },
@@ -283,11 +297,34 @@ export const useTicketStore = create<TicketStore>((set, get) => ({
 
 // Selectors for filtered data
 export const useFilteredTickets = () => {
-  const { tickets, statusFilter } = useTicketStore();
+  const { tickets, statusFilter, sortBy, sortOrder } = useTicketStore();
   
-  return tickets.filter((ticket) => {
+  const filtered = tickets.filter((ticket) => {
     if (statusFilter === 'ALL') return true;
     return ticket.status === statusFilter;
+  });
+
+  return [...filtered].sort((a, b) => {
+    let valA: any = '';
+    let valB: any = '';
+
+    if (sortBy === 'createdAt') {
+      valA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      valB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    } else if (sortBy === 'name') {
+      valA = (a.submitterName || '').toLowerCase();
+      valB = (b.submitterName || '').toLowerCase();
+    } else if (sortBy === 'email') {
+      valA = (a.submitterEmail || '').toLowerCase();
+      valB = (b.submitterEmail || '').toLowerCase();
+    } else if (sortBy === 'phone') {
+      valA = (a.submitterPhone || '').toLowerCase();
+      valB = (b.submitterPhone || '').toLowerCase();
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
   });
 };
 

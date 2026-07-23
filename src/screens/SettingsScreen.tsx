@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Platform, SafeAreaView, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { TextInput, Button, Title, Card, Text, Snackbar, ActivityIndicator, useTheme, Portal, Dialog, List } from 'react-native-paper';
 import { whatsappApi, userApi } from '../services/api';
 import { useAuthStore } from '../store/useAuthStore';
@@ -11,15 +12,26 @@ import AiKnowledgeBaseView from './settings/AiKnowledgeBaseView';
 import BusinessServicesScreen from './BusinessServicesScreen';
 import CustomSubMenusView from './settings/CustomSubMenusView';
 import CustomMessagesView from './settings/CustomMessagesView';
+import FlowCTAButtonsView from './settings/FlowCTAButtonsView';
 import SupportCategoriesView from './settings/SupportCategoriesView';
 import SystemHealthView from './settings/SystemHealthView';
 import FlowFieldsView from './settings/FlowFieldsView';
+import StaffManagementView from './settings/StaffManagementView';
+import BillingScreen from './settings/BillingScreen';
+import SubscriptionUpgradeScreen from './settings/SubscriptionUpgradeScreen';
+import GoogleIntegrationView from './settings/GoogleIntegrationView';
+import CustomBrandingView from './settings/CustomBrandingView';
+import CustomMenuCardsView from './settings/CustomMenuCardsView';
+import EmailTemplatesView from './settings/EmailTemplatesView';
+import { TemplateManagerView } from './settings/TemplateManagerView';
+import { SupportTicketModal } from '../components/modals/SupportTicketModal';
 import { 
   Settings, 
   Search, 
   ChevronRight, 
   LogOut, 
   User, 
+  Users,
   Shield, 
   MessageSquare, 
   Moon, 
@@ -33,7 +45,10 @@ import {
   Menu,
   Smartphone,
   Lock,
-  Globe
+  Globe,
+  CreditCard,
+  PaintBucket,
+  Mail
 } from 'lucide-react-native';
 
 import { AppAvatar } from '@components/global/Avatar/AppAvatar';
@@ -41,6 +56,7 @@ import { AppSearchBar } from '@components/global/SearchBar/AppSearchBar';
 
 const SettingsScreen = () => {
   const theme = useTheme();
+  const navigation = useNavigation<any>();
   const { clearToken, businessName } = useAuthStore();
   
   // ===== SETTINGS DATA =====
@@ -49,6 +65,10 @@ const SettingsScreen = () => {
   const [accessToken, setAccessToken] = useState('');
   const [verifyToken, setVerifyToken] = useState('chatcrm_secret_token');
   const [appSecret, setAppSecret] = useState('');
+  const [verifiedName, setVerifiedName] = useState('');
+  const [displayPhoneNumber, setDisplayPhoneNumber] = useState('');
+  const [qualityRating, setQualityRating] = useState('');
+  const [accountStatus, setAccountStatus] = useState('');
   const [interactiveMenuJson, setInteractiveMenuJson] = useState('');
   const [menuType, setMenuType] = useState('list');
   const [menuItems, setMenuItems] = useState<{ title: string; desc: string; isCatalog?: boolean; customListId?: string }[]>(
@@ -59,15 +79,17 @@ const SettingsScreen = () => {
   const [returningMessage, setReturningMessage] = useState('');
   
   // ===== DYNAMIC MENU STATES =====
-  const [reviewUrl, setReviewUrl] = useState('');
-  const [offerText, setOfferText] = useState('');
   const [sosNote, setSosNote] = useState('');
   const [thirdButtonType, setThirdButtonType] = useState('ABOUT');
-  const [showTrustButton, setShowTrustButton] = useState(true);
-  const [showOfferButton, setShowOfferButton] = useState(true);
   const [showSosButton, setShowSosButton] = useState(true);
+  const [showSupportFormButton, setShowSupportFormButton] = useState(true);
   const [customSubMenusJson, setCustomSubMenusJson] = useState('[]');
   const [customMessagesJson, setCustomMessagesJson] = useState('[]');
+  const [flowCancelMenuJson, setFlowCancelMenuJson] = useState('');
+  const [flowCompletionMenuJson, setFlowCompletionMenuJson] = useState('');
+  const [aiResponseMenuJson, setAiResponseMenuJson] = useState('');
+  const [guardrailMessageAbuse, setGuardrailMessageAbuse] = useState('');
+  const [guardrailMessageGibberish, setGuardrailMessageGibberish] = useState('');
   
   // ===== UI STATE =====
   const [accountProfile, setAccountProfile] = useState({
@@ -81,7 +103,14 @@ const SettingsScreen = () => {
     aboutUs: '',
     latitude: undefined as number | undefined,
     longitude: undefined as number | undefined,
-    logoUrl: ''
+    logoUrl: '',
+    primaryColor: '',
+    secondaryColor: '',
+    role: '' as string,
+    planType: '' as string,
+    forceShowBooking: null as boolean | null,
+    forceShowAppointment: null as boolean | null,
+    forceShowLeads: null as boolean | null
   });
   const [activeView, setActiveView] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,7 +160,14 @@ const SettingsScreen = () => {
           aboutUs: response.data.aboutUs || '',
           latitude: response.data.latitude || undefined,
           longitude: response.data.longitude || undefined,
-          logoUrl: response.data.logoUrl || ''
+          logoUrl: response.data.logoUrl || '',
+          primaryColor: response.data.primaryColor || '',
+          secondaryColor: response.data.secondaryColor || '',
+          role: response.data.role || '',
+          planType: response.data.planType || '',
+          forceShowBooking: response.data.forceShowBooking ?? null,
+          forceShowAppointment: response.data.forceShowAppointment ?? null,
+          forceShowLeads: response.data.forceShowLeads ?? null
         });
       }
     } catch (error) {
@@ -148,6 +184,10 @@ const SettingsScreen = () => {
         setAccessToken(response.data.accessToken || '');
         setVerifyToken(response.data.verifyToken || 'chatcrm_secret_token');
         setAppSecret(response.data.appSecret || '');
+        setVerifiedName(response.data.verifiedName || '');
+        setDisplayPhoneNumber(response.data.displayPhoneNumber || '');
+        setQualityRating(response.data.qualityRating || '');
+        setAccountStatus(response.data.accountStatus || '');
         
         const existingJson = response.data.interactiveMenuJson || '';
         setInteractiveMenuJson(existingJson);
@@ -156,15 +196,17 @@ const SettingsScreen = () => {
         setShowAboutContact(response.data.showAboutContact !== false); // default true
         
         // Dynamic Buttons
-        setReviewUrl(response.data.reviewUrl || '');
-        setOfferText(response.data.offerText || '');
         setSosNote(response.data.sosNote || '');
         setThirdButtonType(response.data.thirdButtonType || 'ABOUT');
-        setShowTrustButton(response.data.showTrustButton !== false);
-        setShowOfferButton(response.data.showOfferButton !== false);
         setShowSosButton(response.data.showSosButton !== false);
+        setShowSupportFormButton(response.data.showSupportFormButton !== false);
         setCustomSubMenusJson(response.data.customSubMenusJson || '[]');
         setCustomMessagesJson(response.data.customMessagesJson || '[]');
+        setFlowCancelMenuJson(response.data.flowCancelMenuJson || '');
+        setFlowCompletionMenuJson(response.data.flowCompletionMenuJson || '');
+        setAiResponseMenuJson(response.data.aiResponseMenuJson || '');
+        setGuardrailMessageAbuse(response.data.guardrailMessageAbuse || '');
+        setGuardrailMessageGibberish(response.data.guardrailMessageGibberish || '');
 
         // Pre-fill visual form
         if (existingJson) {
@@ -221,21 +263,46 @@ const SettingsScreen = () => {
         welcomeMessage,
         returningMessage,
         showAboutContact,
-        reviewUrl,
-        offerText,
         sosNote,
         thirdButtonType,
-        showTrustButton,
-        showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson,
+        aiResponseMenuJson,
+        guardrailMessageAbuse,
+        guardrailMessageGibberish
       });
       setSnackbarMsg('Meta credentials saved successfully!');
       setSnackbarVisible(true);
     } catch (error) {
       console.error('Error saving meta config:', error);
       Alert.alert('Error', 'Failed to save settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteMeta = async () => {
+    setLoading(true);
+    try {
+      await whatsappApi.deleteConfig();
+      setPhoneNumberId('');
+      setWabaId('');
+      setAccessToken('');
+      setVerifyToken('chatcrm_secret_token');
+      setAppSecret('');
+      setVerifiedName('');
+      setDisplayPhoneNumber('');
+      setQualityRating('');
+      setAccountStatus('');
+      setSnackbarMsg('Meta configuration deleted successfully!');
+      setSnackbarVisible(true);
+    } catch (error) {
+      console.error('Error deleting meta config:', error);
+      Alert.alert('Error', 'Failed to disconnect Meta configuration.');
     } finally {
       setLoading(false);
     }
@@ -257,15 +324,14 @@ const SettingsScreen = () => {
         welcomeMessage,
         returningMessage,
         showAboutContact,
-        reviewUrl,
-        offerText,
         sosNote,
         thirdButtonType,
-        showTrustButton,
-        showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson
       });
       setInteractiveMenuJson(newJson);
       setSnackbarMsg('Menu saved successfully!');
@@ -292,15 +358,14 @@ const SettingsScreen = () => {
         welcomeMessage,
         returningMessage,
         showAboutContact,
-        reviewUrl,
-        offerText,
         sosNote,
         thirdButtonType,
-        showTrustButton,
-        showOfferButton,
         showSosButton,
+        showSupportFormButton,
         customSubMenusJson,
-        customMessagesJson
+        customMessagesJson,
+        flowCancelMenuJson,
+        flowCompletionMenuJson
       });
       setSnackbarMsg('Greetings updated successfully!');
       setSnackbarVisible(true);
@@ -313,36 +378,74 @@ const SettingsScreen = () => {
   };
 
   const compileMenu = () => {
-    // ── DYNAMIC SLOT CALCULATION ──────────────────────────────────────────
-    // Count how many slots are taken by enabled dynamic features
-    const reservedFeatureCount = (showSosButton ? 1 : 0) + 
-                                (showAboutContact ? 1 : 0) + 
-                                ((showTrustButton && reviewUrl) ? 1 : 0) + 
-                                ((showOfferButton && offerText) ? 1 : 0);
+    const { flowType, forceShowAppointment, forceShowBooking, forceShowLeads } = useAuthStore.getState();
+    const hasAppointment = flowType === 'APPOINTMENT' || forceShowAppointment;
+    const hasBooking = flowType === 'BOOKING' || forceShowBooking;
+    const hasLead = flowType === 'LEAD' || forceShowLeads || (!hasAppointment && !hasBooking);
 
-    const maxManualAllowed = (menuType === 'button' ? 1 : 9) - (menuType === 'list' ? reservedFeatureCount : 0);
+    const activeFlowCount = (hasAppointment ? 1 : 0) + (hasBooking ? 1 : 0) + (hasLead ? 1 : 0);
+
+    // ── DYNAMIC SLOT CALCULATION ──────────────────────────────────────────
+    const reservedFeatureCount = (showSosButton ? 1 : 0) + 
+                                 (showAboutContact ? 1 : 0) +
+                                 (showSupportFormButton ? 1 : 0);
+
+    const maxManualAllowed = menuType === 'button'
+      ? Math.max(0, 3 - activeFlowCount - 1)
+      : Math.max(0, 10 - activeFlowCount - reservedFeatureCount);
 
     // Filter only the items that fit in the remaining manual capacity
     const validItems = menuItems.slice(0, maxManualAllowed).filter(i => i.title.trim() !== '');
 
-    if (validItems.length === 0 && !showAboutContact && !showSosButton) {
+    if (validItems.length === 0 && !showAboutContact && !showSosButton && !showSupportFormButton) {
       Alert.alert('Validation Error', 'Please add at least one menu item or enable a feature.');
       return null;
     }
 
     const platformMax = menuType === 'button' ? 3 : 10;
     const fixedLabel = menuType === 'button' ? triggerLabels.button : triggerLabels.list;
-    
-    if (validItems.length + 1 > platformMax) {
-      Alert.alert('Validation Error', `Maximum ${platformMax} items total allowed (including fixed trigger).`);
-      return null;
+
+    const getEmoji = (label: string) => {
+      if (!label) return '';
+      const match = label.match(/^([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g);
+      return match ? match[0] + ' ' : '';
+    };
+    const emojiPrefix = getEmoji(fixedLabel);
+
+    const activeFlows: any[] = [];
+    if (hasLead) {
+      activeFlows.push({
+        id: "trigger_flow_lead",
+        title: `${emojiPrefix}Enquire Now`.substring(0, 24),
+        description: menuType === 'list' ? "Submit an enquiry" : undefined
+      });
+    }
+    if (hasAppointment) {
+      activeFlows.push({
+        id: "trigger_flow_appointment",
+        title: `${emojiPrefix}Book Appointment`.substring(0, 24),
+        description: menuType === 'list' ? "Schedule a visit" : undefined
+      });
+    }
+    if (hasBooking) {
+      activeFlows.push({
+        id: "trigger_flow_booking",
+        title: `${emojiPrefix}Book Service`.substring(0, 24),
+        description: menuType === 'list' ? "Book our services" : undefined
+      });
+    }
+    if (activeFlows.length === 0) {
+      activeFlows.push({
+        id: "trigger_flow",
+        title: fixedLabel.substring(0, 24),
+        description: menuType === 'list' ? "Automated flow trigger" : undefined
+      });
     }
 
-    const triggerRow = {
-      id: "trigger_flow",
-      title: fixedLabel,
-      description: menuType === 'list' ? "Automated flow trigger" : undefined
-    };
+    if (validItems.length + activeFlows.length > platformMax) {
+      Alert.alert('Validation Error', `Maximum ${platformMax} items total allowed.`);
+      return null;
+    }
 
     const payload = {
       type: menuType,
@@ -352,11 +455,11 @@ const SettingsScreen = () => {
         {
           title: "Available Options",
           rows: [
-            triggerRow,
+            ...activeFlows,
             ...validItems.map((item, index) => ({
                id: item.isCatalog ? "view_services" : 
                    item.customListId ? item.customListId : `item_${index}`,
-               title: item.title.substring(0, 25).trim(),
+               title: item.title.substring(0, 24).trim(),
                description: (menuType === 'list' && item.desc) ? item.desc.substring(0, 72).trim() : undefined
             }))
           ]
@@ -449,6 +552,56 @@ const SettingsScreen = () => {
         <SecurityDashboard onBack={() => setActiveView(null)} />
       );
     }
+
+    if (activeView === 'google') {
+      return (
+        <GoogleIntegrationView onBack={() => setActiveView(null)} />
+      );
+    }
+
+    if (activeView === 'branding') {
+      return (
+        <CustomBrandingView 
+          accountProfile={accountProfile} 
+          setAccountProfile={setAccountProfile} 
+          handleSaveProfile={handleSaveProfile}
+          loading={loading}
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
+    
+    if (activeView === 'meta') {
+      return (
+        <MetaIntegrationView
+          phoneNumberId={phoneNumberId}
+          setPhoneNumberId={setPhoneNumberId}
+          wabaId={wabaId}
+          setWabaId={setWabaId}
+          accessToken={accessToken}
+          setAccessToken={setAccessToken}
+          verifyToken={verifyToken}
+          setVerifyToken={setVerifyToken}
+          appSecret={appSecret}
+          setAppSecret={setAppSecret}
+          verifiedName={verifiedName}
+          displayPhoneNumber={displayPhoneNumber}
+          qualityRating={qualityRating}
+          accountStatus={accountStatus}
+          handleSaveMeta={handleSaveMeta}
+          handleDeleteMeta={handleDeleteMeta}
+          userEmail={accountProfile.email}
+          loading={loading}
+          onBack={() => setActiveView(null)}
+        />
+      );
+    }
+
+    if (activeView === 'templates') {
+      return (
+        <TemplateManagerView onBack={() => setActiveView(null)} />
+      );
+    }
     
     if (activeView === 'buttons') {
       return (
@@ -469,20 +622,14 @@ const SettingsScreen = () => {
           setReturningMessage={setReturningMessage}
           showAboutContact={showAboutContact}
           setShowAboutContact={setShowAboutContact}
-          reviewUrl={reviewUrl}
-          setReviewUrl={setReviewUrl}
-          offerText={offerText}
-          setOfferText={setOfferText}
           sosNote={sosNote}
           setSosNote={setSosNote}
           thirdButtonType={thirdButtonType}
           setThirdButtonType={setThirdButtonType}
-          showTrustButton={showTrustButton}
-          setShowTrustButton={setShowTrustButton}
-          showOfferButton={showOfferButton}
-          setShowOfferButton={setShowOfferButton}
           showSosButton={showSosButton}
           setShowSosButton={setShowSosButton}
+          showSupportFormButton={showSupportFormButton}
+          setShowSupportFormButton={setShowSupportFormButton}
           customSubMenusJson={customSubMenusJson}
           customMessagesJson={customMessagesJson}
         />
@@ -501,8 +648,8 @@ const SettingsScreen = () => {
               await whatsappApi.saveConfig({
                 phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
                 interactiveMenuJson, welcomeMessage, returningMessage,
-                showAboutContact, reviewUrl, offerText, sosNote,
-                thirdButtonType, showTrustButton, showOfferButton, showSosButton,
+                showAboutContact, sosNote,
+                thirdButtonType, showSosButton,
                 customSubMenusJson,
                 customMessagesJson: json
               });
@@ -512,6 +659,56 @@ const SettingsScreen = () => {
             setActiveView(null);
           }}
           onBack={() => setActiveView(null)}
+        />
+      );
+    }
+
+    if (activeView === 'menu_builder') {
+      return <CustomMenuCardsView onBack={() => setActiveView(null)} />;
+    }
+
+    if (activeView === 'flow_cta_buttons') {
+      return (
+        <FlowCTAButtonsView
+          flowCancelMenuJson={flowCancelMenuJson}
+          flowCompletionMenuJson={flowCompletionMenuJson}
+          aiResponseMenuJson={aiResponseMenuJson}
+          customSubMenusJson={customSubMenusJson}
+          customMessagesJson={customMessagesJson}
+          guardrailMessageAbuse={guardrailMessageAbuse}
+          guardrailMessageGibberish={guardrailMessageGibberish}
+          setFlowCancelMenuJson={setFlowCancelMenuJson}
+          setFlowCompletionMenuJson={setFlowCompletionMenuJson}
+          setAiResponseMenuJson={setAiResponseMenuJson}
+          setGuardrailMessageAbuse={setGuardrailMessageAbuse}
+          setGuardrailMessageGibberish={setGuardrailMessageGibberish}
+          onSave={async (cancelJson, completionJson, aiResponseJson, guardrailMsgAbuse, guardrailMsgGibberish) => {
+            setFlowCancelMenuJson(cancelJson);
+            setFlowCompletionMenuJson(completionJson);
+            setAiResponseMenuJson(aiResponseJson);
+            setGuardrailMessageAbuse(guardrailMsgAbuse);
+            setGuardrailMessageGibberish(guardrailMsgGibberish);
+            try {
+              setLoading(true);
+              await whatsappApi.saveConfig({
+                phoneNumberId, wabaId, accessToken, verifyToken, appSecret,
+                interactiveMenuJson, welcomeMessage, returningMessage,
+                showAboutContact, sosNote,
+                thirdButtonType, showSosButton,
+                customSubMenusJson,
+                customMessagesJson,
+                flowCancelMenuJson: cancelJson,
+                flowCompletionMenuJson: completionJson,
+                aiResponseMenuJson: aiResponseJson,
+                guardrailMessageAbuse: guardrailMsgAbuse,
+                guardrailMessageGibberish: guardrailMsgGibberish
+              });
+              setSnackbarMsg('Flow CTA Buttons & Guardrail Message saved!');
+              setSnackbarVisible(true);
+            } catch (e) {} finally { setLoading(false); }
+          }}
+          onBack={() => setActiveView(null)}
+          loading={loading}
         />
       );
     }
@@ -529,7 +726,13 @@ const SettingsScreen = () => {
           setVerifyToken={setVerifyToken}
           appSecret={appSecret}
           setAppSecret={setAppSecret}
+          verifiedName={verifiedName}
+          displayPhoneNumber={displayPhoneNumber}
+          qualityRating={qualityRating}
+          accountStatus={accountStatus}
           handleSaveMeta={handleSaveMeta}
+          handleDeleteMeta={handleDeleteMeta}
+          userEmail={accountProfile.email}
           loading={loading}
           onBack={() => setActiveView(null)}
         />
@@ -561,6 +764,12 @@ const SettingsScreen = () => {
       );
     }
 
+    if (activeView === 'email_templates') {
+      return (
+        <EmailTemplatesView onBack={() => setActiveView(null)} />
+      );
+    }
+
     if (activeView === 'support_categories') {
       return (
         <SupportCategoriesView onBack={() => setActiveView(null)} />
@@ -576,6 +785,33 @@ const SettingsScreen = () => {
     if (activeView === 'flow_fields') {
       return (
         <FlowFieldsView onBack={() => setActiveView(null)} />
+      );
+    }
+
+    if (activeView === 'staff') {
+      return (
+        <StaffManagementView onBack={() => setActiveView(null)} />
+      );
+    }
+
+    if (activeView === 'billing') {
+      return (
+        <BillingScreen 
+          onBack={() => setActiveView(null)}
+          onUpgrade={() => setActiveView('upgrade')}
+        />
+      );
+    }
+
+    if (activeView === 'upgrade') {
+      return (
+        <SubscriptionUpgradeScreen 
+          onBack={() => setActiveView('billing')}
+          onSuccess={() => {
+            fetchProfile();
+            setActiveView('billing');
+          }}
+        />
       );
     }
 
@@ -605,10 +841,41 @@ const SettingsScreen = () => {
             onPress={() => setActiveView('security')}
             divider
           />
+          <SettingsItem
+            icon={<Globe size={20} color="#075E54" />}
+            title="Google Calendar & Meet"
+            description="Link Google account for online meetings"
+            onPress={() => setActiveView('google')}
+            divider={accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN'}
+          />
+          {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (
+            <SettingsItem
+              icon={<Users size={20} color="#075E54" />}
+              title="Staff Management"
+              description="Invite and manage employees"
+              onPress={() => setActiveView('staff')}
+              divider={accountProfile.role === 'OWNER'}
+            />
+          )}
+          {accountProfile.role === 'OWNER' && (
+            <SettingsItem
+              icon={<CreditCard size={20} color="#075E54" />}
+              title="Subscription & Billing"
+              description="Manage limits and pricing plans"
+              onPress={() => setActiveView('billing')}
+            />
+          )}
         </SettingsSection>
 
         {/* ===== APPEARANCE SECTION ===== */}
         <SettingsSection title="Appearance">
+          <SettingsItem
+            icon={<PaintBucket size={20} color="#075E54" />}
+            title="Custom Branding"
+            description="Bot logo and colors"
+            onPress={() => setActiveView('branding')}
+            divider
+          />
           <ToggleItem
             icon={<Moon size={20} color="#075E54" />}
             title="Dark Mode"
@@ -631,87 +898,126 @@ const SettingsScreen = () => {
         </SettingsSection>
 
         {/* ===== CONFIGURATION SECTION ===== */}
-        <SettingsSection title="Configuration">
-          <SettingsItem
-            icon={<Globe size={20} color="#075E54" />}
-            title="Meta Integration"
-            description="WhatsApp API credentials"
-            onPress={() => setActiveView('meta')}
-            divider
-          />
-          <SettingsItem
-            icon={<Menu size={20} color="#075E54" />}
-            title="Menu & Buttons"
-            description="Customize UI buttons"
-            onPress={() => setActiveView('buttons')}
-            divider
-          />
-          <SettingsItem
-            icon={<ShoppingBag size={20} color="#075E54" />}
-            title="Products & Services"
-            description="Manage your catalog"
-            onPress={() => setActiveView('services')}
-            divider
-          />
-          <SettingsItem
-            icon={<FileText size={20} color="#075E54" />}
-            title="Form Fields"
-            description="Customize WhatsApp form fields"
-            onPress={() => setActiveView('flow_fields')}
-            divider
-          />
-          <SettingsItem
-            icon={<Menu size={20} color="#075E54" />}
-            title="Custom Sub-Menus"
-            description="Create custom lists"
-            onPress={() => setActiveView('custom_menus')}
-            divider
-          />
-          <SettingsItem
-            icon={<MessageSquare size={20} color="#075E54" />}
-            title="Quick Responses"
-            description="Direct text & image replies"
-            onPress={() => setActiveView('messages')}
-          />
-        </SettingsSection>
+        {accountProfile.role === 'OWNER' && (
+          <SettingsSection title="Configuration">
+            <SettingsItem
+              icon={<Globe size={20} color="#075E54" />}
+              title="Meta Integration"
+              description="WhatsApp API credentials & Dual Connection Modes"
+              onPress={() => setActiveView('meta')}
+              divider
+            />
+            <SettingsItem
+              icon={<FileText size={20} color="#075E54" />}
+              title="WhatsApp Template Builder"
+              description="Create HSM message templates & sync Meta directory"
+              onPress={() => setActiveView('templates')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Menu & Buttons"
+              description="Customize UI buttons"
+              onPress={() => setActiveView('buttons')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Menu Builder"
+              description="Customize the main sidebar cards"
+              onPress={() => setActiveView('menu_builder')}
+              divider
+            />
+            <SettingsItem
+              icon={<ShoppingBag size={20} color="#075E54" />}
+              title="Products & Services"
+              description="Manage your catalog"
+              onPress={() => setActiveView('services')}
+              divider
+            />
+            <SettingsItem
+              icon={<FileText size={20} color="#075E54" />}
+              title="Form Fields"
+              description="Customize WhatsApp form fields"
+              onPress={() => setActiveView('flow_fields')}
+              divider
+            />
+            <SettingsItem
+              icon={<Menu size={20} color="#075E54" />}
+              title="Custom Sub-Menus"
+              description="Create custom lists"
+              onPress={() => setActiveView('custom_menus')}
+              divider
+            />
+            <SettingsItem
+              icon={<Mail size={20} color="#075E54" />}
+              title="Email Templates"
+              description="Automated lead follow-ups"
+              onPress={() => setActiveView('email_templates')}
+              divider
+            />
+            <SettingsItem
+              icon={<MessageSquare size={20} color="#075E54" />}
+              title="Quick Responses"
+              description="Direct text & image replies"
+              onPress={() => setActiveView('messages')}
+              divider
+            />
+            <SettingsItem
+              icon={<MessageSquare size={20} color="#075E54" />}
+              title="Flow CTA Buttons"
+              description="Buttons for cancel & complete"
+              onPress={() => setActiveView('flow_cta_buttons')}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== AI & KNOWLEDGE SECTION ===== */}
-        <SettingsSection title="AI & Knowledge">
-          <SettingsItem
-            icon={<Brain size={20} color="#075E54" />}
-            title="Knowledge Base"
-            description="Train your RAG bot"
-            onPress={() => setActiveView('knowledge_base')}
-            divider
-          />
-          <SettingsItem
-            icon={<HelpCircle size={20} color="#075E54" />}
-            title="Support Categories"
-            description="WhatsApp support requests"
-            onPress={() => setActiveView('support_categories')}
-          />
-        </SettingsSection>
+        {accountProfile.role === 'OWNER' && (
+          <SettingsSection title="AI & Knowledge">
+            <SettingsItem
+              icon={<Brain size={20} color="#075E54" />}
+              title="Knowledge Base"
+              description="Train your RAG bot"
+              onPress={() => setActiveView('knowledge_base')}
+              divider
+            />
+            <SettingsItem
+              icon={<HelpCircle size={20} color="#075E54" />}
+              title="Support Categories"
+              description="WhatsApp support requests"
+              onPress={() => setActiveView('support_categories')}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== SYSTEM SECTION ===== */}
-        <SettingsSection title="System">
-          <SettingsItem
-            icon={<Zap size={20} color="#075E54" />}
-            title="System Health"
-            description="Backend telemetry & status"
-            onPress={() => setActiveView('system_health')}
-          />
-        </SettingsSection>
+        {accountProfile.role === 'OWNER' && (
+          <SettingsSection title="System">
+            <SettingsItem
+              icon={<Zap size={20} color="#075E54" />}
+              title="System Health"
+              description="Backend telemetry & status"
+              onPress={() => setActiveView('system_health')}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== SUPPORT SECTION ===== */}
-        <SettingsSection title="Support & Help">
-          <TouchableOpacity style={styles.supportCard}>
-            <View style={styles.supportContent}>
-              <Text style={styles.supportTitle}>Need Help?</Text>
-              <Text style={styles.supportDescription}>Contact our support team for assistance</Text>
-            </View>
-            <ChevronRight size={20} color="#999" />
-          </TouchableOpacity>
-        </SettingsSection>
+        {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (
+          <SettingsSection title="Support & Help">
+            <TouchableOpacity 
+              style={styles.supportCard}
+              onPress={() => navigation.navigate('SupportTicketsList')}
+            >
+              <View style={styles.supportContent}>
+                <Text style={styles.supportTitle}>Need Help?</Text>
+                <Text style={styles.supportDescription}>Contact our support team for assistance</Text>
+              </View>
+              <ChevronRight size={20} color="#999" />
+            </TouchableOpacity>
+          </SettingsSection>
+        )}
 
         {/* ===== LOGOUT BUTTON ===== */}
         <TouchableOpacity 
@@ -725,7 +1031,7 @@ const SettingsScreen = () => {
 
         {/* ===== FOOTER =====  */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>ChatCRM Lite v1.0.0</Text>
+          <Text style={styles.footerText}>GyanVaniAi Connect v1.0.0</Text>
           <Text style={styles.footerSubtext}>© 2025 All rights reserved</Text>
         </View>
       </View>

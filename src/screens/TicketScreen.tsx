@@ -73,6 +73,8 @@ export default function TicketScreen({ navigation }: any) {
     selectedTicket,
     searchQuery,
     statusFilter,
+    sortBy,
+    sortOrder,
     fetchTickets,
     searchTickets,
     createTicket,
@@ -84,6 +86,8 @@ export default function TicketScreen({ navigation }: any) {
     setSelectedTicket,
     setSearchQuery,
     setStatusFilter,
+    setSortBy,
+    setSortOrder,
     clearError,
   } = useTicketStore();
 
@@ -92,6 +96,7 @@ export default function TicketScreen({ navigation }: any) {
   // ── State ────────────────────────────────────────────────────────────────
   const [refreshing, setRefreshing] = useState(false);
   const [snackMsg, setSnackMsg] = useState('');
+  const [showSortMenu, setShowSortMenu] = useState(false);
 
   // Detail view
   const [showDetail, setShowDetail] = useState(false);
@@ -276,6 +281,11 @@ export default function TicketScreen({ navigation }: any) {
                   🧑‍💼 {ticket.assignedToName}
                 </Text>
               )}
+              {ticket.source && ticket.source !== 'MANUAL' && (
+                <Text variant="bodySmall" style={styles.metaText}>
+                  {ticket.source === 'WHATSAPP' ? '📱 WhatsApp' : ticket.source === 'WEB_BOT' ? '🌐 Web Bot' : ticket.source === 'SUPPORT_FORM' ? '📝 Support Form' : ticket.source}
+                </Text>
+              )}
               <Text variant="bodySmall" style={[styles.metaText, { marginLeft: 'auto' }]}>
                 {ticket.createdAtHuman}
               </Text>
@@ -300,14 +310,107 @@ export default function TicketScreen({ navigation }: any) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Search bar */}
-      <Searchbar
-        placeholder="Search tickets..."
-        value={searchQuery}
-        onChangeText={handleSearch}
-        style={styles.searchBar}
-        inputStyle={{ fontSize: 14 }}
-      />
+      {/* Search Row */}
+      <View style={styles.searchRow}>
+        <Searchbar
+          placeholder="Search tickets..."
+          value={searchQuery}
+          onChangeText={handleSearch}
+          style={styles.searchBar}
+          inputStyle={{ fontSize: 14 }}
+        />
+        <Menu
+          visible={showSortMenu}
+          onDismiss={() => setShowSortMenu(false)}
+          anchor={
+            <IconButton
+              icon="sort"
+              mode="contained"
+              containerColor="#F1F5F9"
+              iconColor="#0F766E"
+              onPress={() => setShowSortMenu(true)}
+              style={styles.sortButton}
+            />
+          }
+          contentStyle={{ backgroundColor: '#FFFFFF' }}
+        >
+          <Menu.Item
+            leadingIcon="clock-outline"
+            title="Newest First"
+            onPress={() => {
+              setSortBy('createdAt');
+              setSortOrder('desc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Menu.Item
+            leadingIcon="clock-outline"
+            title="Oldest First"
+            onPress={() => {
+              setSortBy('createdAt');
+              setSortOrder('asc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Divider />
+          <Menu.Item
+            leadingIcon="account-outline"
+            title="Name (A-Z)"
+            onPress={() => {
+              setSortBy('name');
+              setSortOrder('asc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Menu.Item
+            leadingIcon="account-outline"
+            title="Name (Z-A)"
+            onPress={() => {
+              setSortBy('name');
+              setSortOrder('desc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Divider />
+          <Menu.Item
+            leadingIcon="email-outline"
+            title="Email (A-Z)"
+            onPress={() => {
+              setSortBy('email');
+              setSortOrder('asc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Menu.Item
+            leadingIcon="email-outline"
+            title="Email (Z-A)"
+            onPress={() => {
+              setSortBy('email');
+              setSortOrder('desc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Divider />
+          <Menu.Item
+            leadingIcon="phone-outline"
+            title="Phone (A-Z)"
+            onPress={() => {
+              setSortBy('phone');
+              setSortOrder('asc');
+              setShowSortMenu(false);
+            }}
+          />
+          <Menu.Item
+            leadingIcon="phone-outline"
+            title="Phone (Z-A)"
+            onPress={() => {
+              setSortBy('phone');
+              setSortOrder('desc');
+              setShowSortMenu(false);
+            }}
+          />
+        </Menu>
+      </View>
 
       {/* Status filter chips */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}
@@ -501,6 +604,14 @@ export default function TicketScreen({ navigation }: any) {
                       <Text style={{ color: '#DC2626', fontWeight: '600', fontSize: 12 }}>SLA Breached ⚠️</Text>
                     </View>
                   )}
+
+                  {selectedTicket.source && selectedTicket.source !== 'MANUAL' && (
+                    <View style={[styles.modernChip, { backgroundColor: '#F3F4F6', borderColor: '#E5E7EB', borderWidth: 1 }]}>
+                      <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 12 }}>
+                        {selectedTicket.source === 'WHATSAPP' ? '📱 WhatsApp' : selectedTicket.source === 'WEB_BOT' ? '🌐 Web Bot' : selectedTicket.source === 'SUPPORT_FORM' ? '📝 Support Form' : selectedTicket.source}
+                      </Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Info Cards Grid */}
@@ -640,7 +751,27 @@ function infoRow(label: string, value: string) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  searchBar: { margin: 12, borderRadius: 12, elevation: 1 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    marginTop: 12,
+    marginBottom: 4,
+    gap: 8,
+  },
+  searchBar: {
+    flex: 1,
+    borderRadius: 12,
+    elevation: 1,
+  },
+  sortButton: {
+    margin: 0,
+    borderRadius: 12,
+    height: 48,
+    width: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   filterRow: { maxHeight: 48, marginBottom: 4 },
   listContent: { padding: 12, paddingBottom: 100 },
 

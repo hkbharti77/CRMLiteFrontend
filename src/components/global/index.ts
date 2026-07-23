@@ -1,6 +1,6 @@
 export * from './Button/AppButton';
 export * from './Badge/StatusBadge';
-export * from './Badge/Chip';
+export * from './Badge/AppChip';
 export * from './Card/AppCard';
 export * from './EmptyState/EmptyState';
 export * from './Loader/FullPageLoader';
@@ -14,3 +14,5 @@ export * from './Toast/Toast';
 export * from './Divider/AppDivider';
 export * from './List/ListItem';
 export * from './List/SectionList';
+export * from './Modal/ConfirmDialog';
+

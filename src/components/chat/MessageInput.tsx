@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Text } from 'react-native';
+import { View, StyleSheet, TextInput, TouchableOpacity, ScrollView, Text, Platform } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { Send, Paperclip, Smile, Mic } from 'lucide-react-native';
 import { tokens } from '@theme/tokens';
@@ -29,6 +29,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
 
   const handleSuggestedReply = (reply: string) => {
     onSend(reply);
+  };
+
+  const handleKeyPress = (e: any) => {
+    if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   };
 
   return (
@@ -62,6 +69,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           placeholderTextColor={tokens.colors.textTertiary}
           value={text}
           onChangeText={setText}
+          onKeyPress={handleKeyPress}
           multiline
           maxLength={1000}
         />

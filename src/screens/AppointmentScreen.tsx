@@ -262,29 +262,26 @@ export default function AppointmentScreen({ navigation, route }: any) {
   // ── Generate Google Meet Link ─────────────────────────────────────────────
 
   const handleGenerateMeetLink = async (appt: Appointment, duration: number = 60) => {
-    if (!googleConnected) {
-      // Redirect user to connect Google
-      try {
-        const res = await integrationApi.getGoogleAuthUrl();
-        Linking.openURL(res.data.url);
-      } catch (e) {
-        setSnackMsg('❌ Could not get Google auth URL.');
-      }
-      return;
-    }
     setGeneratingMeetId(appt.id);
-    setShowMeetDurationDialog(false);
     try {
       const res = await appointmentApi.generateMeetLink(appt.id, duration);
       const link = res.data.meetLink;
       updateAppointment(appt.id, { ...appt, meetingLink: link });
-      setSnackMsg('✅ Google Meet link generated and emailed to client!');
+      setSnackMsg('✅ Google Meet link generated and sent to client via WhatsApp!');
     } catch (e: any) {
       const msg = e?.response?.data?.error || 'Failed to generate Meet link.';
       const code = e?.response?.data?.code;
-      if (code === 'GOOGLE_NOT_CONNECTED') {
+      if (code === 'GOOGLE_NOT_CONNECTED' || msg.includes('Google Calendar is not connected') || msg.includes('Google account')) {
         setGoogleConnected(false);
-        setSnackMsg('⚠️ Please connect your Google account first.');
+        setSnackMsg('⚠️ Opening Google sign-in to connect Google Calendar...');
+        try {
+          const authRes = await integrationApi.getGoogleAuthUrl();
+          if (authRes.data?.url) {
+            Linking.openURL(authRes.data.url);
+          }
+        } catch {
+          setSnackMsg('⚠️ Please connect your Google account in Settings.');
+        }
       } else {
         setSnackMsg(`❌ ${msg}`);
       }
@@ -417,22 +414,14 @@ export default function AppointmentScreen({ navigation, route }: any) {
                     icon="google"
                     loading={generatingMeetId === appt.id}
                     disabled={generatingMeetId === appt.id}
-                    onPress={() => {
-                      if (!googleConnected) {
-                        handleGenerateMeetLink(appt, 60);
-                      } else {
-                        setMeetDurationAppt(appt);
-                        setMeetDurationMinutes(60);
-                        setShowMeetDurationDialog(true);
-                      }
-                    }}
+                    onPress={() => handleGenerateMeetLink(appt, 60)}
                     style={[
                       styles.actionBtn,
                       { backgroundColor: theme.dark ? 'rgba(66,133,244,0.15)' : '#E8F0FE' }
                     ]}
                     textColor={theme.dark ? '#90CAF9' : '#1565C0'}
                   >
-                    {googleConnected ? 'Meet' : 'Connect'}
+                    Meet
                   </Button>
                 )}
                 <Button

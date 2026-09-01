@@ -72,7 +72,7 @@ export const WhatsAppConnectButton: React.FC<WhatsAppConnectButtonProps> = ({ on
         override_default_response_type: true,
         extras: {
           setup: {},
-          featureType: '',
+          featureType: 'coexistence',
           sessionInfoVersion: '3',
         },
       }

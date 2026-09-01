@@ -79,7 +79,7 @@ List<TicketCommentDTO> commentDTOs = comments.stream()
 
 **Test Ticket Creation:**
 ```bash
-curl -X POST "http://localhost:8080/api/v1/tickets" \
+curl -X POST "https://api.gyanvaniai.online/api/v1/tickets" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -91,7 +91,7 @@ curl -X POST "http://localhost:8080/api/v1/tickets" \
 
 **Test Public Support Form:**
 ```bash
-curl -X POST "http://localhost:8080/api/v1/public/support/e9f803ae-bf30-4a76-bad7-e39e76c91edf" \
+curl -X POST "https://api.gyanvaniai.online/api/v1/public/support/e9f803ae-bf30-4a76-bad7-e39e76c91edf" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",

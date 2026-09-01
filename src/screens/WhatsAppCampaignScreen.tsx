@@ -120,6 +120,11 @@ export default function WhatsAppCampaignScreen() {
   const [customTagInput, setCustomTagInput] = useState('');
   const [csvRecipients, setCsvRecipients] = useState<Array<{ phone: string; name?: string; email?: string }>>([]);
   const [csvFileName, setCsvFileName] = useState('');
+  const [csvUploadResult, setCsvUploadResult] = useState<any | null>(null);
+  const [uploadingCsv, setUploadingCsv] = useState(false);
+  const [filterConfig, setFilterConfig] = useState<{ filterColumns: string[]; filterRules: any[] } | null>(null);
+  const [appliedFilters, setAppliedFilters] = useState<Array<{ column: string; operator: string; value: string }>>([]);
+  const [filterMatchLogic, setFilterMatchLogic] = useState<'AND' | 'OR'>('AND');
   const [varMapping1, setVarMapping1] = useState('contact.name');
   const [varMapping2, setVarMapping2] = useState('lead.dealValue');
   const [testPhoneNumber, setTestPhoneNumber] = useState('');
@@ -151,12 +156,31 @@ export default function WhatsAppCampaignScreen() {
 
   useEffect(() => {
     fetchCampaigns();
+    // Load per-tenant broadcast upload filter config
+    campaignApi.getFilterConfig()
+      .then((res) => {
+        if (res.data) setFilterConfig(res.data);
+      })
+      .catch(() => {});
   }, [fetchCampaigns]);
 
   const onRefresh = () => {
     setRefreshing(true);
     fetchCampaigns();
   };
+
+  const getUniqueValuesForColumn = useCallback(
+    (colName: string) => {
+      if (!csvUploadResult?.validRows || !colName) return [];
+      const set = new Set<string>();
+      for (const row of csvUploadResult.validRows) {
+        const val = (row[colName] || '').toString().trim();
+        if (val) set.add(val);
+      }
+      return Array.from(set).sort((a, b) => a.localeCompare(b));
+    },
+    [csvUploadResult]
+  );
 
   const toggleLeadStatus = (status: string) => {
     if (selectedLeadStatuses.includes(status)) {
@@ -192,50 +216,77 @@ export default function WhatsAppCampaignScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const file = result.assets[0];
         setCsvFileName(file.name);
+        setUploadingCsv(true);
 
-        let parsedRows: any[] = [];
+        const formData = new FormData();
         if (Platform.OS === 'web') {
           const response = await fetch(file.uri);
-          const arrayBuffer = await response.arrayBuffer();
-          const wb = XLSX.read(arrayBuffer, { type: 'array' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          parsedRows = XLSX.utils.sheet_to_json(ws);
+          const blob = await response.blob();
+          formData.append('file', blob, file.name);
         } else {
-          const b64 = await FileSystem.readAsStringAsync(file.uri, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          const wb = XLSX.read(b64, { type: 'base64' });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          parsedRows = XLSX.utils.sheet_to_json(ws);
+          formData.append('file', {
+            uri: file.uri,
+            name: file.name,
+            type: file.mimeType || 'application/octet-stream',
+          } as any);
         }
 
-        const validRecipients: Array<{ phone: string; name?: string; email?: string }> = [];
-        for (const row of parsedRows) {
-          const phoneKey = Object.keys(row).find((k) =>
-            /phone|mobile|whatsapp|waid|number/i.test(k)
-          );
-          const nameKey = Object.keys(row).find((k) => /name|full/i.test(k));
-          const emailKey = Object.keys(row).find((k) => /email|mail/i.test(k));
-
-          const rawPhone = phoneKey ? String(row[phoneKey]).trim() : '';
-          if (rawPhone) {
-            validRecipients.push({
-              phone: rawPhone,
-              name: nameKey ? String(row[nameKey]).trim() : undefined,
-              email: emailKey ? String(row[emailKey]).trim() : undefined,
+        try {
+          const res = await campaignApi.uploadCsv(formData);
+          const resultData = res.data;
+          setCsvUploadResult(resultData);
+          setCsvRecipients(resultData.validRows || []);
+          setSnackbarMessage(`Loaded ${resultData.validPhoneCount} valid numbers from ${file.name}! (${resultData.detectedColumns?.length || 0} columns detected)`);
+        } catch (apiErr: any) {
+          // Fallback to client-side parsing
+          let parsedRows: any[] = [];
+          if (Platform.OS === 'web') {
+            const response = await fetch(file.uri);
+            const arrayBuffer = await response.arrayBuffer();
+            const wb = XLSX.read(arrayBuffer, { type: 'array' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            parsedRows = XLSX.utils.sheet_to_json(ws);
+          } else {
+            const b64 = await FileSystem.readAsStringAsync(file.uri, {
+              encoding: FileSystem.EncodingType.Base64,
             });
+            const wb = XLSX.read(b64, { type: 'base64' });
+            const ws = wb.Sheets[wb.SheetNames[0]];
+            parsedRows = XLSX.utils.sheet_to_json(ws);
           }
-        }
 
-        if (validRecipients.length === 0) {
-          setSnackbarMessage('No valid phone numbers found. Ensure column header contains "Phone" or "Mobile".');
-          return;
-        }
+          const validRecipients: Array<{ phone: string; name?: string; email?: string }> = [];
+          for (const row of parsedRows) {
+            const phoneKey = Object.keys(row).find((k) =>
+              /phone|mobile|whatsapp|waid|number/i.test(k)
+            );
+            const nameKey = Object.keys(row).find((k) => /name|full/i.test(k));
+            const emailKey = Object.keys(row).find((k) => /email|mail/i.test(k));
 
-        setCsvRecipients(validRecipients);
-        setSnackbarMessage(`Successfully loaded ${validRecipients.length} recipients from ${file.name}!`);
+            const rawPhone = phoneKey ? String(row[phoneKey]).trim() : '';
+            if (rawPhone) {
+              validRecipients.push({
+                phone: rawPhone,
+                name: nameKey ? String(row[nameKey]).trim() : undefined,
+                email: emailKey ? String(row[emailKey]).trim() : undefined,
+              });
+            }
+          }
+
+          if (validRecipients.length === 0) {
+            setSnackbarMessage('No valid phone numbers found. Ensure column header contains "Phone" or "Mobile".');
+            return;
+          }
+
+          setCsvRecipients(validRecipients);
+          setCsvUploadResult(null);
+          setSnackbarMessage(`Successfully loaded ${validRecipients.length} recipients from ${file.name}!`);
+        } finally {
+          setUploadingCsv(false);
+        }
       }
     } catch (err: any) {
+      setUploadingCsv(false);
       setSnackbarMessage('Failed to parse CSV/Excel file: ' + err.message);
     }
   };
@@ -260,11 +311,16 @@ export default function WhatsAppCampaignScreen() {
       }
       targetFilterJson = JSON.stringify({ leadStatuses: selectedLeadStatuses });
     } else if (targetType === 'CSV_EXCEL_UPLOAD') {
-      if (csvRecipients.length === 0) {
+      if (csvRecipients.length === 0 && (!csvUploadResult || csvUploadResult.validPhoneCount === 0)) {
         setSnackbarMessage('Please select a CSV or Excel file containing recipient phone numbers.');
         return;
       }
-      targetFilterJson = JSON.stringify({ csvRecipients });
+      targetFilterJson = JSON.stringify({
+        csvRecipients: csvUploadResult ? csvUploadResult.validRows : csvRecipients,
+        phoneColumn: csvUploadResult ? csvUploadResult.phoneColumnName : 'phone',
+        appliedFilters: appliedFilters.filter((f) => f.column && f.value.trim()),
+        filterMatchLogic,
+      });
     }
 
     try {
@@ -670,25 +726,190 @@ export default function WhatsAppCampaignScreen() {
                 <View style={styles.subFilterContainer}>
                   <Text style={styles.subFilterTitle}>📁 Upload Recipients from CSV or Excel</Text>
                   <Text style={styles.subFilterDesc}>
-                    Mandatory column: <Text style={{ fontWeight: '700' }}>Phone / Mobile / WhatsApp</Text>. Optional columns: Name, Email.
+                    Supports 20 to 100+ columns. Auto-detects phone columns & validates E.164 phone numbers.
                   </Text>
 
                   <Button
                     mode="contained"
                     icon="file-upload-outline"
                     onPress={handlePickDocument}
+                    loading={uploadingCsv}
+                    disabled={uploadingCsv}
                     style={{ marginVertical: 8 }}
                   >
-                    {csvFileName ? 'Change CSV / Excel File' : 'Select CSV / Excel File'}
+                    {uploadingCsv ? 'Parsing File...' : csvFileName ? 'Change CSV / Excel File' : 'Select CSV / Excel File'}
                   </Button>
+
+                  {/* Backend Validation Summary Stats */}
+                  {csvUploadResult && (
+                    <View style={styles.statsGridRow}>
+                      <View style={[styles.statItemBox, { backgroundColor: '#EFF6FF' }]}>
+                        <Text style={[styles.statValueText, { color: '#2563EB' }]}>
+                          {csvUploadResult.detectedColumns?.length || 0}
+                        </Text>
+                        <Text style={styles.statLabelText}>COLUMNS</Text>
+                      </View>
+                      <View style={[styles.statItemBox, { backgroundColor: '#ECFDF5' }]}>
+                        <Text style={[styles.statValueText, { color: '#059669' }]}>
+                          {csvUploadResult.validPhoneCount || 0}
+                        </Text>
+                        <Text style={styles.statLabelText}>VALID</Text>
+                      </View>
+                      <View style={[styles.statItemBox, { backgroundColor: '#FEF2F2' }]}>
+                        <Text style={[styles.statValueText, { color: '#DC2626' }]}>
+                          {csvUploadResult.invalidPhoneCount || 0}
+                        </Text>
+                        <Text style={styles.statLabelText}>INVALID</Text>
+                      </View>
+                      <View style={[styles.statItemBox, { backgroundColor: '#FFFBEB' }]}>
+                        <Text style={[styles.statValueText, { color: '#D97706' }]}>
+                          {csvUploadResult.duplicatePhoneCount || 0}
+                        </Text>
+                        <Text style={styles.statLabelText}>DUPLICATES</Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {csvUploadResult && csvUploadResult.phoneColumnName && (
+                    <Text style={{ fontSize: 11, color: '#059669', fontWeight: '700', marginTop: 6 }}>
+                      📱 Phone column auto-detected: "{csvUploadResult.phoneColumnName}"
+                    </Text>
+                  )}
+
+                  {/* Filter Builder for Column Filtering */}
+                  {csvUploadResult && (
+                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#CBD5E1' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B' }}>
+                          🎯 Segment Filters ({appliedFilters.length})
+                        </Text>
+                        <View style={{ flexDirection: 'row', gap: 4 }}>
+                          <Button
+                            mode={filterMatchLogic === 'AND' ? 'contained' : 'outlined'}
+                            compact
+                            onPress={() => setFilterMatchLogic('AND')}
+                          >
+                            AND (All)
+                          </Button>
+                          <Button
+                            mode={filterMatchLogic === 'OR' ? 'contained' : 'outlined'}
+                            compact
+                            onPress={() => setFilterMatchLogic('OR')}
+                          >
+                            OR (Any)
+                          </Button>
+                          <Button
+                            mode="outlined"
+                            compact
+                            onPress={() => {
+                              const cols = filterConfig?.filterColumns?.length
+                                ? filterConfig.filterColumns
+                                : csvUploadResult.detectedColumns || [];
+                              const defaultCol = cols[0] || '';
+                              setAppliedFilters((prev) => [...prev, { column: defaultCol, operator: 'EQUALS', value: '' }]);
+                            }}
+                          >
+                            + Add
+                          </Button>
+                        </View>
+                      </View>
+
+                      {appliedFilters.map((filter, index) => {
+                        const availableCols = filterConfig?.filterColumns?.length
+                          ? filterConfig.filterColumns
+                          : csvUploadResult.detectedColumns || [];
+                        const uniqueVals = getUniqueValuesForColumn(filter.column);
+
+                        return (
+                          <View key={index} style={{ marginBottom: 12, backgroundColor: '#F8FAFC', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                            <View style={styles.filterRuleRow}>
+                              <TextInput
+                                label="Column Name"
+                                value={filter.column}
+                                onChangeText={(val) => {
+                                  const newFilters = [...appliedFilters];
+                                  newFilters[index].column = val;
+                                  newFilters[index].value = '';
+                                  setAppliedFilters(newFilters);
+                                }}
+                                mode="outlined"
+                                dense
+                                style={{ flex: 1.2, marginRight: 4 }}
+                              />
+                              <TextInput
+                                label="Operator"
+                                value={filter.operator}
+                                onChangeText={(val) => {
+                                  const newFilters = [...appliedFilters];
+                                  newFilters[index].operator = val;
+                                  setAppliedFilters(newFilters);
+                                }}
+                                mode="outlined"
+                                dense
+                                style={{ flex: 1, marginRight: 4 }}
+                                placeholder="EQUALS"
+                              />
+                              <TextInput
+                                label="Value"
+                                value={filter.value}
+                                onChangeText={(val) => {
+                                  const newFilters = [...appliedFilters];
+                                  newFilters[index].value = val;
+                                  setAppliedFilters(newFilters);
+                                }}
+                                mode="outlined"
+                                dense
+                                style={{ flex: 1.5, marginRight: 4 }}
+                                placeholder={uniqueVals.length > 0 ? `Pick or type...` : `Filter value...`}
+                              />
+                              <TouchableOpacity
+                                onPress={() => {
+                                  setAppliedFilters(appliedFilters.filter((_, i) => i !== index));
+                                }}
+                                style={{ padding: 6 }}
+                              >
+                                <Text style={{ color: '#DC2626', fontWeight: '700', fontSize: 16 }}>✕</Text>
+                              </TouchableOpacity>
+                            </View>
+
+                            {/* Auto-extracted Values Quick Chips */}
+                            {filter.column && uniqueVals.length > 0 && (
+                              <View style={{ marginTop: 6 }}>
+                                <Text style={{ fontSize: 10, color: '#64748B', fontWeight: '600', marginBottom: 4 }}>
+                                  💡 Auto-detected in data ({uniqueVals.length} values):
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                  {uniqueVals.map((val) => (
+                                    <Chip
+                                      key={val}
+                                      compact
+                                      selected={filter.value === val}
+                                      onPress={() => {
+                                        const newFilters = [...appliedFilters];
+                                        newFilters[index].value = val;
+                                        setAppliedFilters(newFilters);
+                                      }}
+                                      style={{ marginRight: 4 }}
+                                    >
+                                      {val}
+                                    </Chip>
+                                  ))}
+                                </ScrollView>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
 
                   {csvRecipients.length > 0 && (
                     <View style={styles.csvSummaryBox}>
                       <Text style={styles.csvSummaryTitle}>
-                        ✅ {csvRecipients.length} Recipients Loaded ({csvFileName})
+                        ✅ {csvUploadResult ? csvUploadResult.validPhoneCount : csvRecipients.length} Recipients Loaded ({csvFileName})
                       </Text>
                       <Text style={styles.csvSampleText}>
-                        Sample: {csvRecipients.slice(0, 3).map((r) => `${r.name || 'Recipient'} (${r.phone})`).join(', ')}
+                        Sample: {csvRecipients.slice(0, 3).map((r: any) => `${r.name || r[csvUploadResult?.phoneColumnName || 'phone'] || 'Recipient'} (${r.phone || r[csvUploadResult?.phoneColumnName || 'phone'] || ''})`).join(', ')}
                         {csvRecipients.length > 3 ? '...' : ''}
                       </Text>
                     </View>
@@ -1014,5 +1235,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#64748B',
     marginBottom: 2,
+  },
+  statsGridRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginVertical: 8,
+  },
+  statItemBox: {
+    flex: 1,
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  statValueText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  statLabelText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 2,
+  },
+  filterRuleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
   },
 });

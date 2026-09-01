@@ -65,7 +65,8 @@ api.interceptors.response.use(
 
 export const authApi = {
   login: (email: string) => api.post('/auth/login', { email }),
-  verifyOtp: (email: string, otp: string) => api.post('/auth/verify', { email, otp }),
+  verifyOtp: (email: string, otp: string, displayName?: string, businessName?: string) =>
+    api.post('/auth/verify', { email, otp, displayName, businessName }),
 };
 
 export const crmApi = {
@@ -609,6 +610,13 @@ export const campaignApi = {
   cancelCampaign: (id: string) => api.post(`/whatsapp/campaigns/${id}/cancel`),
   getAnalytics: (id: string) => api.get(`/whatsapp/campaigns/${id}/analytics`),
   getAuditLogs: (id: string) => api.get(`/whatsapp/campaigns/${id}/audit-logs`),
+  uploadCsv: (formData: FormData) =>
+    api.post('/whatsapp/campaigns/upload-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  getFilterConfig: () => api.get('/whatsapp/campaigns/filter-config'),
+  updateFilterConfig: (config: { filterColumns: string[]; filterRules?: any[] }) =>
+    api.put('/whatsapp/campaigns/filter-config', config),
 };
 
 export const leadScoringApi = {
@@ -626,6 +634,27 @@ export const teamApi = {
   getPerformanceAnalytics: () => api.get('/team/analytics/performance'),
   assignLead: (leadId: string, agentId?: string) =>
     api.post(`/team/leads/${leadId}/assign`, agentId ? { agentId } : {}),
+};
+
+export interface FaqItemDto {
+  id?: string;
+  tenantId?: string;
+  question: string;
+  answer: string;
+  category?: string;
+  keywords?: string;
+  isActive?: boolean;
+  hitCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const faqApi = {
+  getFaqs: () => api.get<FaqItemDto[]>('/faq'),
+  createFaq: (data: Partial<FaqItemDto>) => api.post<FaqItemDto>('/faq', data),
+  updateFaq: (id: string, data: Partial<FaqItemDto>) => api.put<FaqItemDto>(`/faq/${id}`, data),
+  deleteFaq: (id: string) => api.delete(`/faq/${id}`),
+  createBatchFaqs: (items: Partial<FaqItemDto>[]) => api.post<FaqItemDto[]>('/faq/batch', items),
 };
 
 export default api;

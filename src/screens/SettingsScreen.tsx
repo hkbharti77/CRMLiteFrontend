@@ -713,32 +713,6 @@ const SettingsScreen = () => {
       );
     }
 
-    if (activeView === 'meta') {
-      return (
-        <MetaIntegrationView
-          phoneNumberId={phoneNumberId}
-          setPhoneNumberId={setPhoneNumberId}
-          wabaId={wabaId}
-          setWabaId={setWabaId}
-          accessToken={accessToken}
-          setAccessToken={setAccessToken}
-          verifyToken={verifyToken}
-          setVerifyToken={setVerifyToken}
-          appSecret={appSecret}
-          setAppSecret={setAppSecret}
-          verifiedName={verifiedName}
-          displayPhoneNumber={displayPhoneNumber}
-          qualityRating={qualityRating}
-          accountStatus={accountStatus}
-          handleSaveMeta={handleSaveMeta}
-          handleDeleteMeta={handleDeleteMeta}
-          userEmail={accountProfile.email}
-          loading={loading}
-          onBack={() => setActiveView(null)}
-        />
-      );
-    }
-
     if (activeView === 'knowledge_base') {
       return (
         <AiKnowledgeBaseView onBack={() => setActiveView(null)} />
@@ -815,6 +789,57 @@ const SettingsScreen = () => {
       );
     }
 
+    // Role check: allow full access for all tenant admins/owners or default user profiles
+    const normalizedRole = (accountProfile.role || '').toUpperCase();
+    const isAgent = normalizedRole === 'AGENT';
+    const isOwnerOrAdmin = !isAgent;
+
+    // Helper for real-time search filtering
+    const matchQuery = (title: string, desc?: string) => {
+      if (!searchQuery.trim()) return true;
+      const q = searchQuery.toLowerCase().trim();
+      return title.toLowerCase().includes(q) || (desc ? desc.toLowerCase().includes(q) : false);
+    };
+
+    // Items list per section for search filtering
+    const accountItems = [
+      { id: 'profile', title: 'Account Profile', desc: 'Manage your account details', action: () => setActiveView('account'), icon: <User size={20} color="#075E54" /> },
+      { id: 'security', title: 'Security & Privacy', desc: 'Password and authentication', action: () => setActiveView('security'), icon: <Shield size={20} color="#075E54" /> },
+      { id: 'google', title: 'Google Calendar & Meet', desc: 'Link Google account for online meetings', action: () => setActiveView('google'), icon: <Globe size={20} color="#075E54" /> },
+      ...(isOwnerOrAdmin ? [
+        { id: 'staff', title: 'Staff Management', desc: 'Invite and manage employees', action: () => setActiveView('staff'), icon: <Users size={20} color="#075E54" /> },
+        { id: 'billing', title: 'Subscription & Billing', desc: 'Manage limits and pricing plans', action: () => setActiveView('billing'), icon: <CreditCard size={20} color="#075E54" /> }
+      ] : [])
+    ].filter(i => matchQuery(i.title, i.desc));
+
+    const appearanceItems = [
+      { id: 'branding', title: 'Custom Branding', desc: 'Bot logo and colors', action: () => setActiveView('branding'), icon: <PaintBucket size={20} color="#075E54" /> }
+    ].filter(i => matchQuery(i.title, i.desc));
+
+    const configItems = isOwnerOrAdmin ? [
+      { id: 'meta', title: 'Meta Integration', desc: 'WhatsApp API credentials & Dual Connection Modes', action: () => setActiveView('meta'), icon: <Globe size={20} color="#075E54" /> },
+      { id: 'templates', title: 'WhatsApp Template Builder', desc: 'Create HSM message templates & sync Meta directory', action: () => setActiveView('templates'), icon: <FileText size={20} color="#075E54" /> },
+      { id: 'buttons', title: 'Menu & Buttons', desc: 'Customize UI buttons', action: () => setActiveView('buttons'), icon: <Menu size={20} color="#075E54" /> },
+      { id: 'menu_builder', title: 'Menu Builder', desc: 'Customize the main sidebar cards', action: () => setActiveView('menu_builder'), icon: <Menu size={20} color="#075E54" /> },
+      { id: 'services', title: 'Products & Services', desc: 'Manage your catalog', action: () => setActiveView('services'), icon: <ShoppingBag size={20} color="#075E54" /> },
+      { id: 'flow_fields', title: 'Form Fields', desc: 'Customize WhatsApp form fields', action: () => setActiveView('flow_fields'), icon: <FileText size={20} color="#075E54" /> },
+      { id: 'custom_menus', title: 'Custom Sub-Menus', desc: 'Create custom lists', action: () => setActiveView('custom_menus'), icon: <Menu size={20} color="#075E54" /> },
+      { id: 'email_templates', title: 'Email Templates', desc: 'Automated lead follow-ups', action: () => setActiveView('email_templates'), icon: <Mail size={20} color="#075E54" /> },
+      { id: 'messages', title: 'Quick Responses', desc: 'Direct text & image replies', action: () => setActiveView('messages'), icon: <MessageSquare size={20} color="#075E54" /> },
+      { id: 'flow_cta', title: 'Flow CTA Buttons', desc: 'Buttons for cancel & complete', action: () => setActiveView('flow_cta_buttons'), icon: <MessageSquare size={20} color="#075E54" /> }
+    ].filter(i => matchQuery(i.title, i.desc)) : [];
+
+    const aiItems = isOwnerOrAdmin ? [
+      { id: 'knowledge', title: 'Knowledge Base', desc: 'Train your RAG bot & 85% FAQ Engine', action: () => setActiveView('knowledge_base'), icon: <Brain size={20} color="#075E54" /> },
+      { id: 'support_cats', title: 'Support Categories', desc: 'WhatsApp support requests', action: () => setActiveView('support_categories'), icon: <HelpCircle size={20} color="#075E54" /> }
+    ].filter(i => matchQuery(i.title, i.desc)) : [];
+
+    const systemItems = isOwnerOrAdmin ? [
+      { id: 'health', title: 'System Health', desc: 'Backend telemetry & status', action: () => setActiveView('system_health'), icon: <Zap size={20} color="#075E54" /> }
+    ].filter(i => matchQuery(i.title, i.desc)) : [];
+
+    const showHelp = isOwnerOrAdmin && matchQuery('Need Help?', 'Contact our support team for assistance');
+
     // ===== MAIN SETTINGS HOME =====
     return (
       <View style={styles.mainContainer}>
@@ -827,184 +852,109 @@ const SettingsScreen = () => {
         </View>
 
         {/* ===== ACCOUNT SECTION ===== */}
-        <SettingsSection title="Account">
-          <SettingsItem
-            icon={<User size={20} color="#075E54" />}
-            title="Account Profile"
-            description="Manage your account details"
-            onPress={() => setActiveView('account')}
-          />
-          <SettingsItem
-            icon={<Shield size={20} color="#075E54" />}
-            title="Security & Privacy"
-            description="Password and authentication"
-            onPress={() => setActiveView('security')}
-            divider
-          />
-          <SettingsItem
-            icon={<Globe size={20} color="#075E54" />}
-            title="Google Calendar & Meet"
-            description="Link Google account for online meetings"
-            onPress={() => setActiveView('google')}
-            divider={accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN'}
-          />
-          {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (
-            <SettingsItem
-              icon={<Users size={20} color="#075E54" />}
-              title="Staff Management"
-              description="Invite and manage employees"
-              onPress={() => setActiveView('staff')}
-              divider={accountProfile.role === 'OWNER'}
-            />
-          )}
-          {accountProfile.role === 'OWNER' && (
-            <SettingsItem
-              icon={<CreditCard size={20} color="#075E54" />}
-              title="Subscription & Billing"
-              description="Manage limits and pricing plans"
-              onPress={() => setActiveView('billing')}
-            />
-          )}
-        </SettingsSection>
+        {accountItems.length > 0 && (
+          <SettingsSection title="Account">
+            {accountItems.map((item, idx) => (
+              <SettingsItem
+                key={item.id}
+                icon={item.icon}
+                title={item.title}
+                description={item.desc}
+                onPress={item.action}
+                divider={idx < accountItems.length - 1}
+              />
+            ))}
+          </SettingsSection>
+        )}
 
         {/* ===== APPEARANCE SECTION ===== */}
-        <SettingsSection title="Appearance">
-          <SettingsItem
-            icon={<PaintBucket size={20} color="#075E54" />}
-            title="Custom Branding"
-            description="Bot logo and colors"
-            onPress={() => setActiveView('branding')}
-            divider
-          />
-          <ToggleItem
-            icon={<Moon size={20} color="#075E54" />}
-            title="Dark Mode"
-            description="Coming soon"
-            enabled={darkMode}
-            onToggle={setDarkMode}
-            disabled
-          />
-        </SettingsSection>
+        {(appearanceItems.length > 0 || matchQuery('Dark Mode', 'Coming soon')) && (
+          <SettingsSection title="Appearance">
+            {appearanceItems.map((item, idx) => (
+              <SettingsItem
+                key={item.id}
+                icon={item.icon}
+                title={item.title}
+                description={item.desc}
+                onPress={item.action}
+                divider={true}
+              />
+            ))}
+            {matchQuery('Dark Mode', 'Coming soon') && (
+              <ToggleItem
+                icon={<Moon size={20} color="#075E54" />}
+                title="Dark Mode"
+                description="Coming soon"
+                enabled={darkMode}
+                onToggle={setDarkMode}
+                disabled
+              />
+            )}
+          </SettingsSection>
+        )}
 
         {/* ===== NOTIFICATIONS SECTION ===== */}
-        <SettingsSection title="Notifications">
-          <ToggleItem
-            icon={<Bell size={20} color="#075E54" />}
-            title="Enable Notifications"
-            description="Stay updated with messages"
-            enabled={notificationsEnabled}
-            onToggle={setNotificationsEnabled}
-          />
-        </SettingsSection>
+        {matchQuery('Enable Notifications', 'Stay updated with messages') && (
+          <SettingsSection title="Notifications">
+            <ToggleItem
+              icon={<Bell size={20} color="#075E54" />}
+              title="Enable Notifications"
+              description="Stay updated with messages"
+              enabled={notificationsEnabled}
+              onToggle={setNotificationsEnabled}
+            />
+          </SettingsSection>
+        )}
 
         {/* ===== CONFIGURATION SECTION ===== */}
-        {accountProfile.role === 'OWNER' && (
+        {configItems.length > 0 && (
           <SettingsSection title="Configuration">
-            <SettingsItem
-              icon={<Globe size={20} color="#075E54" />}
-              title="Meta Integration"
-              description="WhatsApp API credentials & Dual Connection Modes"
-              onPress={() => setActiveView('meta')}
-              divider
-            />
-            <SettingsItem
-              icon={<FileText size={20} color="#075E54" />}
-              title="WhatsApp Template Builder"
-              description="Create HSM message templates & sync Meta directory"
-              onPress={() => setActiveView('templates')}
-              divider
-            />
-            <SettingsItem
-              icon={<Menu size={20} color="#075E54" />}
-              title="Menu & Buttons"
-              description="Customize UI buttons"
-              onPress={() => setActiveView('buttons')}
-              divider
-            />
-            <SettingsItem
-              icon={<Menu size={20} color="#075E54" />}
-              title="Menu Builder"
-              description="Customize the main sidebar cards"
-              onPress={() => setActiveView('menu_builder')}
-              divider
-            />
-            <SettingsItem
-              icon={<ShoppingBag size={20} color="#075E54" />}
-              title="Products & Services"
-              description="Manage your catalog"
-              onPress={() => setActiveView('services')}
-              divider
-            />
-            <SettingsItem
-              icon={<FileText size={20} color="#075E54" />}
-              title="Form Fields"
-              description="Customize WhatsApp form fields"
-              onPress={() => setActiveView('flow_fields')}
-              divider
-            />
-            <SettingsItem
-              icon={<Menu size={20} color="#075E54" />}
-              title="Custom Sub-Menus"
-              description="Create custom lists"
-              onPress={() => setActiveView('custom_menus')}
-              divider
-            />
-            <SettingsItem
-              icon={<Mail size={20} color="#075E54" />}
-              title="Email Templates"
-              description="Automated lead follow-ups"
-              onPress={() => setActiveView('email_templates')}
-              divider
-            />
-            <SettingsItem
-              icon={<MessageSquare size={20} color="#075E54" />}
-              title="Quick Responses"
-              description="Direct text & image replies"
-              onPress={() => setActiveView('messages')}
-              divider
-            />
-            <SettingsItem
-              icon={<MessageSquare size={20} color="#075E54" />}
-              title="Flow CTA Buttons"
-              description="Buttons for cancel & complete"
-              onPress={() => setActiveView('flow_cta_buttons')}
-            />
+            {configItems.map((item, idx) => (
+              <SettingsItem
+                key={item.id}
+                icon={item.icon}
+                title={item.title}
+                description={item.desc}
+                onPress={item.action}
+                divider={idx < configItems.length - 1}
+              />
+            ))}
           </SettingsSection>
         )}
 
         {/* ===== AI & KNOWLEDGE SECTION ===== */}
-        {accountProfile.role === 'OWNER' && (
+        {aiItems.length > 0 && (
           <SettingsSection title="AI & Knowledge">
-            <SettingsItem
-              icon={<Brain size={20} color="#075E54" />}
-              title="Knowledge Base"
-              description="Train your RAG bot"
-              onPress={() => setActiveView('knowledge_base')}
-              divider
-            />
-            <SettingsItem
-              icon={<HelpCircle size={20} color="#075E54" />}
-              title="Support Categories"
-              description="WhatsApp support requests"
-              onPress={() => setActiveView('support_categories')}
-            />
+            {aiItems.map((item, idx) => (
+              <SettingsItem
+                key={item.id}
+                icon={item.icon}
+                title={item.title}
+                description={item.desc}
+                onPress={item.action}
+                divider={idx < aiItems.length - 1}
+              />
+            ))}
           </SettingsSection>
         )}
 
         {/* ===== SYSTEM SECTION ===== */}
-        {accountProfile.role === 'OWNER' && (
+        {systemItems.length > 0 && (
           <SettingsSection title="System">
-            <SettingsItem
-              icon={<Zap size={20} color="#075E54" />}
-              title="System Health"
-              description="Backend telemetry & status"
-              onPress={() => setActiveView('system_health')}
-            />
+            {systemItems.map((item) => (
+              <SettingsItem
+                key={item.id}
+                icon={item.icon}
+                title={item.title}
+                description={item.desc}
+                onPress={item.action}
+              />
+            ))}
           </SettingsSection>
         )}
 
         {/* ===== SUPPORT SECTION ===== */}
-        {(accountProfile.role === 'OWNER' || accountProfile.role === 'ADMIN') && (
+        {showHelp && (
           <SettingsSection title="Support & Help">
             <TouchableOpacity 
               style={styles.supportCard}
@@ -1211,7 +1161,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 12,
-    paddingBottom: 32,
+    paddingBottom: 120,
   },
   mainContainer: {
     flex: 1,

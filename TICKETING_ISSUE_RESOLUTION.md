@@ -27,7 +27,7 @@
 ### **Method 1: Use Debug Endpoint (Immediate)**
 ```bash
 # Create ticket via debug endpoint
-curl -X POST "http://localhost:8080/api/v1/debug/simple-ticket" \
+curl -X POST "https://api.gyanvaniai.online/api/v1/debug/simple-ticket" \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"subject":"Test Ticket","description":"Testing"}'
@@ -36,7 +36,7 @@ curl -X POST "http://localhost:8080/api/v1/debug/simple-ticket" \
 ### **Method 2: Test Public Support Form**
 ```bash
 # Use correct user ID
-curl -X POST "http://localhost:8080/api/v1/public/support/e9f803ae-bf30-4a76-bad7-e39e76c91edf" \
+curl -X POST "https://api.gyanvaniai.online/api/v1/public/support/e9f803ae-bf30-4a76-bad7-e39e76c91edf" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
@@ -68,7 +68,7 @@ The `toDTO` method needs debugging. Current error handling added as temporary fi
 ### **Fix 2: Public Support Form**
 Update the public support form URL to use correct user ID:
 ```
-http://localhost:8080/support-form.html?businessId=e9f803ae-bf30-4a76-bad7-e39e76c91edf
+https://api.gyanvaniai.online/support-form.html?businessId=e9f803ae-bf30-4a76-bad7-e39e76c91edf
 ```
 
 ### **Fix 3: User Profile API**

@@ -25,7 +25,10 @@ export default function ChatListScreen({ navigation }: any) {
   const fetchChats = async () => {
     try {
       const response = await messageApi.getChats();
-      setChats(response.data);
+      const activeChats = (response.data || []).filter(
+        (c: any) => c.lastMessage && c.lastMessage !== 'No messages yet' && c.time
+      );
+      setChats(activeChats);
     } catch (error) {
       console.error('Error fetching chats:', error);
     }

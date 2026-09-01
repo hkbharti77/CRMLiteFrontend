@@ -27,7 +27,7 @@ Your ticketing system is **fully implemented** and ready to use! Here's what's b
 ```bash
 cd CRMLiteBackedn
 mvn spring-boot:run
-# Should start on http://localhost:8080
+# Should start on https://api.gyanvaniai.online
 ```
 
 **Frontend:**
@@ -67,7 +67,7 @@ npm start
 
 The public support form is available at:
 ```
-http://localhost:8080/support-form.html?businessId=YOUR_USER_ID
+https://api.gyanvaniai.online/support-form.html?businessId=YOUR_USER_ID
 ```
 
 **To find your business ID:**

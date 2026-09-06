@@ -88,6 +88,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
 
   const [triggerButtonLabel, setTriggerButtonLabel] = useState<string>('Chat with us');
   const [triggerListLabel, setTriggerListLabel]     = useState<string>('Select an Option');
+  const [leadLabel, setLeadLabel]                   = useState<string>('💻 Enquire Now');
+  const [appointmentLabel, setAppointmentLabel]     = useState<string>('🗓️ Book Appointment');
+  const [bookingLabel, setBookingLabel]             = useState<string>('✂️ Book Service');
   const [loadingLabels, setLoadingLabels]            = useState(true);
   const [isEditingGreetings, setIsEditingGreetings] = useState(false);
   const [isEditingButtons, setIsEditingButtons]     = useState(false);
@@ -104,6 +107,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
       .then((res: any) => {
         setTriggerButtonLabel(res.data?.triggerButtonLabel || '📅 Book Now');
         setTriggerListLabel(res.data?.triggerListLabel   || '📅 Book / Enquire Now');
+        setLeadLabel(res.data?.leadLabel || '💻 Enquire Now');
+        setAppointmentLabel(res.data?.appointmentLabel || '🗓️ Book Appointment');
+        setBookingLabel(res.data?.bookingLabel || '✂️ Book Service');
       })
       .catch(() => {})
       .finally(() => setLoadingLabels(false));
@@ -134,9 +140,9 @@ const MenuButtonsView: React.FC<MenuButtonsViewProps> = ({
   const emojiPrefix = getEmoji(fixedTriggerLabel);
 
   const activeFlows: string[] = [];
-  if (hasLead) activeFlows.push(`${emojiPrefix}Enquire Now`);
-  if (hasAppointment) activeFlows.push(`${emojiPrefix}Book Appointment`);
-  if (hasBooking) activeFlows.push(`${emojiPrefix}Book Service`);
+  if (hasLead) activeFlows.push(leadLabel || `${emojiPrefix}Enquire Now`);
+  if (hasAppointment) activeFlows.push(appointmentLabel || `${emojiPrefix}Book Appointment`);
+  if (hasBooking) activeFlows.push(bookingLabel || `${emojiPrefix}Book Service`);
   if (activeFlows.length === 0) activeFlows.push(fixedTriggerLabel);
 
   const resolvePlaceholders = (): string[] => {

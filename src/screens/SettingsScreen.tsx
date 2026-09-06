@@ -123,7 +123,14 @@ const SettingsScreen = () => {
   const [snackbarMsg, setSnackbarMsg] = useState('');
   const [logoutDialogVisible, setLogoutDialogVisible] = useState(false);
   
-  const [triggerLabels, setTriggerLabels] = useState({ button: '📅 Book Now', list: '📅 Book / Enquire Now', services: '📋 View Services' });
+  const [triggerLabels, setTriggerLabels] = useState({ 
+    button: '📅 Book Now', 
+    list: '📅 Book / Enquire Now', 
+    services: '📋 View Services',
+    lead: '💻 Enquire Now',
+    appointment: '🗓️ Book Appointment',
+    booking: '✂️ Book Service'
+  });
 
   useEffect(() => {
     fetchConfig();
@@ -135,11 +142,13 @@ const SettingsScreen = () => {
     try {
       const { flowConfigApi } = require('../services/api');
       const response = await flowConfigApi.getTriggerLabels();
-      if (response.data) {
         setTriggerLabels({
           button: response.data.triggerButtonLabel,
           list: response.data.triggerListLabel,
-          services: response.data.servicesLabel || '📋 View Services'
+          services: response.data.servicesLabel || '📋 View Services',
+          lead: response.data.leadLabel || '💻 Enquire Now',
+          appointment: response.data.appointmentLabel || '🗓️ Book Appointment',
+          booking: response.data.bookingLabel || '✂️ Book Service'
         });
       }
     } catch (e) {}
@@ -416,21 +425,21 @@ const SettingsScreen = () => {
     if (hasLead) {
       activeFlows.push({
         id: "trigger_flow_lead",
-        title: `${emojiPrefix}Enquire Now`.substring(0, 24),
+        title: (triggerLabels.lead || `${emojiPrefix}Enquire Now`).substring(0, 24),
         description: menuType === 'list' ? "Submit an enquiry" : undefined
       });
     }
     if (hasAppointment) {
       activeFlows.push({
         id: "trigger_flow_appointment",
-        title: `${emojiPrefix}Book Appointment`.substring(0, 24),
+        title: (triggerLabels.appointment || `${emojiPrefix}Book Appointment`).substring(0, 24),
         description: menuType === 'list' ? "Schedule a visit" : undefined
       });
     }
     if (hasBooking) {
       activeFlows.push({
         id: "trigger_flow_booking",
-        title: `${emojiPrefix}Book Service`.substring(0, 24),
+        title: (triggerLabels.booking || `${emojiPrefix}Book Service`).substring(0, 24),
         description: menuType === 'list' ? "Book our services" : undefined
       });
     }

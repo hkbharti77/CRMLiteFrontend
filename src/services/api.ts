@@ -534,7 +534,10 @@ export const customEmailApi = {
   getHistory: (page = 0, size = 20) => api.get(`/custom-emails?page=${page}&size=${size}`),
   getById: (id: string) => api.get(`/custom-emails/${id}`),
   resend: (id: string) => api.post(`/custom-emails/${id}/resend`),
-  generateAi: (prompt: string) => api.post('/custom-emails/generate-ai', { prompt }),
+  generateAi: (prompt: string) => api.post('/custom-emails/ai/generate-content', { prompt }),
+  getSuppressions: () => api.get('/email-suppressions'),
+  addSuppression: (email: string, reason = 'MANUAL') => api.post('/email-suppressions', { email, reason }),
+  deleteSuppression: (id: string) => api.delete(`/email-suppressions/${id}`),
 };
 
 export const emailTemplateApi = {

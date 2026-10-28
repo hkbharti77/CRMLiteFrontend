@@ -33,7 +33,7 @@ import * as Sharing from 'expo-sharing';
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type RecipientMode = 'ALL' | 'TAGGED' | 'MANUAL';
-type EmailStatus = 'DRAFT' | 'SENT' | 'FAILED';
+type EmailStatus = 'DRAFT' | 'SCHEDULED' | 'SENDING' | 'PAUSED' | 'CANCELLED' | 'SENT' | 'FAILED' | 'COMPLETED' | 'UNKNOWN';
 
 interface Campaign {
   id: string;
@@ -45,17 +45,30 @@ interface Campaign {
   tagsFilter?: string;
   status: EmailStatus;
   sentAt?: string;
+  scheduledAt?: string;
   totalSent: number;
   totalFailed: number;
+  totalRecipients?: number;
+  processedRecipients?: number;
+  uniqueOpens?: number;
+  uniqueClicks?: number;
+  bounces?: number;
+  unsubscribes?: number;
   createdAt: string;
 }
 
 // ── Status config ─────────────────────────────────────────────────────────────
 
 const STATUS_CONFIG: Record<EmailStatus, { color: string; bg: string; icon: string }> = {
-  DRAFT:  { color: '#6b7280', bg: '#F9FAFB', icon: '📝' },
-  SENT:   { color: '#16a34a', bg: '#F0FDF4', icon: '✅' },
-  FAILED: { color: '#dc2626', bg: '#FEF2F2', icon: '❌' },
+  DRAFT:     { color: '#6b7280', bg: '#F9FAFB', icon: '📝' },
+  SCHEDULED: { color: '#2563eb', bg: '#EFF6FF', icon: '⏰' },
+  SENDING:   { color: '#d97706', bg: '#FEF3C7', icon: '⚡' },
+  PAUSED:    { color: '#4b5563', bg: '#F3F4F6', icon: '⏸️' },
+  CANCELLED: { color: '#dc2626', bg: '#FEF2F2', icon: '🚫' },
+  SENT:      { color: '#16a34a', bg: '#F0FDF4', icon: '✅' },
+  COMPLETED: { color: '#16a34a', bg: '#F0FDF4', icon: '✅' },
+  FAILED:    { color: '#dc2626', bg: '#FEF2F2', icon: '❌' },
+  UNKNOWN:   { color: '#6b7280', bg: '#F9FAFB', icon: '❓' },
 };
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -463,7 +476,7 @@ export default function CustomEmailScreen() {
           </View>
         ) : (
           campaigns.map((c) => {
-            const sc = STATUS_CONFIG[c.status];
+            const sc = STATUS_CONFIG[c.status] || STATUS_CONFIG.UNKNOWN;
             return (
               <Card key={c.id} style={styles.card} elevation={1}
                 onPress={() => { setSelectedCampaign(c); setShowDetail(true); }}>
